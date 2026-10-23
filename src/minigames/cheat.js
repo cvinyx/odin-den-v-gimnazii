@@ -8,6 +8,8 @@ import { TEACHERS } from '../../data/teachers.js';
 import { BALANCE } from '../../data/balance.js';
 import { GAME_H } from '../engine/renderer.js';
 import { audio } from '../engine/audio.js';
+import { ChoiceMenu } from '../ui/choice.js';
+import { getDialog } from '../game/dialogs.js';
 
 class CheatGame {
   constructor(ctx) { this.ctx = ctx; this.game = ctx.game; this.done = false; this.time = 0; }
@@ -28,11 +30,44 @@ class CheatGame {
     });
     this.lastAnswers = 0;
     this.lastMode = 'look';
+    // обществоведение: учитель задаёт вопросы с вариантами (раздел 14, п. 1)
+    this.quiz = null;
+    this.quizTimes = params.quiz ? [...BALANCE.cheat.quizTimes] : [];
+    if (params.quiz) {
+      const d = getDialog('quiz');
+      this.questions = this.ctx.rng.shuffle(d.order.filter((l) => l.startsWith('q')).map((l) => d.labels[l].cmds.find((c) => c.type === 'choice')));
+      this.rightBonus = (t.params && t.params.rightAnswerSuspicion) || -15;
+    }
+  }
+
+  askQuestion() {
+    const q0 = this.questions.shift();
+    if (!q0) return;
+    const q = { ...q0, options: this.ctx.rng.shuffle([...q0.options]) }; // правильный ответ не всегда первый
+    this.quiz = { q, menu: new ChoiceMenu('Валентина Андреевна: ' + q.question, q.options.map((o) => ({ text: o.text }))) };
+    audio.play('menuMove');
+  }
+
+  answer(i) {
+    const right = this.quiz.q.options[i].target === 'right';
+    const L = this.logic;
+    const delta = right ? this.rightBonus : Math.round(BALANCE.cheat.quizWrong * (L.p.mul || 1));
+    L.suspicion = Math.max(0, Math.min(100, L.suspicion + delta));
+    this.quizResult = { right, t: 1.6 };
+    audio.play(right ? 'statUp' : 'statDown');
+    this.quiz = null;
   }
 
   update(dt, input) {
     this.time += dt;
     const L = this.logic;
+    if (this.quizResult) { this.quizResult.t -= dt; if (this.quizResult.t <= 0) this.quizResult = null; }
+    if (this.quiz) {
+      const i = this.botAnswer ? this.botAnswer(this.quiz) : this.quiz.menu.update(dt, input);
+      if (i >= 0) this.answer(i);
+      return; // пока отвечаешь — время контрольной стоит
+    }
+    if (this.quizTimes.length && L.t >= this.quizTimes[0]) { this.quizTimes.shift(); this.askQuestion(); return; }
     const peek = this.botPeek ? this.botPeek(L, dt) : input.held('confirm');
     L.update(dt, peek);
     // подозрение видно в HUD в реальном времени
@@ -102,6 +137,8 @@ class CheatGame {
     r.text(`0:${String(left).padStart(2, '0')}`, 240, 3, { align: 'center', color: left <= 10 ? '#ff5a5a' : '#ffffff' });
     r.text('Держи Z — списывать', 474, 3, { align: 'right', color: '#9a9aa8' });
     if (L.sees && L.peeking) r.text('ЗАМЕТИЛА!', 240, 18, { align: 'center', color: '#ff4a4a', scale: 2, shadow: '#000' });
+    if (this.quizResult) r.text(this.quizResult.right ? 'Верно! Подозрение −15' : 'Неверно. Подозрение растёт', 240, 40, { align: 'center', color: this.quizResult.right ? '#6be36b' : '#ff6a6a', shadow: '#000' });
+    if (this.quiz) this.quiz.menu.draw(r, 200);
     this.game.hud.draw(r, this.ctx.state);
   }
 }

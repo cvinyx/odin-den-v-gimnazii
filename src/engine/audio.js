@@ -233,6 +233,12 @@ const SFX = {
       a.noise({ dur: 0.07, vol: 0.18, at, filter: 2500 });
     }
   },
+  // Гомон коридора: короткий «бу-бу» в полосе голоса и далёкие шаги.
+  murmur: (a) => {
+    a.noise({ dur: 0.25, vol: 0.025, filter: 700 });
+    a.tone({ freq: 140 + (Math.floor(a.ctx.currentTime * 37) % 9) * 15, type: 'triangle', dur: 0.18, vol: 0.012, slideTo: 120 });
+  },
+  stepFar: (a) => a.noise({ dur: 0.04, vol: 0.03, filter: 400 }),
   shake: (a) => a.tone({ freq: 90, type: 'sawtooth', dur: 0.25, vol: 0.2, slideTo: 40 }),
   step: (a) => a.noise({ dur: 0.03, vol: 0.05, filter: 600 }),
   door: (a) => { a.noise({ dur: 0.2, vol: 0.15, filter: 500 }); a.tone({ freq: 120, type: 'triangle', dur: 0.15, vol: 0.15 }); },

@@ -1,0 +1,56 @@
+// Столовая (1 эт.): буфет с продавщицей, столы. Большая перемена — все здесь.
+// Легенда тайлов — src/gen/tiles.js (TILE_DEFS). Координаты — в тайлах.
+export const CANTEEN = {
+  id: 'canteen',
+  name: 'Столовая',
+  floor: 'x',
+  music: 'canteen',
+  tint: '#ffe0a0',
+  ambient: 'crowd',
+  rows: [
+    '##############################',
+    '#WWwWWWWwWWWWwWWWWwWWWWwWWWDW#',
+    '#Pxxxxxxxxxxxxxxxxxxxxxxxxxxx#',
+    '#xxxOOOOOOOOOOxxxxxxxxxxxxxxx#',
+    '#xxxxxxxxxxxxxxxxxxxxxxxxxxxx#',
+    '#xxxxxxxxxxxxxxxxxxxxxxxxxxxx#',
+    '#xxxxxxxxxxxxxxxxxxxxxxxxxxxx#',
+    '#xxxUUUxxxUUUxxxxUUUxxxUUUxxx#',
+    '#xxxxxxxxxxxxxxxxxxxxxxxxxxxx#',
+    '#xxxxxxxxxxxxxxxxxxxxxxxxxxxx#',
+    '#xxxxxxxxxxxxxxxxxxxxxxxxxxxx#',
+    '#xxxUUUxxxUUUxxxxUUUxxxUUUxxx#',
+    '#xxxxxxxxxxxxxxxxxxxxxxxxxxxx#',
+    '#xxxxxxxxxxxxxxxxxxxxxxxxxxxx#',
+    '#xxxxxxxxxxxxxxxxxxxxxxxxxxxx#',
+    '#xxxUUUxxxUUUxxxxUUUxxxUUUxxx#',
+    '#xxxxxxxxxxxxxxxxxxxxxxxxxxxx#',
+    '##############################',
+  ],
+  spawns: {
+    rec: {x:27,y:2,dir:"down"},
+  },
+  exits: [
+    { x: 27, y: 1, to: "rec_f1", spawn: "canteen", label: "Выход" },
+  ],
+  objects: [
+    { x: 4, y: 3, kind: "buffet" },
+    { x: 5, y: 3, kind: "buffet" },
+    { x: 6, y: 3, kind: "buffet" },
+    { x: 7, y: 3, kind: "buffet" },
+    { x: 8, y: 3, kind: "buffet" },
+    { x: 9, y: 3, kind: "buffet" },
+    { x: 10, y: 3, kind: "buffet" },
+    { x: 11, y: 3, kind: "buffet" },
+    { x: 12, y: 3, kind: "buffet" },
+    { x: 13, y: 3, kind: "buffet" },
+  ],
+  npcs: [
+    { id: "cook", x: 8, y: 2, dir: "down", talk: { file: "staff", label: "cook" } },
+  ],
+  spots: {
+    named: [[4, 8], [6, 8], [10, 8], [12, 8], [17, 8], [19, 8], [23, 8], [25, 8], [4, 12], [6, 12], [10, 12], [12, 12], [17, 12], [19, 12], [23, 12]],
+    crowd: [[5, 14], [11, 14], [18, 14], [24, 14], [16, 5], [22, 5]],
+    patrol: [[16, 4], [26, 4], [26, 14], [16, 14]],
+  },
+};

@@ -10,10 +10,13 @@
 
 export const EMOTIONS = ['norm', 'happy', 'angry', 'surprised', 'dumb'];
 export const STATS = ['battery', 'stress', 'aura', 'vape', 'juice', 'suspicion', 'hunger', 'money'];
+// Величины только для условий: последняя оценка, долг собеседнику (BYN), все долги, побед, вызовов к директору,
+// итог матча (1 — победа, 0 — ничья/не было, −1 — поражение), может ли собеседник дать жижку (1/0).
+export const COND_VALUES = ['lastgrade', 'debt', 'debts', 'wins', 'calls', 'match', 'vapefriend', 'puffs', 'breaknum'];
 export const SFX_ALLOWED = ['igorLaugh', 'bell', 'whistle', 'kick', 'hit', 'shake', 'puff', 'coin', 'door', 'statUp', 'statDown'];
 const OPS = ['>=', '<=', '==', '!=', '>', '<'];
 // Игровые действия из диалогов: # action имя [аргумент]. Выполняет игра (src/game/actions.js).
-export const ACTIONS = ['phone', 'vape', 'quiet', 'bait', 'seat_steal', 'seat_front', 'seat_igor', 'bus', 'wash', 'leave'];
+export const ACTIONS = ['phone', 'vape', 'quiet', 'bait', 'seat_steal', 'seat_front', 'seat_igor', 'bus', 'wash', 'leave', 'askjuice', 'buffet', 'charge_phone', 'charge_vape', 'charge_stop'];
 
 export class DialogParseError extends Error {
   constructor(errors, file) {
@@ -63,7 +66,7 @@ function parseCondition(src, line, errors) {
     if (i > 0) {
       const stat = s.slice(0, i).trim();
       const val = s.slice(i + op.length).trim().replace(',', '.');
-      if (!STATS.includes(stat)) { errors.push({ line, msg: `в условии неизвестный статус «${stat}»` }); return null; }
+      if (!STATS.includes(stat) && !COND_VALUES.includes(stat)) { errors.push({ line, msg: `в условии неизвестный статус «${stat}»` }); return null; }
       if (!/^-?\d+(\.\d+)?$/.test(val)) { errors.push({ line, msg: `в условии нужно число: «${val}»` }); return null; }
       return { kind: 'stat', stat, op, value: parseFloat(val) };
     }

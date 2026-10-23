@@ -4,15 +4,17 @@ import { TileMap } from '../world/tilemap.js';
 import { Actor, Npc } from '../world/npc.js';
 import { findTalkTarget, pointInFront } from '../world/interactions.js';
 import { populate } from '../world/population.js';
-import { getMapDef, STAIRWELLS } from '../world/maps/index.js';
+import { getMapDef, STAIRWELLS, MAPS } from '../world/maps/index.js';
+import { BuffetScene } from './buffet.js';
+import { patrolSees, PATROL, DIRA } from '../world/patrol.js';
+import { changeStat } from '../game/state.js';
 import { TILE } from '../gen/tiles.js';
 import { GAME_H } from '../engine/renderer.js';
 import { BALANCE } from '../../data/balance.js';
-import { TEACHERS } from '../../data/teachers.js';
 import { DialogScene } from './dialog_scene.js';
 import { ChoiceScene } from './choice_scene.js';
 import { PauseScene } from './pause.js';
-import { StatusPanel } from './status_panel.js';
+import { SchoolMapScene } from './school_map.js';
 import { MinigameScene } from './minigame_scene.js';
 import { DirectorScene } from './director.js';
 import { formatTimer } from '../ui/format.js';
@@ -75,6 +77,10 @@ export class WorldScene {
     const game = this.game;
     for (const a of game.takeActions()) {
       if (a.name === 'bait') this.startBait(a.arg || (this.lastTalk && this.lastTalk.id));
+      else if (a.name === 'charge_phone') this.startCharging('phone');
+      else if (a.name === 'charge_vape') this.startCharging('vape');
+      else if (a.name === 'charge_stop') this.stopCharging('Розетка свободна');
+      else if (a.name === 'buffet') game.scenes.push(new BuffetScene());
       else if (a.name === 'director_patrol') game.scenes.push(new DirectorScene({}));
       else if (this.opts.onAction) this.opts.onAction(a.name, a.arg, this);
     }
@@ -119,19 +125,57 @@ export class WorldScene {
       this.say(ex.locked);
       return;
     }
-    if (ex.to) return this.goTo(ex.to, ex.spawn);
+    if (ex.to) {
+      // карта-«кабинет» (спортзал, раздевалка): вход в неё на нужной перемене начинает урок
+      const target = MAPS[ex.to];
+      if (target && target.room) {
+        const act = roomAction(game.state, target.room);
+        if (act.type === 'lesson') return this.startLesson(act.n);
+      }
+      return this.goTo(ex.to, ex.spawn);
+    }
     if (ex.stairs) return this.stairsMenu();
     if (ex.room) {
       const act = roomAction(game.state, ex.room);
-      if (act.type === 'lesson') {
-        audio.play('door');
-        this.cooldown = 10;
-        import('./lesson_scene.js').then(({ LessonScene }) => game.scenes.reset(new LessonScene(act.n), { fade: true }));
-      } else if (act.type === 'demo_end') {
-        this.cooldown = 10;
-        import('./demo_end.js').then(({ DemoEndScene }) => game.scenes.reset(new DemoEndScene(), { fade: true }));
-      } else this.say(act.text);
+      if (act.type === 'lesson') this.startLesson(act.n);
+      else this.say(act.text);
     }
+  }
+
+  startLesson(n) {
+    const game = this.game;
+    audio.play('door');
+    this.cooldown = 10;
+    this.stopCharging();
+    import('./lesson_scene.js').then(({ LessonScene }) => game.scenes.reset(new LessonScene(n), { fade: true }));
+  }
+
+  // ---------- Зарядка в библиотеке (раздел 7): одно устройство за раз, пока Рома рядом с розеткой ----------
+  startCharging(device) {
+    const o = (this.def.objects || []).find((x) => x.kind === 'outlet');
+    if (!o) return;
+    this.game.state.charging = { device, x: (o.x + 0.5) * TILE, y: (o.y + 1) * TILE + 8, map: this.def.id };
+    this.chargeAcc = 0;
+    audio.play('statUp');
+  }
+
+  stopCharging(msg) {
+    const st = this.game.state;
+    if (!st.charging) return;
+    st.charging = null;
+    if (msg) this.game.toast(msg);
+  }
+
+  updateCharging(dt) {
+    const st = this.game.state;
+    const c = st.charging;
+    if (!c) return;
+    if (c.map !== this.def.id || Math.hypot(this.player.x - c.x, this.player.y - c.y) > 36) { this.stopCharging('Зарядка прервана: отошёл от розетки'); return; }
+    const key = c.device === 'phone' ? 'battery' : 'vapeCharge';
+    const rate = c.device === 'phone' ? BALANCE.battery.chargePerSecond : BALANCE.vape.chargePerSecond;
+    this.chargeAcc += dt * rate;
+    while (this.chargeAcc >= 1) { this.chargeAcc -= 1; changeStat(st, key, 1); }
+    if (st.stats[key] >= 100) this.stopCharging(c.device === 'phone' ? 'Телефон заряжен' : 'Вейп заряжен');
   }
 
   stairsMenu() {
@@ -159,11 +203,16 @@ export class WorldScene {
     this.player.moving = false;
     this.lastTalk = n;
     st.met[n.id] = true;
+    let file = n.talk.file;
     let label = n.talk.label;
-    const flag = `talked_${n.talk.file}_${label}`;
-    if (st.flags[flag] && hasLabel(n.talk.file, label + '_again')) label += '_again';
+    const flag = `talked_${file}_${label}`;
+    if (st.flags[flag]) {
+      if (hasLabel(file, label + '_again')) label += '_again';
+      else if (n.def.named && hasLabel('npc_again', n.id)) { file = 'npc_again'; label = n.id; }
+    }
     st.flags[flag] = true;
-    game.scenes.push(new DialogScene(n.talk.file, label, { opp: n.id }));
+    if (n.id === 'nikolai') st.flags.metNikolai = true;
+    game.scenes.push(new DialogScene(file, label, { opp: n.id }));
     if (n.def.named && creditorReminds(st, n.id)) game.scenes.push(new DialogScene('bets', 'remind', { opp: n.id }));
   }
 
@@ -174,11 +223,13 @@ export class WorldScene {
     this.cooldown = Math.max(0, this.cooldown - dt);
     if (st.phase !== 'intro') st.playTime += dt;
     for (const n of this.npcs) n.update(dt, this.map, this.actors);
-    game.patrolNear = this.npcs.some((n) => TEACHERS[n.id] && TEACHERS[n.id].params.patrol && Math.hypot(n.x - this.player.x, n.y - this.player.y) < 80);
+    game.patrolNear = this.npcs.some((n) => n.def.patrol && patrolSees(n, this.player));
+    this.updateCharging(dt);
+    this.updateAmbient(dt);
     game.hud.hint = hintText(st);
 
     if (input.pressed('back') && st.phase !== 'intro') { this.saveProgress(); game.scenes.push(new PauseScene()); return; }
-    if (input.pressed('tab')) { game.scenes.push(new StatusPanel()); return; }
+    if (input.pressed('tab')) { game.scenes.push(new SchoolMapScene()); return; }
 
     const ax = input.axis();
     const run = input.held('run');
@@ -219,6 +270,16 @@ export class WorldScene {
     this.updateCamera();
   }
 
+  // Гомон и шаги в коридорах на переменах (звук без влияния на логику — свой простой генератор).
+  updateAmbient(dt) {
+    if (this.def.ambient !== 'crowd' || this.game.state.phase !== 'break') return;
+    this.ambT = (this.ambT || 0) - dt;
+    if (this.ambT > 0) return;
+    this.ambSeed = ((this.ambSeed || 12345) * 1103515245 + 12345) & 0x7fffffff;
+    this.ambT = 0.15 + (this.ambSeed % 1000) / 1000 * 0.5;
+    audio.play(this.ambSeed % 5 === 0 ? 'stepFar' : 'murmur');
+  }
+
   updateCamera(snap = false) {
     const r = this.game.r;
     const vw = 480, vh = GAME_H;
@@ -253,6 +314,12 @@ export class WorldScene {
       r.withCamera(() => {
         this.map.draw(r, 480, GAME_H);
         this.drawLabels(r);
+        for (const n of this.npcs) if (n.def.patrol) drawPatrolCone(r, n);
+        const ch = this.game.state.charging;
+        if (ch && ch.map === this.def.id) {
+          r.ctx.save(); r.ctx.strokeStyle = '#202020'; r.ctx.lineWidth = 1;
+          r.ctx.beginPath(); r.ctx.moveTo(ch.x, ch.y - 12); r.ctx.lineTo(this.player.x + 4, this.player.y - 10); r.ctx.stroke(); r.ctx.restore();
+        }
         const sorted = [...this.actors].sort((a, b) => a.y - b.y);
         for (const a of sorted) a.draw(r);
         if (this.talkTarget && this.game.scenes.top === this) {
@@ -263,7 +330,22 @@ export class WorldScene {
         }
       });
     });
+    if (this.def.tint) r.alpha(0.08, () => r.rect(0, 0, 480, GAME_H, this.def.tint));
     if (this.game.settings.speedrunTimer && this.game.state.phase !== 'intro') r.text(formatTimer(this.game.state.playTime), 474, 4, { align: 'right', color: '#ffe14d', shadow: '#000' });
     this.game.hud.draw(r, this.game.state, { hint: this.game.scenes.top === this });
   }
+}
+
+function drawPatrolCone(r, n) {
+  const ctx = r.ctx;
+  const a = DIRA[n.dir] * Math.PI / 180, h = PATROL.half * Math.PI / 180;
+  ctx.save();
+  ctx.globalAlpha = 0.16;
+  ctx.fillStyle = '#ff5050';
+  ctx.beginPath();
+  ctx.moveTo(n.x, n.y - 14);
+  ctx.arc(n.x, n.y - 14, PATROL.len, a - h, a + h);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
 }

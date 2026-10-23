@@ -7,7 +7,6 @@ import { changeStat } from './state.js';
 import { Rng, hashString } from '../engine/rng.js';
 
 export const LESSON_MINUTES = 45;
-export const DEMO_LAST_BREAK = 1; // этап 2: после перемены 1 — «Конец демо-версии»
 
 export function toMinutes(hhmm) { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; }
 export function fromMinutes(min) {
@@ -54,8 +53,8 @@ export function startLesson(state, n) {
   state.phase = 'lesson';
   state.lesson = n;
   state.clock = l.start;
-  state.location = 'cab_' + l.room;
-  state.locationName = `Каб. ${l.room}`;
+  state.location = l.building === 0 ? 'locker_room' : 'cab_' + l.room;
+  state.locationName = l.building === 0 ? 'Спортзал' : `Каб. ${l.room}`;
   state.seat = null;
   state.lessonMul = teacherMul(n);
   let susp = Math.round(state.suspicionPrev * BALANCE.suspicion.carryOver);
@@ -92,17 +91,18 @@ export function startBreak(state, n) {
   state.flags['break' + n] = true;
 }
 
-// Вход в кабинет. Возвращает действие: { type: 'lesson', n } | { type: 'demo_end' } | { type: 'denied', text }.
+// Вход в кабинет. Возвращает действие: { type: 'lesson', n } | { type: 'denied', text }.
 export function roomAction(state, room) {
   if (state.phase === 'late' && room === lessonInfo(1).room) return { type: 'lesson', n: 1 };
   if (state.phase === 'break') {
-    if (state.lesson >= DEMO_LAST_BREAK) return { type: 'demo_end' };
     const next = lessonInfo(state.lesson + 1);
     if (next && next.room === room) return { type: 'lesson', n: next.n };
   }
   const next = nextLesson(state);
   return { type: 'denied', text: next ? `Сейчас не сюда. ${hintText(state) || ''}` : 'Заперто.' };
 }
+
+export const LAST_LESSON = 7;
 
 // Номер текущей перемены для таблицы NPC (раздел 11) или null.
 export function breakNumber(state) { return state.phase === 'break' ? state.lesson : null; }

@@ -84,7 +84,8 @@ test('перемена: часы замирают на конце урока, в
   startBreak(st, 1);
   assert.equal(st.clock, '09:45');
   assert.match(hintText(st), /Следующий: Математика, каб\. 305, корп\. 1, 3 эт\./);
-  assert.equal(roomAction(st, '404').type, 'demo_end');
+  assert.equal(roomAction(st, '305').type, 'lesson');
+  assert.equal(roomAction(st, '404').type, 'denied');
 });
 
 test('вейп: 5 затяжек = 1 заправка, на уроке +25 подозрения (с множителем), без жижки нельзя', () => {

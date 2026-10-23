@@ -56,6 +56,7 @@ export const BALANCE = {
     emptyStressPerLesson: 5,    // если заряд 0 или жижка 0
     chargePerSecond: 1,         // та же розетка в библиотеке
     critical: 10,
+    askJuiceChance: 0.5,        // друг из списка вейп-игры даёт заправку (раз в день)
   },
 
   suspicion: {
@@ -202,7 +203,33 @@ export const BALANCE = {
     coneHalf: 24, coneHalfWide: 32, coneLength: 230,
     pRoma: 0.3,                // как часто учитель смотрит прямо на Рому
     progressDecay: 1.0,         // как быстро теряется прогресс ответа, если отпустить Z (в долях в секунду)
+    quizTimes: [14, 30, 46],    // секунды, когда учитель обществоведения задаёт вопрос
+    quizWrong: 6,               // неверный ответ: подозрение растёт
     spotBonus: 3,               // разовый скачок подозрения, когда учитель «заметил» подсматривание
+  },
+
+  // Оценка за урок, если главная мини-игра сама её не ставит (байт-дуэль на русском).
+  lessonGrades: {
+    byResult: { win: 8, draw: 6, lose: 4, director: 2 },
+  },
+
+  // Временные «запаски» (этапы 4–5 заменят их настоящими играми). Варианты = выборы в диалоге.
+  stubs: {
+    phone: [
+      { label: 'аккуратно', win: 0.7, susp: [5, 15], aura: [3, 5], battery: -8, grade: [5, 7] },
+      { label: 'на рекорд', win: 0.45, susp: [15, 35], aura: [5, 8], battery: -8, grade: [4, 7] },
+      { label: 'не доставать', win: null, susp: [-10, -10], aura: [0, 0], battery: 0, stress: 5, grade: [6, 8] },
+    ],
+    football: {
+      baseWin: 0.42, drawChance: 0.18,
+      options: [
+        { label: 'пас', win: 0.05, goals: [0, 1] },
+        { label: 'сам', win: 0.0, goals: [0, 2] },
+        { label: 'защита', win: 0.08, goals: [0, 0] },
+      ],
+      berserkWin: 0.1, hungryWin: -0.1,
+    },
+    shower: { winChance: 0.5, loseStress: 10, options: [{ label: 'стоять', win: 0.5 }, { label: 'уступить', win: 0 }] },
   },
 
   // Движение по карте (пикселей в секунду).

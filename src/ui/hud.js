@@ -82,6 +82,13 @@ export class Hud {
         r.rect(x, y0 + 17, bw, 3, '#2c2840');
         r.rect(x, y0 + 17, Math.round(bw * Math.max(0, Math.min(1, slot.bar(s)))), 3, red ? '#ff3a3a' : slot.color);
       }
+      const ch = state.charging;
+      if (ch && ((ch.device === 'phone' && slot.key === 'battery') || (ch.device === 'vape' && slot.key === 'vapeCharge'))) {
+        // анимация зарядки: бегущая полоска и молния
+        const k = (r.time * 1.5) % 1;
+        r.rect(x + Math.round((SLOT_W - 6) * k), y0 + 17, 3, 3, '#ffffff');
+        if (r.blink(0.25)) r.text('+', x + 2, y0 - 2, { color: '#ffe14d', shadow: '#000' });
+      }
       if (slot.juice) {
         // заправки жижки — маленькие капли под шкалой
         for (let i = 0; i < Math.min(6, s.juice); i++) r.rect(x + i * 4, y0 + 22, 3, 3, '#c9a0ff');

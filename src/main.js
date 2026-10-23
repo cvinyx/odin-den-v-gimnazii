@@ -4,6 +4,8 @@ import { TitleScene } from './scenes/title.js';
 import { DebugMenuScene } from './debug/debug_menu.js';
 import { registerDebugEntries } from './debug/entries.js';
 import { debugGroups } from './debug/registry.js';
+import { MAPS, STAIRWELLS } from './world/maps/index.js';
+import { SCHEDULE } from '../data/schedule.js';
 import './minigames/index.js';
 import { validateAllDialogs } from './game/dialogs.js';
 
@@ -23,3 +25,5 @@ window.__odinDebug = (label) => {
   for (const g of debugGroups()) for (const it of g.items) if (it.label === label) { it.action(game); return true; }
   return false;
 };
+// Данные карт и расписания для бота (поиск пути между локациями).
+window.__odinData = { MAPS, STAIRWELLS, SCHEDULE };

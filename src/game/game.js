@@ -6,7 +6,7 @@ import { input } from '../engine/input.js';
 import { audio } from '../engine/audio.js';
 import { storeGet, storeSet, KEYS, autosave } from '../engine/save.js';
 import { generateSeedCode } from '../engine/rng.js';
-import { createState, applyScriptEffect, scriptStatValue, changeStat } from './state.js';
+import { createState, applyScriptEffect, scriptStatValue, changeStat, VAPE_FRIENDS } from './state.js';
 import { puff, phoneQuick, sitQuiet, addSuspicion, checkBreakdown } from './actions.js';
 import { eventRng } from './day.js';
 import { BALANCE } from '../../data/balance.js';
@@ -162,6 +162,17 @@ export class Game {
       case 'seat_igor':
         st.seat = 'igor';
         break;
+      case 'askjuice': {
+        // жижку можно попросить у друзей из списка вейп-игры (раздел 7), у каждого — раз в день
+        const opp = this.currentOpp;
+        const key = 'askedJuice_' + opp;
+        let ok = false;
+        if (VAPE_FRIENDS.includes(opp) && !st.flags[key]) ok = eventRng(st, key).chance(BALANCE.vape.askJuiceChance);
+        st.flags[key] = true;
+        st.flags.juice_ok = ok;
+        if (ok) changeStat(st, 'juice', 1);
+        break;
+      }
       default:
         this.pendingActions.push({ name, arg });
     }
@@ -169,6 +180,6 @@ export class Game {
 
   takeActions() { const a = this.pendingActions; this.pendingActions = []; return a; }
 
-  scriptStat(name) { return scriptStatValue(this.state, name); }
+  scriptStat(name) { return scriptStatValue(this.state, name, this.currentOpp); }
   scriptFlag(name) { return !!this.state.flags[name]; }
 }

@@ -118,3 +118,26 @@ export const TEACHER_ORDER = [
   'elena', 'tatiana', 'svetlana', 'oleg', 'viktor', 'galina', 'valentina',
   'natalia', 'olga', 'marina', 'lyudmila', 'andrey', 'nikolai', 'director',
 ];
+
+// Персонал гимназии (нейтральные взрослые).
+export const STAFF = {
+  librarian: {
+    name: 'Библиотекарь', short: 'Библиотекарь', role: 'библиотека', female: true, heightCm: 163, build: 'normal',
+    skin: SKIN.light, hairStyle: 'bun', hairColor: '#7a6a5a', eyeColor: EYES.gray,
+    top: 'cardigan', topColor: '#6a7a5a', shirtColor: '#f0ead8', pants: 'skirt', pantsColor: '#3a3a40',
+    glasses: 'thin', adult: true,
+    blip: { freq: 520, wave: 'sine' },
+    params: {},
+  },
+  cook: {
+    name: 'Продавщица буфета', short: 'Буфет', role: 'буфет в столовой', female: true, heightCm: 165, build: 'full',
+    skin: SKIN.warm, hairStyle: 'bob', hairColor: HAIR.auburn, eyeColor: EYES.brown,
+    top: 'coat', topColor: '#f4f6f8', shirtColor: '#e8a0a0', pants: 'skirt', pantsColor: '#5a5a66',
+    adult: true,
+    blip: { freq: 480, wave: 'triangle' },
+    params: {},
+  },
+};
+
+// Учителя-камео на переменах (раздел 11: случайно по сиду, 1–2 места за перемену).
+export const CAMEO_TEACHERS = ['natalia', 'marina', 'lyudmila', 'andrey', 'nikolai'];

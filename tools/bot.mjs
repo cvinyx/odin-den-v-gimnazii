@@ -1,5 +1,5 @@
 // Скрипт-бот: проходит вертикальный срез целиком нажатиями клавиш в headless Chromium (file://).
-// Новая игра → вступление → улица → рекреация → корпус 2 → каб. 404 → урок → перемена → байт-дуэли → конец демо.
+// Новая игра → вступление → улица → рекреация → корпус 2 → каб. 404 → урок → перемена → байт-дуэли → урок 2.
 // Запуск: node tools/bot.mjs [код_дня] [папка_для_скриншотов] [cautious|greedy]
 import path from 'node:path';
 import fs from 'node:fs';
@@ -112,17 +112,12 @@ export async function runSlice({ seed = 'BXT234', shots = null, cheatStyle = 'ca
   await bot.handle((t, s) => t === 'minigame' && s.phase === 'play' && s.bmode === 'choose');
   await shot('bait-matych');
   await bot.handle((t) => t === 'world');
-  // обратно в корпус 2, 4 этаж, в любой кабинет → конец демо
-  await bot.walkTo(38, 16);
-  await bot.page.keyboard.down('ArrowRight'); await bot.wait(300); await bot.page.keyboard.up('ArrowRight');
-  await bot.waitFor((s) => s.top === 'world' && s.map === 'k2_f1');
-  policy.floor = 4;
-  await bot.useDoor(17, 1);
-  await bot.handle((t, s) => t === 'world' && s.map === 'k2_f4');
-  await bot.useDoor(8, 8);
-  await bot.waitFor((s) => s.top === 'demo_end');
-  await page.waitForTimeout(600);
-  await shot('konets-demo');
+  // дальше по расписанию: математика, каб. 305 (корпус 1) — срез заканчивается на входе в урок 2
+  bot.policy = (q, opts) => (/этаж/.test(q) ? Math.max(0, opts.findIndex((o) => o.startsWith(bot.floorWanted + ' '))) : policy(q, opts));
+  await bot.goToRoom('305');
+  await bot.waitFor((s) => s.top === 'dialog' || s.top === 'lesson');
+  await page.waitForTimeout(900);
+  await shot('urok-2-matematika');
   const state = await page.evaluate(() => JSON.parse(JSON.stringify(window.__odin.state)));
   await browser.close();
   return { seed, ms: Date.now() - t0, errors, log: bot.log, state };

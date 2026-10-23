@@ -11,3 +11,5 @@
 - `node tools/screenshots.mjs` — проверка этапа 1 в браузере и скриншоты.
 - `node tools/check_stage2.mjs` — бот проходит вертикальный срез (этап 2), скриншоты в `docs/screenshots/etap-2/`.
 - `node tools/balance_cheat.mjs 40` — проверка баланса «Списывания».
+- `node tools/check_stage3.mjs` — бот проходит весь день (3 кода дня), скриншоты в `docs/screenshots/etap-3/`.
+- `node tools/render_maps.mjs <папка>` — все карты целиком в PNG.

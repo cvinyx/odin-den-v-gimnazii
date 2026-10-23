@@ -1,0 +1,70 @@
+// Повторный разговор с именным NPC на той же перемене (если в файле перемены нет своей метки <id>_again).
+=== denis
+@denis [norm] Ещё что-то, Ромчик?
+-> menu
+=== igor
+@igor [happy] Ромчик! Опять ты! {shake}ХА!{/shake}
+-> menu
+=== chernyak
+@chernyak [norm] ...
+-> menu
+=== shurpo
+@shurpo [norm] Я всё ещё здесь. Я никуда не тороплюсь.
+-> menu
+=== levonchuk
+@levonchuk [norm] Ну что ещё?
+-> menu
+=== bochko
+@bochko [happy] Ромчик!
+-> menu
+=== matych
+@matych [happy] Мандаринку?
+-> menu
+=== buy
+@buy [happy] Передумал инвестировать?
+-> menu
+=== guza
+@guza [angry] {shake}Опять ты?{/shake}
+-> menu
+=== smile
+@smile [happy] Ja?
+-> menu
+=== vadim
+@vadim [norm] Что?
+-> menu
+=== vitalik
+@vitalik [happy] Скины обсуждаем?
+-> menu
+=== zakha
+@zakha [norm] Я тут.
+-> menu
+=== anus
+@anus [norm] Чипсов нет.
+-> menu
+
+// ---- Общее меню разговора (одинаковое во всех файлах перемен) ----
+=== menu
+? Что дальше?
+* «Сыграем в байт на деньги?» => menu_bait
+* Попросить жижку. => menu_juice {if vapefriend>0}
+* Затянуться за компанию. => menu_vape {if vape>0}
+* «Ладно, бывай.» => menu_bye
+
+=== menu_bait
+@opp [happy] Давай. Готовь деньги.
+# action bait
+
+=== menu_juice
+# action askjuice
+-> menu_juice_yes {if flag juice_ok}
+@opp [norm] Жижку? Самому мало. Иди выигрывай.
+
+=== menu_juice_yes
+@opp [happy] На. Одна заправка. Цени.
+
+=== menu_vape
+# action vape
+@narrator Облачко пара медленно уплывает под потолок.
+
+=== menu_bye
+@opp [norm] Давай.

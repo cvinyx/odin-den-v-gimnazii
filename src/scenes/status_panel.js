@@ -12,6 +12,10 @@ export class StatusPanel {
     if (input.pressed('tab') || input.pressed('back') || input.pressed('confirm')) {
       input.consume('back'); input.consume('confirm');
       this.game.scenes.pop();
+      return;
+    }
+    if (input.pressed('left') || input.pressed('right')) {
+      import('./school_map.js').then(({ SchoolMapScene }) => this.game.scenes.replace(new SchoolMapScene()));
     }
   }
   draw(r) {
@@ -52,6 +56,6 @@ export class StatusPanel {
       r.text(roomLabel(l), x0 + 18, yy + 10, { color: '#9a9aa8' });
       if (done) r.text('оценка ' + st.grades[l.n - 1], 462, yy, { color: '#6be36b', align: 'right' });
     });
-    r.text('Tab / X — закрыть', 240, 250, { color: '#9a9aa8', align: 'center' });
+    r.text('←→ схема школы · Tab / X — закрыть', 240, 250, { color: '#9a9aa8', align: 'center' });
   }
 }
