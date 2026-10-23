@@ -1,0 +1,120 @@
+// Учителя (раздел 10): нейтральные вежливые взрослые. Различаются внешностью и игровыми параметрами.
+import { SKIN, EYES, HAIR } from './characters.js';
+
+export const TEACHERS = {
+  elena: {
+    name: 'Елена Викторовна', short: 'Елена', role: 'английский', female: true, heightCm: 168, build: 'normal',
+    skin: SKIN.pale, hairStyle: 'bun', hairColor: HAIR.darkblond, eyeColor: EYES.blue,
+    top: 'blouse', topColor: '#cfe0f2', shirtColor: '#cfe0f2', pants: 'skirt', pantsColor: '#2d3550',
+    glasses: 'thin', adult: true,
+    blip: { freq: 560, wave: 'triangle' },
+    params: { coneWidth: 'wide', turnEvery: [2, 4], likesTests: true },
+  },
+  tatiana: {
+    name: 'Татьяна Михайловна', short: 'Татьяна', role: 'математика', female: true, heightCm: 164, build: 'normal',
+    skin: SKIN.light, hairStyle: 'bob', hairColor: HAIR.brown, eyeColor: EYES.brown,
+    top: 'cardigan', topColor: '#6d5a8c', shirtColor: '#f0f0f0', pants: 'skirt', pantsColor: '#2b2b33',
+    adult: true,
+    blip: { freq: 520, wave: 'triangle' },
+    params: { backToClass: true, suddenTurn: true },
+  },
+  svetlana: {
+    name: 'Светлана Аркадьевна', short: 'Светлана', role: 'русский язык', female: true, heightCm: 170, build: 'thin',
+    skin: SKIN.pale, hairStyle: 'long-straight', hairColor: HAIR.auburn, eyeColor: EYES.green,
+    top: 'dress', topColor: '#3f6b5a', shirtColor: '#3f6b5a', pants: 'skirt', pantsColor: '#3f6b5a',
+    adult: true,
+    blip: { freq: 600, wave: 'sine' },
+    params: { suspicionMul: 1.0, walksRows: true },
+  },
+  oleg: {
+    name: 'Олег Николаевич', short: 'Олег', role: 'физика и астрономия', heightCm: 178, build: 'normal',
+    skin: SKIN.light, hairStyle: 'side-part', hairColor: '#8e8a86', eyeColor: EYES.gray,
+    top: 'suit', topColor: '#5b5f66', shirtColor: '#dfe6ee', pants: 'trousers', pantsColor: '#44474d',
+    tie: '#2c4a7a', glasses: 'thin', beard: true, adult: true,
+    blip: { freq: 210, wave: 'triangle' },
+    params: { leavesRoom: 2, leaveSeconds: [15, 20] },
+  },
+  viktor: {
+    name: 'Виктор Сергеевич', short: 'Виктор', role: 'физкультура (мальчики)', heightCm: 181, build: 'athletic',
+    skin: SKIN.warm, hairStyle: 'buzz', hairColor: HAIR.brown, eyeColor: EYES.brown,
+    top: 'tracksuit', topColor: '#b02a2a', shirtColor: '#b02a2a', pants: 'track', pantsColor: '#1f2a52',
+    whistle: true, adult: true,
+    blip: { freq: 230, wave: 'square' },
+    params: { strictReferee: true },
+  },
+  galina: {
+    name: 'Галина Степановна', short: 'Галина', role: 'белорусский язык', female: true, heightCm: 160, build: 'full',
+    skin: SKIN.light, hairStyle: 'bun', hairColor: '#b8b2aa', eyeColor: EYES.brown,
+    top: 'cardigan', topColor: '#b46a3c', shirtColor: '#f3e6d0', pants: 'skirt', pantsColor: '#4a3a30',
+    glasses: 'thin', adult: true,
+    blip: { freq: 500, wave: 'sine' },
+    params: { suspicionMul: 0.5, secondChance: true },
+  },
+  valentina: {
+    name: 'Валентина Андреевна', short: 'Валентина', role: 'обществоведение', female: true, heightCm: 166, build: 'normal',
+    skin: SKIN.light, hairStyle: 'curly-short', hairColor: HAIR.darkchestnut, eyeColor: EYES.darkbrown,
+    top: 'suit', topColor: '#7a2638', shirtColor: '#f4f4f4', pants: 'skirt', pantsColor: '#2a2a30',
+    adult: true,
+    blip: { freq: 540, wave: 'triangle' },
+    params: { suspicionMul: 1.5, rightAnswerSuspicion: -15 },
+  },
+  natalia: {
+    name: 'Наталья Ивановна', short: 'Наталья', role: 'классный руководитель «И»', female: true, heightCm: 167, build: 'normal',
+    skin: SKIN.light, hairStyle: 'long-straight', hairColor: HAIR.darkchestnut, eyeColor: EYES.brown,
+    top: 'blouse', topColor: '#e8c9d8', shirtColor: '#e8c9d8', pants: 'skirt', pantsColor: '#30303a',
+    adult: true,
+    blip: { freq: 580, wave: 'triangle' },
+    params: { cameo: true },
+  },
+  olga: {
+    name: 'Ольга Геннадьевна', short: 'Ольга', role: 'завуч, история', female: true, heightCm: 172, build: 'normal',
+    skin: SKIN.pale, hairStyle: 'bun', hairColor: HAIR.black, eyeColor: EYES.gray,
+    top: 'suit', topColor: '#262a36', shirtColor: '#ffffff', pants: 'skirt', pantsColor: '#262a36',
+    glasses: 'thin', adult: true,
+    blip: { freq: 470, wave: 'square' },
+    params: { patrol: true },
+  },
+  marina: {
+    name: 'Марина Олеговна', short: 'Марина', role: 'химия', female: true, heightCm: 165, build: 'normal',
+    skin: SKIN.pale, hairStyle: 'ponytail', hairColor: HAIR.red, eyeColor: EYES.green,
+    top: 'coat', topColor: '#f4f6f8', shirtColor: '#7b8ea8', pants: 'trousers', pantsColor: '#3b3f4a',
+    adult: true,
+    blip: { freq: 610, wave: 'triangle' },
+    params: { cameo: true },
+  },
+  lyudmila: {
+    name: 'Людмила Васильевна', short: 'Людмила', role: 'биология', female: true, heightCm: 162, build: 'normal',
+    skin: SKIN.light, hairStyle: 'curly-short', hairColor: HAIR.chestnut, eyeColor: EYES.green,
+    top: 'cardigan', topColor: '#4f7d3a', shirtColor: '#efe8d0', pants: 'skirt', pantsColor: '#3a3a2e',
+    adult: true,
+    blip: { freq: 530, wave: 'sine' },
+    params: { cameo: true },
+  },
+  andrey: {
+    name: 'Андрей Владимирович', short: 'Андрей', role: 'допризывная подготовка', heightCm: 198, build: 'athletic',
+    skin: SKIN.warm, hairStyle: 'short', hairColor: HAIR.black, eyeColor: EYES.gray,
+    top: 'sweater', topColor: '#55603f', shirtColor: '#55603f', pants: 'trousers', pantsColor: '#2e3324',
+    mustache: true, adult: true,
+    blip: { freq: 160, wave: 'square' },
+    params: { cameo: true, veryTall: true },
+  },
+  nikolai: {
+    // Дедушка Артёма Левончука — выглядит как седой Артём (камео-гэг).
+    name: 'Николай Петрович', short: 'Николай', role: 'физкультура (девочки)', heightCm: 190, build: 'thin',
+    skin: SKIN.light, hairStyle: 'medium', hairColor: '#d9d9de', eyeColor: EYES.darkbrown,
+    top: 'tracksuit', topColor: '#2a5b8c', shirtColor: '#2a5b8c', pants: 'track', pantsColor: '#1c2c44',
+    bigChin: true, whistle: true, adult: true, wrinkles: true,
+    blip: { freq: 215, wave: 'square' },
+    params: { cameo: true, lookalike: 'levonchuk' },
+  },
+  director: {
+    name: 'Директор', short: 'Директор', role: 'только голос из-за двери', voiceOnly: true,
+    blip: { freq: 140, wave: 'triangle' },
+    params: {},
+  },
+};
+
+export const TEACHER_ORDER = [
+  'elena', 'tatiana', 'svetlana', 'oleg', 'viktor', 'galina', 'valentina',
+  'natalia', 'olga', 'marina', 'lyudmila', 'andrey', 'nikolai', 'director',
+];

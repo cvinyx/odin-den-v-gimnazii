@@ -1,0 +1,59 @@
+// Тестовая комната (этап 1): диалоги с Игорем и Черняком.
+// Формат описан в GAME_SPEC.md, раздел 20.
+
+=== igor_talk
+@igor [happy] Ромчик! Я сегодня качал лоб. Чувствуешь, как он давит интеллектом?
+# sfx igorLaugh
+@igor [happy] {shake}ХА-ХА-ХА-ХА-ХА!{/shake}
+@roma [dumb] ...
+? Что ответить Игорю?
+* «Качаешь даже лоб? Грудь от этого гуще не станет.» => igor_bait {aura +5, stress -5}
+* «Лоб норм. Дай списать физику.» => igor_physics
+* Молча кивнуть. => igor_nod {stress +5}
+* Затянуться вейпом. => igor_vape {if vape>0}
+
+=== igor_bait
+@igor [angry] {shake}Ты чё сказал?!{/shake}
+# shake
+@igor [angry] Это не шерсть. Это {c=red}броня{/c}.
+@roma [happy] Броня, которую можно расчесать.
+@narrator Аура Ромы растёт. Игорь закипает, но держится.
+
+=== igor_physics
+@igor [norm] Физика после большой перемены. Ты опять живёшь в прошлом уроке.
+@roma [dumb] {slow}А какой сейчас урок?..{/slow}
+# stress +5
+
+=== igor_nod
+@igor [surprised] Ты чего завис? Опять батя ночью концерт давал?
+@roma [norm] Не начинай.
+
+=== igor_vape
+# vape -10, stress -15
+# sfx puff
+@igor [angry] Кхе-кхе! Ты нормальный? Я лёгкие тоже качаю вообще-то!
+@narrator Стресс уходит. Заряд вейпа — тоже.
+
+=== chernyak_talk
+@chernyak [norm] ...
+@roma [norm] Артём, ты чего молчишь?
+@chernyak [norm] Фармлю ауру.
+? Что сделать?
+* Помолчать вместе с ним. => ch_silence {aura +3}
+* «Твоё молчание такое глубокое, что я в нём три раза заблудился.» => ch_joke
+* «Дай рубль до завтра.» => ch_money {if money<3}
+
+=== ch_silence
+@narrator Минута тишины. Двое фармят ауру у стены. Даже кулер в коридоре затих.
+@chernyak [happy] Неплохо.
+
+=== ch_joke
+@chernyak [happy] ...
+@narrator Черняк улыбнулся. Для него это почти речь.
+# stress -5
+
+=== ch_money
+@chernyak [norm] Держи.
+# money +1, sfx coin
+@roma [happy] Ты лучший. Верну... когда-нибудь.
+@chernyak [dumb] Конечно.
