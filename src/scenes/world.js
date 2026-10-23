@@ -1,0 +1,269 @@
+// Сцена свободного перемещения по карте: Рома ходит и бегает, переходы через двери и лестницы,
+// разговоры с NPC, точки взаимодействия (кабинка, раковина), подсказка следующего кабинета.
+import { TileMap } from '../world/tilemap.js';
+import { Actor, Npc } from '../world/npc.js';
+import { findTalkTarget, pointInFront } from '../world/interactions.js';
+import { populate } from '../world/population.js';
+import { getMapDef, STAIRWELLS } from '../world/maps/index.js';
+import { TILE } from '../gen/tiles.js';
+import { GAME_H } from '../engine/renderer.js';
+import { BALANCE } from '../../data/balance.js';
+import { TEACHERS } from '../../data/teachers.js';
+import { DialogScene } from './dialog_scene.js';
+import { ChoiceScene } from './choice_scene.js';
+import { PauseScene } from './pause.js';
+import { StatusPanel } from './status_panel.js';
+import { MinigameScene } from './minigame_scene.js';
+import { DirectorScene } from './director.js';
+import { formatTimer } from '../ui/format.js';
+import { audio } from '../engine/audio.js';
+import { hintText, nextLesson, roomAction } from '../game/day.js';
+import { rollBet, creditorReminds } from '../game/bets.js';
+import { hasLabel } from '../game/dialogs.js';
+
+const DIRV = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+
+export class WorldScene {
+  // opts: { autosave, restore (взять позицию из state.pos), onAction(name, arg, scene) }
+  constructor(mapId, spawnId, opts = {}) {
+    this.id = 'world';
+    this.mapId = mapId;
+    this.spawnId = spawnId;
+    this.opts = opts;
+  }
+
+  enter(game) {
+    this.game = game;
+    this.def = getMapDef(this.mapId);
+    this.map = new TileMap(this.def);
+    const st = game.state;
+    const sp = (this.def.spawns || {})[this.spawnId] || Object.values(this.def.spawns || {})[0] || { x: 2, y: 2, dir: 'down' };
+    const restore = this.opts.restore && st.location === this.def.id && st.pos && st.pos.x > 0;
+    const sx = restore ? st.pos.x : (sp.x + 0.5) * TILE;
+    const sy = restore ? st.pos.y : (sp.y + 1) * TILE - 2;
+    this.player = new Actor('roma', sx, sy, restore ? st.pos.dir : sp.dir);
+    this.npcs = populate(this.def, st, (x, y) => this.map.solidAt(x, y)).map((d) => new Npc(d));
+    for (const n of this.npcs) if (n.def.named) n.face(this.npcs.find((o) => o !== n && o.def.named) || this.player);
+    this.actors = [this.player, ...this.npcs];
+    st.location = this.def.id;
+    st.locationName = this.def.name;
+    st.pos = { x: Math.round(sx), y: Math.round(sy), dir: this.player.dir };
+    this.talkTarget = null;
+    this.stepT = 0;
+    this.bumpT = 0;
+    this.cooldown = 0.3;
+    game.playMusic(this.def.music);
+    this.updateCamera(true);
+    if (this.opts.autosave) game.autosave();
+  }
+
+  resume() {
+    for (const n of this.npcs) n.busy = false;
+    this.game.playMusic(this.def.music);
+    this.cooldown = 0.25;
+    this.handleActions();
+    this.saveProgress();
+  }
+
+  saveProgress() {
+    const st = this.game.state;
+    st.pos = { x: Math.round(this.player.x), y: Math.round(this.player.y), dir: this.player.dir };
+  }
+
+  // Отложенные действия из диалогов.
+  handleActions() {
+    const game = this.game;
+    for (const a of game.takeActions()) {
+      if (a.name === 'bait') this.startBait(a.arg || (this.lastTalk && this.lastTalk.id));
+      else if (a.name === 'director_patrol') game.scenes.push(new DirectorScene({}));
+      else if (this.opts.onAction) this.opts.onAction(a.name, a.arg, this);
+    }
+  }
+
+  startBait(opp) {
+    if (!opp) return;
+    const game = this.game;
+    const bet = rollBet(game.state, opp);
+    game.scenes.push(new MinigameScene('bait', {
+      opp, bet, params: { opp },
+      onDone: (res) => {
+        if (res && res.extra && res.extra.berserk) {
+          game.state.flags.igorBerserk = true;
+          game.scenes.push(new DialogScene('bait_igor', 'berserk'));
+        }
+      },
+    }));
+  }
+
+  exitAt(tx, ty) { return (this.def.exits || []).find((e) => e.x === tx && e.y === ty) || null; }
+  objectAt(tx, ty) { return (this.def.objects || []).find((o) => o.x === tx && o.y === ty) || null; }
+
+  goTo(mapId, spawn) {
+    audio.play('door');
+    this.saveProgress();
+    this.game.scenes.reset(new WorldScene(mapId, spawn, { onAction: this.opts.onAction }), { fade: true });
+    this.cooldown = 10;
+  }
+
+  say(text) { this.game.scenes.push(DialogScene.message([text])); }
+
+  useExit(ex) {
+    const game = this.game;
+    this.cooldown = 0.6;
+    if (ex.locked) {
+      audio.play('menuDenied');
+      if (ex.edge) {
+        const [dx, dy] = DIRV[ex.edge];
+        this.player.x -= dx * 10; this.player.y -= dy * 10;
+      }
+      this.say(ex.locked);
+      return;
+    }
+    if (ex.to) return this.goTo(ex.to, ex.spawn);
+    if (ex.stairs) return this.stairsMenu();
+    if (ex.room) {
+      const act = roomAction(game.state, ex.room);
+      if (act.type === 'lesson') {
+        audio.play('door');
+        this.cooldown = 10;
+        import('./lesson_scene.js').then(({ LessonScene }) => game.scenes.reset(new LessonScene(act.n), { fade: true }));
+      } else if (act.type === 'demo_end') {
+        this.cooldown = 10;
+        import('./demo_end.js').then(({ DemoEndScene }) => game.scenes.reset(new DemoEndScene(), { fade: true }));
+      } else this.say(act.text);
+    }
+  }
+
+  stairsMenu() {
+    const floors = STAIRWELLS[this.def.building];
+    if (!floors) return;
+    const nums = Object.keys(floors).map(Number);
+    const opts = nums.map((n) => ({ text: n === this.def.floorNo ? `${n} этаж (ты здесь)` : `${n} этаж` }));
+    this.game.scenes.push(new ChoiceScene('Лестница. На какой этаж?', opts, (i) => {
+      if (i < 0 || nums[i] === this.def.floorNo) return;
+      this.goTo(floors[nums[i]], 'stairs');
+    }));
+  }
+
+  useObject(o) {
+    this.cooldown = 0.6;
+    this.game.scenes.push(new DialogScene('objects', o.kind));
+  }
+
+  talk(n) {
+    const game = this.game;
+    const st = game.state;
+    n.busy = true;
+    n.face(this.player);
+    this.player.face(n);
+    this.player.moving = false;
+    this.lastTalk = n;
+    st.met[n.id] = true;
+    let label = n.talk.label;
+    const flag = `talked_${n.talk.file}_${label}`;
+    if (st.flags[flag] && hasLabel(n.talk.file, label + '_again')) label += '_again';
+    st.flags[flag] = true;
+    game.scenes.push(new DialogScene(n.talk.file, label, { opp: n.id }));
+    if (n.def.named && creditorReminds(st, n.id)) game.scenes.push(new DialogScene('bets', 'remind', { opp: n.id }));
+  }
+
+  update(dt) {
+    const game = this.game;
+    const input = game.input;
+    const st = game.state;
+    this.cooldown = Math.max(0, this.cooldown - dt);
+    if (st.phase !== 'intro') st.playTime += dt;
+    for (const n of this.npcs) n.update(dt, this.map, this.actors);
+    game.patrolNear = this.npcs.some((n) => TEACHERS[n.id] && TEACHERS[n.id].params.patrol && Math.hypot(n.x - this.player.x, n.y - this.player.y) < 80);
+    game.hud.hint = hintText(st);
+
+    if (input.pressed('back') && st.phase !== 'intro') { this.saveProgress(); game.scenes.push(new PauseScene()); return; }
+    if (input.pressed('tab')) { game.scenes.push(new StatusPanel()); return; }
+
+    const ax = input.axis();
+    const run = input.held('run');
+    const speed = (run ? BALANCE.move.run : BALANCE.move.walk) * dt;
+    let dx = ax.x, dy = ax.y;
+    if (dx && dy) { dx *= Math.SQRT1_2; dy *= Math.SQRT1_2; }
+    const moved = this.player.step(dx * speed, dy * speed, this.map, this.actors, dt, run ? 12 : 8);
+    if (this.player.moving) {
+      this.stepT += dt;
+      if (this.stepT > (run ? 0.18 : 0.28)) { this.stepT = 0; audio.play('step'); }
+    }
+    if (this.cooldown > 0) { this.updateCamera(); return; }
+
+    // выход «на ходу» (проёмы и края карты)
+    const ptx = Math.floor(this.player.x / TILE), pty = Math.floor((this.player.y - 2) / TILE);
+    const here = this.exitAt(ptx, pty);
+    if (here) { this.useExit(here); return; }
+
+    // упёрся в дверь/лестницу или нажал Z перед ней
+    const f = pointInFront(this.player, 10);
+    const ftx = Math.floor(f.x / TILE), fty = Math.floor(f.y / TILE);
+    const front = this.exitAt(ftx, fty);
+    const obj = this.objectAt(ftx, fty);
+    const pushing = (ax.x || ax.y) && Math.abs(moved.x) + Math.abs(moved.y) < 0.01;
+    this.bumpT = pushing && (front || obj) ? this.bumpT + dt : 0;
+
+    this.talkTarget = findTalkTarget(this.player, this.npcs);
+    if (input.pressed('confirm')) {
+      if (this.talkTarget) { input.consume('confirm'); this.talk(this.talkTarget); return; }
+      if (front) { input.consume('confirm'); this.useExit(front); return; }
+      if (obj) { input.consume('confirm'); this.useObject(obj); return; }
+    }
+    if (this.bumpT > 0.15) {
+      this.bumpT = 0;
+      if (front) this.useExit(front); else if (obj) this.useObject(obj);
+      return;
+    }
+    this.updateCamera();
+  }
+
+  updateCamera(snap = false) {
+    const r = this.game.r;
+    const vw = 480, vh = GAME_H;
+    let cx = this.player.x - vw / 2;
+    let cy = this.player.y - 16 - vh / 2;
+    cx = this.map.pixelW <= vw ? (this.map.pixelW - vw) / 2 : Math.max(0, Math.min(this.map.pixelW - vw, cx));
+    cy = this.map.pixelH <= vh ? (this.map.pixelH - vh) / 2 : Math.max(0, Math.min(this.map.pixelH - vh, cy));
+    if (snap) { r.cam.x = cx; r.cam.y = cy; }
+    else { r.cam.x += (cx - r.cam.x) * 0.2; r.cam.y += (cy - r.cam.y) * 0.2; }
+  }
+
+  drawLabels(r) {
+    const next = nextLesson(this.game.state);
+    const showNext = next && (this.game.state.phase === 'late' || this.game.state.phase === 'break');
+    for (const ex of this.def.exits || []) {
+      if (!ex.label) continue;
+      const cx = ex.x * TILE + TILE / 2;
+      const y = Math.max(0, ex.y - 1) * TILE + 4;
+      const w = r.measure(ex.label) + 4;
+      r.rect(cx - w / 2, y, w, 10, '#e8e2cf');
+      r.frame(cx - w / 2, y, w, 10, '#3b3346');
+      r.text(ex.label, cx, y + 1, { align: 'center', color: '#2a2430' });
+      if (showNext && ex.room === next.room) {
+        const bob = Math.round(Math.sin(r.time * 5) * 2);
+        r.text('▼', cx, y - 10 + bob, { align: 'center', color: '#ffe14d', shadow: '#000' });
+      }
+    }
+  }
+
+  draw(r) {
+    r.clip(0, 0, 480, GAME_H, () => {
+      r.withCamera(() => {
+        this.map.draw(r, 480, GAME_H);
+        this.drawLabels(r);
+        const sorted = [...this.actors].sort((a, b) => a.y - b.y);
+        for (const a of sorted) a.draw(r);
+        if (this.talkTarget && this.game.scenes.top === this) {
+          const n = this.talkTarget;
+          const bob = Math.round(Math.sin(r.time * 6));
+          r.box(n.x - 5, n.y - 44 + bob, 11, 12, '#ffffff', '#000000', 1);
+          r.text('Z', n.x - 2, n.y - 42 + bob, { color: '#ffe14d' });
+        }
+      });
+    });
+    if (this.game.settings.speedrunTimer && this.game.state.phase !== 'intro') r.text(formatTimer(this.game.state.playTime), 474, 4, { align: 'right', color: '#ffe14d', shadow: '#000' });
+    this.game.hud.draw(r, this.game.state, { hint: this.game.scenes.top === this });
+  }
+}

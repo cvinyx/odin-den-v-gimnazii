@@ -1,0 +1,8 @@
+node_modules/
+# dist коммитится только index.html (его скачивает владелец)
+dist/*
+!dist/index.html
+.vite/
+*.log
+.DS_Store
+test-results/
