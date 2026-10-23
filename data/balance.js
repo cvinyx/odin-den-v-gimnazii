@@ -213,13 +213,8 @@ export const BALANCE = {
     byResult: { win: 8, draw: 6, lose: 4, director: 2 },
   },
 
-  // Временные «запаски» (этапы 4–5 заменят их настоящими играми). Варианты = выборы в диалоге.
+  // Временная «запаска» футбола (этап 5 заменит настоящим матчем). Варианты = выборы в диалоге.
   stubs: {
-    phone: [
-      { label: 'аккуратно', win: 0.7, susp: [5, 15], aura: [3, 5], battery: -8, grade: [5, 7] },
-      { label: 'на рекорд', win: 0.45, susp: [15, 35], aura: [5, 8], battery: -8, grade: [4, 7] },
-      { label: 'не доставать', win: null, susp: [-10, -10], aura: [0, 0], battery: 0, stress: 5, grade: [6, 8] },
-    ],
     football: {
       baseWin: 0.42, drawChance: 0.18,
       options: [
@@ -229,8 +224,58 @@ export const BALANCE = {
       ],
       berserkWin: 0.1, hungryWin: -0.1,
     },
-    shower: { winChance: 0.5, loseStress: 10, options: [{ label: 'стоять', win: 0.5 }, { label: 'уступить', win: 0 }] },
   },
+
+  // ---------- Мини-игры этапа 4 (раздел 14) ----------
+  // Телефон под партой: учитель у доски / признак поворота / смотрит; у физика — выходы из кабинета.
+  phoneGames: {
+    teacher: { board: [2.6, 5.0], warn: 0.4, watch: [1.2, 2.4] },
+    suddenTurnWarn: 0.3,          // Татьяна Михайловна оборачивается внезапно
+    outWindows: [[7, 17], [27, 16]], // Олег Николаевич выходит: [с какой секунды, на сколько]
+    shortDuration: 25,            // «залипнуть в телефон» как доп. действие на уроке
+    batteryCost: -8,
+    auraMin: 3, auraMax: 8,
+    grade: { base: [5, 7], listenBonus: 1, listenShare: 0.45, caughtPenalty: 1, caughtAt: 40 },
+    blocks: { duration: 45, target: 100, linePoints: 10, comboBonus: 5 },
+    brawl: { duration: 45, target: 20, hp: 5, enemyHp: 2, maxEnemies: 3, enemySpeed: [16, 24], enemyFire: [1.6, 2.6],
+      bulletSpeed: 120, enemyBullet: 52, playerSpeed: 58, fireCooldown: 0.3, denisFire: 0.75, spawnEvery: 1.6 },
+    feed: { duration: 40, target: 8, scroll: 20, fastScroll: 55 },
+  },
+
+  // «Царь туалета»: ползунок силы, Z в зелёной зоне — рывок. strength — сила соперника (0–1).
+  toilet: {
+    rounds: 3, roundTime: 15, sliderSpeed: 1.35, green: [0.4, 0.6], pull: 0.09, miss: 0.03,
+    oppEvery: [0.6, 1.0], oppPull: 0.071,
+    strength: { default: 0.55, guza: 0.74, igor: 0.72, denis: 0.55, chernyak: 0.6, shurpo: 0.5, matych: 0.5, buy: 0.52,
+      levonchuk: 0.55, bochko: 0.5, smile: 0.55, vadim: 0.65, vitalik: 0.55, zakha: 0.55, anus: 0.5 },
+  },
+
+  // «Кто больше парит»: держишь Z — шкала растёт; отпустил в зелёной зоне — большое облако.
+  vapeBattle: {
+    rounds: 5, fillSpeed: 0.3, fillAccel: 0.35, green: [0.72, 0.9], oppTurn: 2.4, roundPause: 1.6,
+    chargeCost: -20, juiceCost: -1, stressAfter: 5, patrolCatch: 0.5,
+    skill: { default: 0.58, chernyak: 0.6, denis: 0.56, shurpo: 0.66, levonchuk: 0.56, bochko: 0.5, matych: 0.52, buy: 0.56 },
+  },
+
+  // «Кто больше съест»: ритм-игра, серия попаданий = съеденная смаженка.
+  eat: {
+    duration: 40, entry: 360, notesPerSmazhenka: 6, stomachMax: 10, window: 0.13, beat: 0.42,
+    skill: { default: 7, denis: 7.2, shurpo: 7.4, igor: 7.2, guza: 7.3, matych: 7, buy: 6.8, chernyak: 7, levonchuk: 7,
+      bochko: 6.8, smile: 7, vadim: 7.2, vitalik: 6.8, zakha: 7, anus: 6.8 },
+  },
+
+  // «Кто забайтит Матыча и Буя»: Рома и друг против двоих.
+  baitMB: { rounds: 4, mid: [18, 26], strong: [32, 46], strongChance: 0.55, backfire: 10, friend: [8, 18], retort: [9, 15], winSum: 160 },
+
+  // «Душ»: держи Z, держи температуру в зоне, отбивайся X от толчков. friends — сколько секунд стоят друзья.
+  shower: {
+    maxTime: 60, comfort: [0.36, 0.64], drift: 0.28, jumpEvery: [2.2, 4], jump: 0.3, adjust: 0.75, discomfort: 0.3,
+    pushEvery: [6, 10], pushWindow: 0.9, loseStress: 10,
+    friends: { igor: [30, 50], denis: [26, 44], chernyak: [28, 48], shurpo: [22, 38], default: [26, 44] },
+  },
+
+  // Кто может предложить игру сам (инициатива NPC): шанс при разговоре.
+  challengeChance: 0.3,
 
   // Движение по карте (пикселей в секунду).
   move: {

@@ -72,6 +72,7 @@ export function endLessonRules(state) {
   if (s.battery <= 0) { changeStat(state, 'stress', BALANCE.battery.deadStressPerLesson); notes.push('Телефон мёртв: стресс +5'); }
   if (s.vapeCharge <= 0 || s.juice <= 0) { changeStat(state, 'stress', BALANCE.vape.emptyStressPerLesson); notes.push('Вейп пустой: стресс +5'); }
   if (s.hunger >= 100) { changeStat(state, 'stress', BALANCE.hunger.maxStressPerLesson); notes.push('Голод 100: стресс +10'); }
+  if (state.flags.vapeAfterStress) { changeStat(state, 'stress', state.flags.vapeAfterStress); notes.push('Отходняк после вейп-игры: стресс +' + state.flags.vapeAfterStress); state.flags.vapeAfterStress = 0; }
   return notes;
 }
 
