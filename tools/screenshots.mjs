@@ -63,13 +63,13 @@ await shot('07-galereya-bezymyannye');
 await press('KeyX');
 await wait(200);
 
-// 4. Новая игра → тестовая комната
-await press('ArrowDown'); // на «Новая игра» (Продолжить может быть недоступно)
+// 4. Новая игра (экран кода дня) и тестовая комната из отладочного меню
 await page.evaluate(() => { const t = window.__odin.scenes.top; t.menu.index = 1; });
 await press('KeyZ');
 await wait(200);
 await shot('08-novaya-igra');
-await press('KeyZ'); // Начать
+await press('KeyX');
+await page.evaluate(() => window.__odinDebug('Тестовая комната'));
 await wait(900);
 await shot('09-testovaya-komnata');
 

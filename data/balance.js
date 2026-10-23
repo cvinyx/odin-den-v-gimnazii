@@ -163,6 +163,48 @@ export const BALANCE = {
     squeezed: { breakdowns: 2, money: 100 },
   },
 
+  // Действия на уроке через выборы (до появления телефонных мини-игр на этапе 4).
+  lessonActions: {
+    phoneSuspicion: [10, 25],
+    quietStress: 3,
+    quietSuspicionDrop: 10,
+  },
+
+  // Байт-дуэль (раздел 14, пункт 3). Сила реплик — сколько «закипания» добавляет сопернику.
+  bait: {
+    weak: [9, 13],
+    mid: [15, 22],
+    strong: [30, 42], strongChance: 0.55, strongBackfire: 12,
+    weird: [28, 44], weirdHit: 0.4, weirdFizzle: 4, weirdBackfire: 8,
+    retortMul: 1.5,              // Рома закипает на 50 % быстрее
+    sulkBonus: 1.3,              // Игорь дуется (отбили место) — легче забайтить
+    winAura: [5, 10], loseAura: -5, loseStress: 10,
+    // resist — делитель урона по сопернику, attack — сила ответных реплик (до множителя Ромы).
+    opponents: {
+      igor: { resist: 0.9, attack: [11, 17] },
+      denis: { resist: 1.0, attack: [10, 16] },
+      matych: { resist: 0.8, attack: [7, 12] },
+      buy: { resist: 0.95, attack: [9, 15] },
+      guza: { resist: 1.15, attack: [12, 19] },
+      levonchuk: { resist: 1.05, attack: [10, 16] },
+      chernyak: { resist: 1.4, attack: [8, 13] },
+      shurpo: { resist: 1.0, attack: [9, 14] },
+      bochko: { resist: 0.85, attack: [8, 13] },
+      default: { resist: 1.0, attack: [9, 15] },
+    },
+  },
+
+  // Списывание: поведение учителя по умолчанию (переопределяется параметрами учителя).
+  cheat: {
+    lookTime: [1.8, 3.4],       // сколько учитель смотрит в одну сторону
+    randomTurnPerSec: 0.18,     // шанс внезапного поворота в секунду
+    turnSpeed: 300,             // градусов в секунду
+    coneHalf: 24, coneHalfWide: 32, coneLength: 230,
+    pRoma: 0.3,                // как часто учитель смотрит прямо на Рому
+    progressDecay: 1.0,         // как быстро теряется прогресс ответа, если отпустить Z (в долях в секунду)
+    spotBonus: 3,               // разовый скачок подозрения, когда учитель «заметил» подсматривание
+  },
+
   // Движение по карте (пикселей в секунду).
   move: {
     walk: 64,

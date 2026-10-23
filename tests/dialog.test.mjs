@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { parseDialog, parseRichText } from '../src/ui/dialog_script.js';
 import { DialogRunner } from '../src/game/dialog_runner.js';
 import { createState, applyScriptEffect, scriptStatValue } from '../src/game/state.js';
-import { CHARACTERS } from '../data/characters.js';
+import { CHARACTERS, VOICES } from '../data/characters.js';
 import { TEACHERS } from '../data/teachers.js';
 import { readDialog, dialogNames } from './helpers.mjs';
 import { wrapRich } from '../src/ui/dialog_wrap.js';
 
-const speakers = (id) => id in CHARACTERS || id in TEACHERS;
+const speakers = (id) => id === 'opp' || id in CHARACTERS || id in TEACHERS || id in VOICES;
 
 test('все файлы диалогов разбираются без ошибок', () => {
   for (const name of dialogNames()) {

@@ -6,7 +6,7 @@ import { frameRect, WALK_CYCLE, FRAME_W, FRAME_H } from '../gen/sprites.js';
 import { NewGameScene } from './new_game.js';
 import { SettingsScene } from './settings.js';
 import { TextInputScene } from './text_input.js';
-import { TestRoomScene } from './test_room.js';
+import { continueFrom } from '../game/flow.js';
 
 const LINEUP = ['chernyak', 'igor', 'roma', 'denis', 'levonchuk'];
 
@@ -39,8 +39,7 @@ export class TitleScene {
   continueGame() {
     const st = loadAutosave();
     if (!st) { this.game.toast('Сохранения нет'); return; }
-    this.game.loadState(st);
-    this.game.scenes.reset(new TestRoomScene(), { fade: true });
+    continueFrom(this.game, st);
   }
 
   enterCode() {
@@ -52,9 +51,8 @@ export class TitleScene {
       onDone: (text, scene) => {
         const res = decodeSaveCode(text);
         if (!res.ok) { scene.setError(res.error); return; }
-        this.game.loadState(res.state);
         this.game.toast('Сохранение загружено');
-        this.game.scenes.reset(new TestRoomScene(), { fade: true });
+        continueFrom(this.game, res.state);
       },
     }));
   }

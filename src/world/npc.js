@@ -74,6 +74,11 @@ export class Npc extends Actor {
     }
     const s = Math.min(dist, this.speed * dt);
     const moved = this.step((dx / dist) * s, (dy / dist) * s, map, others, dt, 6);
-    if (!moved.x && !moved.y) { this.moving = false; this.anim = 0; } // упёрся в игрока — ждёт
+    if (!moved.x && !moved.y) {
+      // упёрся (обычно в игрока) — постоять и развернуться к другой точке маршрута
+      this.moving = false; this.anim = 0;
+      this.blockedT = (this.blockedT || 0) + dt;
+      if (this.blockedT > 0.6) { this.blockedT = 0; this.routeIndex = (this.routeIndex + 1) % this.route.length; this.waitT = 0.8; }
+    } else this.blockedT = 0;
   }
 }

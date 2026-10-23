@@ -12,6 +12,8 @@ export const EMOTIONS = ['norm', 'happy', 'angry', 'surprised', 'dumb'];
 export const STATS = ['battery', 'stress', 'aura', 'vape', 'juice', 'suspicion', 'hunger', 'money'];
 export const SFX_ALLOWED = ['igorLaugh', 'bell', 'whistle', 'kick', 'hit', 'shake', 'puff', 'coin', 'door', 'statUp', 'statDown'];
 const OPS = ['>=', '<=', '==', '!=', '>', '<'];
+// Игровые действия из диалогов: # action имя [аргумент]. Выполняет игра (src/game/actions.js).
+export const ACTIONS = ['phone', 'vape', 'quiet', 'bait', 'seat_steal', 'seat_front', 'seat_igor', 'bus', 'wash', 'leave'];
 
 export class DialogParseError extends Error {
   constructor(errors, file) {
@@ -30,6 +32,10 @@ function parseEffectList(src, line, errors) {
     if (name === 'sfx') {
       if (!arg || !SFX_ALLOWED.includes(arg.trim())) errors.push({ line, msg: `неизвестный звук «${arg || ''}». Есть: ${SFX_ALLOWED.join(', ')}` });
       else out.push({ type: 'sfx', name: arg.trim() });
+    } else if (name === 'action') {
+      const [act, ...rest] = (arg || '').trim().split(/\s+/);
+      if (!ACTIONS.includes(act)) errors.push({ line, msg: `неизвестное действие «${act || ''}». Есть: ${ACTIONS.join(', ')}` });
+      else out.push({ type: 'action', name: act, arg: rest.join(' ') || null });
     } else if (name === 'shake') {
       out.push({ type: 'shake' });
     } else if (name === 'flag' || name === 'unflag') {
@@ -154,10 +160,14 @@ export function parseDialog(text, opts = {}) {
       return;
     }
     if (line.startsWith('->')) {
-      const target = line.slice(2).trim();
+      let body = line.slice(2).trim();
+      let cond = null;
+      const m = /\{if ([^}]*)\}\s*$/.exec(body);
+      if (m) { cond = parseCondition(m[1], ln, errors); body = body.slice(0, m.index).trim(); }
+      const target = body;
       if (!/^[\w.]+$/.test(target)) { errors.push({ line: ln, msg: `плохая метка перехода «${target}»` }); return; }
       refs.push({ line: ln, target });
-      cur.cmds.push({ type: 'goto', target, line: ln });
+      cur.cmds.push({ type: 'goto', target, cond, line: ln });
       return;
     }
     errors.push({ line: ln, msg: `не понимаю строку: «${line.slice(0, 40)}». Строки начинаются с ===, @, #, ?, *, -> или //` });

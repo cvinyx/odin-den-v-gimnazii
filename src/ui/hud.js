@@ -22,6 +22,7 @@ export function phaseLabel(state) {
   if (state.phase === 'lesson') return `Урок ${state.lesson} / ${state.clock}`;
   if (state.phase === 'break') return `Перемена ${state.lesson} / ${state.clock}`;
   if (state.phase === 'intro') return state.clock;
+  if (state.phase === 'late') return `Опаздываю! / ${state.clock}`;
   return `Свободное время / ${state.clock}`;
 }
 
@@ -56,7 +57,8 @@ export class Hud {
     return HUD_SLOTS.filter((sl) => !sl.lessonOnly || state.phase === 'lesson');
   }
 
-  draw(r, state) {
+  // opts.hint — показывать подсказку «Следующий: …» (только когда игрок свободно ходит).
+  draw(r, state, opts = {}) {
     const y0 = GAME_H;
     r.rect(0, y0, 480, HUD_H, '#141221');
     r.rect(0, y0, 480, 1, '#3a3552');
@@ -92,6 +94,10 @@ export class Hud {
       }
       x += SLOT_W;
     }
-    if (this.hint) r.text(this.hint, 240, y0 - 11, { color: '#ffe14d', align: 'center', shadow: '#000' });
+    if (this.hint && opts.hint) {
+      const w = r.measure(this.hint) + 10;
+      r.alpha(0.6, () => r.rect(240 - w / 2, y0 - 13, w, 12, '#000'));
+      r.text(this.hint, 240, y0 - 11, { align: 'center', color: '#ffe14d' });
+    }
   }
 }

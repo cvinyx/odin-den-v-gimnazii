@@ -6,7 +6,10 @@ import { input } from '../engine/input.js';
 import { audio } from '../engine/audio.js';
 import { storeGet, storeSet, KEYS, autosave } from '../engine/save.js';
 import { generateSeedCode } from '../engine/rng.js';
-import { createState, applyScriptEffect, scriptStatValue } from './state.js';
+import { createState, applyScriptEffect, scriptStatValue, changeStat } from './state.js';
+import { puff, phoneQuick, sitQuiet, addSuspicion, checkBreakdown } from './actions.js';
+import { eventRng } from './day.js';
+import { BALANCE } from '../../data/balance.js';
 import { Hud } from '../ui/hud.js';
 import { drawToast } from '../ui/transitions.js';
 import { MUSIC } from '../../data/music.js';
@@ -24,6 +27,10 @@ export class Game {
     this.state = createState(generateSeedCode());
     this.settings = { ...DEFAULT_SETTINGS, ...(storeGet(KEYS.settings, {}) || {}) };
     this.toasts = [];
+    this.pendingActions = [];
+    this.patrolNear = false; // рядом завуч-патруль (ставит сцена мира)
+    this.skipHold = 0;
+    this.onSkipIntro = null; // пропуск вступления удержанием X (ставит сцена вступления)
     this.textInputActive = false;
     const params = new URLSearchParams((typeof location !== 'undefined' && location.search) || '');
     this.debugMode = params.has('debug');
@@ -64,6 +71,16 @@ export class Game {
       if (input.pressed('debug') && this.debugOpener) { input.consume('debug'); this.debugOpener(); }
     }
     this.scenes.update(dt);
+    // пропуск вступления: удерживать X
+    if (this.state.phase === 'intro' && this.onSkipIntro && input.held('back')) {
+      this.skipHold += dt;
+      if (this.skipHold >= 1.0) { this.skipHold = 0; const f = this.onSkipIntro; this.onSkipIntro = null; f(); }
+    } else this.skipHold = 0;
+    if (checkBreakdown(this.state)) {
+      this.r.shake(6, 1.0);
+      audio.play('shake');
+      this.toast('СРЫВ! Следующий выбор или мини-игра провалится', 3);
+    }
     this.r.update(dt);
     this.hud.update(dt, this.state);
     for (const t of this.toasts) t.t += dt;
@@ -77,6 +94,10 @@ export class Game {
     if (this.toasts.length) {
       const t = this.toasts[this.toasts.length - 1];
       drawToast(r, t.text, t.t, t.life);
+    }
+    if (this.state.phase === 'intro' && this.onSkipIntro) {
+      const t = this.skipHold > 0 ? `Пропуск… ${Math.round(this.skipHold * 100)}%` : 'Удерживай X — пропустить вступление';
+      r.text(t, 474, 4, { align: 'right', color: '#c8c8d8', shadow: '#000' });
     }
     if (this.showFps) r.text('FPS ' + this.loop.fps, 474, 3, { align: 'right', color: '#6be36b', shadow: '#000' });
   }
@@ -98,10 +119,55 @@ export class Game {
   applyEffect(e) {
     if (e.type === 'sfx') { audio.play(e.name); return; }
     if (e.type === 'shake') { this.r.shake(3, 0.35); audio.play('shake'); return; }
+    if (e.type === 'action') { this.performAction(e.name, e.arg); return; }
+    if (e.type === 'stat' && e.stat === 'suspicion') { addSuspicion(this.state, e.delta); return; }
     try {
       if (!applyScriptEffect(this.state, e)) console.error('Неизвестный эффект', e);
     } catch (err) { console.error(err.message); }
   }
+
+  // Действия из диалогов. Мгновенные меняют состояние сразу (диалог может ветвиться по флагам),
+  // остальные (байт, автобус) ставятся в очередь и выполняются сценой после конца диалога.
+  performAction(name, arg) {
+    const st = this.state;
+    switch (name) {
+      case 'vape': {
+        const res = puff(st);
+        if (!res.ok) { this.toast(res.reason); break; }
+        audio.play('puff');
+        st.flags.lastPuffOk = true;
+        if (st.phase !== 'lesson' && this.patrolNear) this.pendingActions.push({ name: 'director_patrol' });
+        break;
+      }
+      case 'phone': {
+        const res = phoneQuick(st, eventRng(st, 'phone' + st.lesson + ':' + st.stats.battery));
+        if (!res.ok) this.toast(res.reason);
+        break;
+      }
+      case 'quiet': sitQuiet(st); break;
+      case 'wash':
+        if (!st.flags['washed' + st.lesson]) { changeStat(st, 'stress', -3); st.flags['washed' + st.lesson] = true; }
+        break;
+      case 'seat_steal': {
+        const ok = eventRng(st, 'seat' + st.lesson).chance(BALANCE.seating.stealChance);
+        st.seat = ok ? 'steal_ok' : 'steal_fail';
+        st.flags.seat_ok = ok;
+        st.lessonMul *= ok ? BALANCE.seating.stealSuccessSuspicion : BALANCE.seating.stealFailSuspicion;
+        break;
+      }
+      case 'seat_front':
+        st.seat = 'front';
+        st.lessonMul *= BALANCE.seating.frontSuspicion;
+        break;
+      case 'seat_igor':
+        st.seat = 'igor';
+        break;
+      default:
+        this.pendingActions.push({ name, arg });
+    }
+  }
+
+  takeActions() { const a = this.pendingActions; this.pendingActions = []; return a; }
 
   scriptStat(name) { return scriptStatValue(this.state, name); }
   scriptFlag(name) { return !!this.state.flags[name]; }

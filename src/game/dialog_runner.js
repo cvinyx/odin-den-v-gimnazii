@@ -31,7 +31,7 @@ export class DialogRunner {
         case 'say':
           return { type: 'say', who: c.who, emo: c.emo, text: c.text };
         case 'goto':
-          this.jump(c.target);
+          if (checkCondition(c.cond, this.hooks.stat, this.hooks.flag)) this.jump(c.target);
           break;
         case 'choice': {
           const visible = c.options

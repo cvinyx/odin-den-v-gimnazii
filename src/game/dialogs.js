@@ -15,7 +15,7 @@ export function getDialog(name) {
   if (parsed.has(name)) return parsed.get(name);
   const key = Object.keys(files).find((p) => p.endsWith('/' + name + '.txt'));
   if (!key) throw new Error(`Нет файла диалогов data/dialogs/${name}.txt`);
-  const res = parseDialog(files[key], { speakers: personExists });
+  const res = parseDialog(files[key], { speakers: (id) => id === 'opp' || personExists(id) });
   if (res.errors.length) throw new DialogParseError(res.errors, `data/dialogs/${name}.txt`);
   parsed.set(name, res);
   return res;
@@ -28,4 +28,21 @@ export function validateAllDialogs() {
     try { getDialog(name); } catch (e) { problems.push(e.message); console.error(e.message); }
   }
   return problems;
+}
+
+// Реплики метки (только @-строки) — для случайного выбора фраз (байт, сообщения отца, толпа).
+export function labelLines(name, label) {
+  const d = getDialog(name);
+  const l = d.labels[label];
+  if (!l) return [];
+  return l.cmds.filter((c) => c.type === 'say');
+}
+
+export function hasLabel(name, label) {
+  try { return !!getDialog(name).labels[label]; } catch (e) { return false; }
+}
+
+// Все метки файла (например, реплики толпы).
+export function labelsOf(name) {
+  try { return getDialog(name).order; } catch (e) { return []; }
 }

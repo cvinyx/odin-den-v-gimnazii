@@ -1,9 +1,8 @@
-// Новая игра: код дня (сгенерировать или ввести вручную). На этапе 1 день ещё не собран —
-// после выбора кода открывается тестовая комната.
+// Новая игра: код дня (сгенерировать или ввести вручную), затем вступление.
 import { Menu } from '../ui/menu.js';
 import { generateSeedCode, isValidSeed, normalizeSeed, SEED_ALPHABET } from '../engine/rng.js';
 import { TextInputScene } from './text_input.js';
-import { TestRoomScene } from './test_room.js';
+import { startNewDay } from '../game/flow.js';
 
 export class NewGameScene {
   constructor() { this.id = 'new_game'; this.opaque = true; this.time = 0; }
@@ -31,9 +30,7 @@ export class NewGameScene {
     }));
   }
   start() {
-    this.game.newDay(this.code);
-    this.game.scenes.reset(new TestRoomScene(), { fade: true });
-    this.game.toast('Этап 1: день ещё не собран — это тестовая комната', 3.5);
+    startNewDay(this.game, this.code);
   }
   update(dt) {
     this.time += dt;

@@ -184,3 +184,8 @@ export const UNNAMED_POOL = {
   namesBoy: ['Ученик'],
   namesGirl: ['Ученица'],
 };
+
+// Голоса без спрайта и портрета (только текст).
+export const VOICES = {
+  dad: { name: 'Батя', short: 'Батя', voiceOnly: true, noPortrait: true, blip: { freq: 110, wave: 'sawtooth' } },
+};

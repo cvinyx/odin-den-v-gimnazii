@@ -11,7 +11,7 @@ export class ChoiceMenu {
     this.options = options; // [{ text }]
     this.index = 0;
     this.time = 0;
-    this.lines = options.map((o) => wrapText(o.text, 440 - 30));
+    this.lines = options.map((o) => wrapText(o.text, BOX.w - 40 - 48));
   }
 
   // Возвращает индекс выбранного варианта или -1.
@@ -35,10 +35,11 @@ export class ChoiceMenu {
     return h;
   }
 
-  draw(r) {
+  // bottom — нижняя граница окна (по умолчанию — над окном диалога).
+  draw(r, bottom = BOX.y - 18) {
     const h = this.height();
     const x = BOX.x + 20, w = BOX.w - 40;
-    const y = BOX.y - h - 18;
+    const y = bottom - h;
     r.box(x, y, w, h);
     let ty = y + 7;
     if (this.question) {

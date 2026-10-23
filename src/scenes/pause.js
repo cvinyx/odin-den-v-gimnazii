@@ -27,7 +27,8 @@ export class PauseScene {
   }
 
   async quit() {
-    this.game.autosave();
+    // на уроке остаётся автосохранение начала урока (урок начнётся заново)
+    if (this.game.state.phase !== 'lesson') this.game.autosave();
     const { TitleScene } = await import('./title.js');
     this.game.scenes.reset(new TitleScene(), { fade: true });
   }

@@ -24,7 +24,8 @@ export const TEST_ROOM = {
     '#P....................#..bbb....bbb...P#',
     '########################################',
   ],
-  spawn: { x: 16, y: 11, dir: 'right' },
+  spawns: { start: { x: 16, y: 11, dir: 'right' } },
+  exits: [],
   npcs: [
     { id: 'igor', x: 26, y: 4, dir: 'down', route: [[26, 4], [33, 4]], wait: 2, talk: { file: 'test', label: 'igor_talk' } },
     { id: 'chernyak', x: 30, y: 13, dir: 'left', restDir: 'left', talk: { file: 'test', label: 'chernyak_talk' } },

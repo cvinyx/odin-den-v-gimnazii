@@ -1,5 +1,5 @@
 // Реестр всех персонажей: именные ученики, учителя и безымянные (генерация по сиду).
-import { CHARACTERS, UNNAMED_POOL } from '../../data/characters.js';
+import { CHARACTERS, UNNAMED_POOL, VOICES } from '../../data/characters.js';
 import { TEACHERS } from '../../data/teachers.js';
 import { getSheet } from './sprites.js';
 import { getPortrait } from './portraits.js';
@@ -10,7 +10,7 @@ export const NARRATOR = { name: '', short: '', blip: { freq: 0, wave: 'square' }
 
 export function getPerson(id) {
   if (id === 'narrator') return NARRATOR;
-  return CHARACTERS[id] || TEACHERS[id] || unnamed.get(id) || null;
+  return CHARACTERS[id] || TEACHERS[id] || VOICES[id] || unnamed.get(id) || null;
 }
 
 export function personExists(id) { return getPerson(id) !== null; }
@@ -23,15 +23,15 @@ export function sheetOf(id) {
 
 export function portraitOf(id, emo) {
   const p = getPerson(id);
-  if (!p || p.narrator) return null;
+  if (!p || p.narrator || p.noPortrait) return null;
   return getPortrait(id, p, emo);
 }
 
 // Безымянный ученик/ученица: параметры выбираются ГПСЧ (rng — экземпляр Rng).
-export function makeUnnamed(rng, idPrefix = 'u') {
+export function makeUnnamed(rng, idPrefix = 'u', fixedId = null) {
   const P = UNNAMED_POOL;
   const girl = rng.chance(0.5);
-  const id = idPrefix + '_' + (unnamed.size + 1);
+  const id = fixedId || idPrefix + '_' + (unnamed.size + 1);
   const p = {
     name: girl ? 'Ученица' : 'Ученик',
     short: girl ? 'Ученица' : 'Ученик',

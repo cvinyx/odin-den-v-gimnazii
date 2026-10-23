@@ -11,6 +11,7 @@ export class TileMap {
       if (this.rows[i].length !== this.w) throw new Error(`Карта ${def.id}: строка ${i} длиной ${this.rows[i].length}, нужно ${this.w}`);
       for (const ch of this.rows[i]) if (!TILE_DEFS[ch]) throw new Error(`Карта ${def.id}: неизвестный тайл «${ch}» в строке ${i}`);
     }
+    this.floor = def.floor || '.'; // пол под тайлами-предметами (парты, цветы, скамейки)
     this.pixelW = this.w * TILE;
     this.pixelH = this.h * TILE;
   }
@@ -31,7 +32,8 @@ export class TileMap {
     for (let ty = y0; ty <= y1; ty++) {
       for (let tx = x0; tx <= x1; tx++) {
         const ch = this.rows[ty][tx];
-        const variant = ch === 'B' ? tx : tx + ty;
+        const variant = ch === 'B' || ch === 'F' ? tx : ch === '.' ? tx + ty : tx * 7 + ty * 3;
+        if (TILE_DEFS[ch].overlay) r.image(getTile(this.floor, tx + ty), tx * TILE, ty * TILE);
         r.image(getTile(ch, variant), tx * TILE, ty * TILE);
       }
     }
