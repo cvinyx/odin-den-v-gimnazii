@@ -12,11 +12,15 @@ export const EMOTIONS = ['norm', 'happy', 'angry', 'surprised', 'dumb'];
 export const STATS = ['battery', 'stress', 'aura', 'vape', 'juice', 'suspicion', 'hunger', 'money'];
 // Величины только для условий: последняя оценка, долг собеседнику (BYN), все долги, побед, вызовов к директору,
 // итог матча (1 — победа, 0 — ничья/не было, −1 — поражение), может ли собеседник дать жижку (1/0).
-export const COND_VALUES = ['lastgrade', 'debt', 'debts', 'wins', 'calls', 'match', 'vapefriend', 'puffs', 'breaknum'];
+// Мини-игры на перемене (1/0, считает сцена мира перед разговором): в туалете, в столовой, большая перемена
+// и столовая, рядом Матыч и Буй (и собеседник — друг), можно «Кто больше парит», можно хоть что-то,
+// собеседник сам бросает вызов; chalgame — какой (1 байт, 2 парилка, 3 туалет, 4 еда).
+export const COND_VALUES = ['lastgrade', 'debt', 'debts', 'wins', 'calls', 'match', 'vapefriend', 'puffs', 'breaknum',
+  'intoilet', 'incanteen', 'bigbreak', 'mbnear', 'vapebattle', 'playable', 'challenge', 'chalgame'];
 export const SFX_ALLOWED = ['igorLaugh', 'bell', 'whistle', 'kick', 'hit', 'shake', 'puff', 'coin', 'door', 'statUp', 'statDown'];
 const OPS = ['>=', '<=', '==', '!=', '>', '<'];
 // Игровые действия из диалогов: # action имя [аргумент]. Выполняет игра (src/game/actions.js).
-export const ACTIONS = ['phone', 'vape', 'quiet', 'bait', 'seat_steal', 'seat_front', 'seat_igor', 'bus', 'wash', 'leave', 'askjuice', 'buffet', 'charge_phone', 'charge_vape', 'charge_stop'];
+export const ACTIONS = ['phone', 'vape', 'quiet', 'bait', 'seat_steal', 'seat_front', 'seat_igor', 'bus', 'wash', 'leave', 'askjuice', 'buffet', 'charge_phone', 'charge_vape', 'charge_stop', 'play', 'challenge'];
 
 export class DialogParseError extends Error {
   constructor(errors, file) {
@@ -134,7 +138,8 @@ export function parseDialog(text, opts = {}) {
         else effects = effects.concat(parseEffectList(b, ln, errors));
       }
       pendingChoice.options.push({ text: body, target, effects, cond, line: ln });
-      if (pendingChoice.options.length > 4) errors.push({ line: ln, msg: 'больше 4 вариантов (A–D)' });
+      // вариантов с условиями может быть до 6, но на экране — не больше 4 видимых (A–D)
+      if (pendingChoice.options.length > 6) errors.push({ line: ln, msg: 'больше 6 вариантов (на экране максимум 4)' });
       return;
     }
     flushChoice();

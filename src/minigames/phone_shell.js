@@ -140,6 +140,7 @@ export class PhoneGame {
     const l = lessonInfo(params.lesson || st.lesson || 2);
     const t = TEACHERS[(l && l.teacher) || 'tatiana'];
     this.teacherId = t ? (l.teacher) : 'tatiana';
+    this.short = !!params.short;
     const duration = params.short ? PB.shortDuration : this.opts.duration;
     this.dead = st.stats.battery <= 0;
     this.shell = new PhoneShellLogic(this.rng, {
@@ -171,6 +172,11 @@ export class PhoneGame {
     if (S.finished || this.inner.finished) this.done = true;
   }
 
+  // Цель по очкам: в короткой игре (25 с «залипнуть» на уроке) — своя, меньше (BALANCE.phoneGames.*.shortTarget).
+  get target() { return this.short && this.opts.shortTarget ? this.opts.shortTarget : this.inner.target; }
+
+  get logic() { return this.shell; } // для полоски времени урока (t / duration)
+
   get shellBotFn() { if (!this._sb) this._sb = shellBot(this.rng); return this._sb; }
 
   forfeit() { this.dead = true; this.forced = true; return this.end(); }
@@ -184,7 +190,7 @@ export class PhoneGame {
       return { result: 'lose', deltas: {}, money: 0, grade, summary: this.forced ? 'Срыв: телефон из рук.' : 'Телефон мёртв (0 %). Пришлось слушать урок.' };
     }
     const director = S.result === 'director';
-    const ratio = inner.score / inner.target;
+    const ratio = inner.score / this.target;
     const win = !director && ratio >= 1;
     const d = { battery: PB.batteryCost };
     if (win) d.aura = Math.round(PB.auraMin + (PB.auraMax - PB.auraMin) * Math.min(1, (ratio - 1) * 2 + 0.3));
@@ -195,7 +201,7 @@ export class PhoneGame {
       result: director ? 'director' : win ? 'win' : 'lose', deltas: d, money: 0,
       grade: director ? BALANCE.director.grade : phoneLessonGrade(this.rng, S),
       extra: { score: inner.score, wrongLike: inner.wrongLike || null },
-      summary: `Очки: ${inner.score} из ${inner.target}` + (S.hiddenTime > 1 ? ` · прятал ${Math.round(S.hiddenTime)} с` : ''),
+      summary: `Очки: ${inner.score} из ${this.target}` + (S.hiddenTime > 1 ? ` · прятал ${Math.round(S.hiddenTime)} с` : ''),
     };
   }
 
@@ -241,7 +247,7 @@ export class PhoneGame {
     r.text(this.opts.title || '', rx + 71, 14, { align: 'center', color: '#ffe14d' });
     if (S) {
       r.text('Время ' + clock(S.duration - S.t), rx + 8, 30, { color: '#ffffff' });
-      r.text(`Очки: ${this.inner.score} / ${this.inner.target}`, rx + 8, 44, { color: this.inner.score >= this.inner.target ? '#6be36b' : '#ffffff' });
+      r.text(`Очки: ${this.inner.score} / ${this.target}`, rx + 8, 44, { color: this.inner.score >= this.target ? '#6be36b' : '#ffffff' });
       r.text('Подозрение', rx + 8, 60, { color: '#9a9aa8' });
       r.rect(rx + 8, 72, 126, 6, '#2c2840');
       r.rect(rx + 8, 72, Math.round(126 * S.suspicion / 100), 6, S.suspicion > 70 ? '#ff3a3a' : '#ff9a5a');

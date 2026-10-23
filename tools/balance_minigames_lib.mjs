@@ -19,6 +19,10 @@ export const GAMES = {
   vape: { opps: ['chernyak', 'denis', 'shurpo', 'levonchuk', 'bochko', 'matych', 'buy'] },
   eat: { opps: ['denis', 'shurpo', 'igor', 'guza', 'matych', 'buy'] },
   bait_mb: {}, shower: {},
+  // короткая телефонная игра — «залипнуть в телефон» на любом уроке (25 с)
+  phone_blocks_short: { game: 'phone_blocks', lesson: 1, params: { short: true } },
+  phone_brawl_short: { game: 'phone_brawl', lesson: 3, params: { short: true } },
+  phone_feed_short: { game: 'phone_feed', lesson: 7, params: { short: true } },
 };
 
 const fakeGame = { r: { shake() {} }, hud: { draw() {} } };
@@ -38,7 +42,8 @@ export function runGame(id, seed, { opp = null, hunger = 30, params = {} } = {})
   st.stats.battery = 80;
   st.stats.suspicion = 0;
   st.lesson = GAMES[id].lesson || 2;
-  const meta = getMinigame(id);
+  const meta = getMinigame(GAMES[id].game || id);
+  params = { ...(GAMES[id].params || {}), ...params };
   const inst = meta.create({ game: fakeGame, state: st, rng, params, opp });
   inst.autoplay = true;
   inst.start({ lesson: st.lesson, ...params });

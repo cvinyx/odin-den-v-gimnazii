@@ -236,10 +236,10 @@ export const BALANCE = {
     batteryCost: -8,
     auraMin: 3, auraMax: 8,
     grade: { base: [5, 7], listenBonus: 1, listenShare: 0.45, caughtPenalty: 1, caughtAt: 40 },
-    blocks: { duration: 45, target: 100, linePoints: 10, comboBonus: 5 },
-    brawl: { duration: 45, target: 20, hp: 5, enemyHp: 2, maxEnemies: 3, enemySpeed: [16, 24], enemyFire: [1.6, 2.6],
+    blocks: { duration: 45, target: 100, shortTarget: 50, linePoints: 10, comboBonus: 5 },
+    brawl: { duration: 45, target: 20, shortTarget: 9, hp: 5, enemyHp: 2, maxEnemies: 3, enemySpeed: [16, 24], enemyFire: [1.6, 2.6],
       bulletSpeed: 120, enemyBullet: 52, playerSpeed: 58, fireCooldown: 0.3, denisFire: 0.75, spawnEvery: 1.6 },
-    feed: { duration: 40, target: 8, scroll: 20, fastScroll: 55 },
+    feed: { duration: 40, target: 8, shortTarget: 5, scroll: 20, fastScroll: 55 },
   },
 
   // «Царь туалета»: ползунок силы, Z в зелёной зоне — рывок. strength — сила соперника (0–1).
@@ -265,7 +265,7 @@ export const BALANCE = {
   },
 
   // «Кто забайтит Матыча и Буя»: Рома и друг против двоих.
-  baitMB: { rounds: 4, mid: [18, 26], strong: [32, 46], strongChance: 0.55, backfire: 10, friend: [8, 18], retort: [9, 15], winSum: 160 },
+  baitMB: { rounds: 4, mid: [18, 26], strong: [32, 46], strongChance: 0.55, backfire: 10, friend: [8, 18], retort: [9, 15], winSum: 160, nearPx: 112 },
 
   // «Душ»: держи Z, держи температуру в зоне, отбивайся X от толчков. friends — сколько секунд стоят друзья.
   shower: {

@@ -81,6 +81,10 @@ export class Bot {
               for (let k = 0; k < i; k++) await this.press('ArrowDown');
               await this.press('z');
             } else await this.press('z');
+          } else if (s.phase === 'play') {
+            // мини-игры этапа 4 играет встроенный «средний» бот игры (autoplay)
+            await this.ev(() => { const t = window.__odin.scenes.top; if (t.inst) t.inst.autoplay = true; });
+            await this.wait(250);
           } else if (s.phase === 'loss') {
             this.log.push({ loss: this.lossOption });
             for (let k = 0; k < 3; k++) await this.press('ArrowUp');

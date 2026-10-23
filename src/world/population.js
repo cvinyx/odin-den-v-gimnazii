@@ -36,7 +36,7 @@ export function populate(def, state, solidAt) {
   else if (state.phase === 'late') count = Math.min(1, (spots.crowd || []).length);
   const taken = new Set(out.map((n) => n.x + ':' + n.y));
   const rng = eventRng(state, 'crowd:' + def.id + ':' + (b || state.phase));
-  const crowdLabels = labelsOf('crowd');
+  const crowdLabels = labelsOf('crowd').filter((l) => /^c\d+$/.test(l));
   for (let i = 0; i < count; i++) {
     const p = spots.crowd[i];
     if (taken.has(p[0] + ':' + p[1])) continue;

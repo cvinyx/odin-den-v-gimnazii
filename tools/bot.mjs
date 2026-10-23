@@ -10,7 +10,7 @@ const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 
 // Выбор варианта: предпочтения по словам в тексте вариантов.
 function policy(q, opts) {
-  const prefer = ['К Игорю', 'Шанхае', 'Ай вос', 'Сидеть тихо', 'Затянуться под партой', 'Буй, у тебя', 'на деньги', 'Сыграем', 'Забайчу', 'Давай в байт', 'этаж'];
+  const prefer = ['К Игорю', 'Шанхае', 'Ай вос', 'Сидеть тихо', 'Затянуться под партой', 'Буй, у тебя', 'на деньги', 'Давай на рубль', 'Байт-дуэль', 'Сыграем', 'Забайчу', 'Давай в байт', 'этаж'];
   if (/этаж/.test(q)) return opts.findIndex((o) => o.startsWith(policy.floor + ' ')) ;
   for (const w of prefer) { const i = opts.findIndex((o) => o.includes(w)); if (i >= 0) return i; }
   return 0;

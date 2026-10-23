@@ -143,5 +143,5 @@ registerMinigame('phone_feed', {
   music: 'minigame',
   keys: ['Z — лайк посту в центре', '↓ — листать быстрее, ↑ — медленнее', 'Лайкай друзей, не лайкай кринж и рекламу', 'X — спрятать. Лайк во время лага улетит не туда!'],
   describe: () => `Набери ${B.target} правильных лайков за ${B.duration} с.`,
-  create: (ctx) => new PhoneGame(ctx, (rng, p) => new FeedInner(rng, p), { duration: B.duration, title: 'Лента', help: ['Z — лайк', '↓ быстрее, ↑ медленнее'] }),
+  create: (ctx) => new PhoneGame(ctx, (rng, p) => new FeedInner(rng, p), { shortTarget: B.shortTarget, duration: B.duration, title: 'Лента', help: ['Z — лайк', '↓ быстрее, ↑ медленнее'] }),
 });

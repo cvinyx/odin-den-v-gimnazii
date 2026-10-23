@@ -24,7 +24,7 @@ export async function runDay({ seed = 'KQ7M2P', shots = null, cheatStyle = 'caut
     if (/этаж/.test(q)) { const i = opts.findIndex((o) => o.startsWith(bot.floorWanted + ' ')); return Math.max(0, i); }
     if (q === 'stub') return 0;
     const prefer = ['К Игорю', 'Отбить место', 'Сидеть тихо', 'Переписывать', 'Читать', 'Не рисковать', 'Ай вос', 'Писать сам',
-      'Вызваться читать', 'И не ссорятся', 'Выйти и честно', 'Молча зашнуровать', 'Шанхае', 'бывай', 'Сыграем в байт'];
+      'Вызваться читать', 'И не ссорятся', 'Выйти и честно', 'Молча зашнуровать', 'Шанхае', 'Не сегодня', 'бывай', 'передумал'];
     for (const w of prefer) { const i = opts.findIndex((o) => o.includes(w)); if (i >= 0) return i; }
     return 0;
   };

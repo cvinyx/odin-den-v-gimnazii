@@ -21,8 +21,9 @@ canvas.focus();
 // Доступ для автоматических проверок (Playwright) и отладки из консоли.
 window.__odin = game;
 // Вызов пунктов отладочного меню по подписи (для бота): window.__odinDebug('Перемена 1').
-window.__odinDebug = (label) => {
-  for (const g of debugGroups()) for (const it of g.items) if (it.label === label) { it.action(game); return true; }
+// arg — выбрать значение пункта со стрелками (соперника): window.__odinDebug('Туалет', 'guza').
+window.__odinDebug = (label, arg) => {
+  for (const g of debugGroups()) for (const it of g.items) if (it.label === label) { if (arg != null && it.set) it.set(arg); it.action(game); return true; }
   return false;
 };
 // Данные карт и расписания для бота (поиск пути между локациями).

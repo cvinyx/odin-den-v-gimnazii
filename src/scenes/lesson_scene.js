@@ -18,6 +18,9 @@ import { SchoolMapScene } from './school_map.js';
 import { changeStat } from '../game/state.js';
 import { labelLines } from '../game/dialogs.js';
 
+// Какая телефонная игра «по умолчанию» на уроке (на остальных — случайная из трёх).
+const PHONE_BY_LESSON = { 2: 'phone_blocks', 4: 'phone_brawl', 6: 'phone_feed' };
+
 export class LessonScene {
   constructor(n, opts = {}) {
     this.id = 'lesson';
@@ -34,6 +37,7 @@ export class LessonScene {
     this.cfg = LESSONS[this.n];
     if (!this.opts.resumed) startLesson(st, this.n);
     this.before = { ...st.stats };
+    game.condCtx = {}; // условия мини-игр перемены на уроке не действуют
     this.view = this.cfg.view === 'pe' ? peView() : new ClassroomView(st, this.info);
     game.hud.hint = null;
     game.playMusic('lesson');
@@ -80,6 +84,17 @@ export class LessonScene {
   // После диалога: отложенные действия (байт на уроке), потом следующий шаг.
   afterDialog() {
     const acts = this.game.takeActions();
+    const phone = acts.find((a) => a.name === 'phone');
+    if (phone && this.cfg.view !== 'pe') {
+      // «залипнуть в телефон» — короткая (25 с) телефонная мини-игра урока
+      const st = this.game.state;
+      const id = PHONE_BY_LESSON[this.n] || eventRng(st, 'phonegame' + this.n).pick(Object.values(PHONE_BY_LESSON));
+      this.game.scenes.push(new MinigameScene(id, {
+        params: { lesson: this.n, short: true },
+        onDone: (res) => this.afterPhone(res, () => this.next()),
+      }));
+      return;
+    }
     const bait = acts.find((a) => a.name === 'bait');
     if (bait) {
       const st = this.game.state;
@@ -92,6 +107,13 @@ export class LessonScene {
       return;
     }
     this.next();
+  }
+
+  // После телефонной игры: «лайк не туда» (лента) — реакция друзей.
+  afterPhone(res, then) {
+    const post = res && res.extra && res.extra.wrongLike;
+    if (!post) return then();
+    this.game.scenes.push(new DialogScene('feed', 'wrong_like', { vars: { post }, onEnd: then }));
   }
 
   afterBait(res) {
@@ -121,7 +143,7 @@ export class LessonScene {
         if (st.seat === 'front') g += BALANCE.seating.frontGradeBonus;
         this.grade = Math.max(1, Math.min(10, g));
         if (this.view.roma) this.view.roma.dir = 'up';
-        this.next();
+        this.afterPhone(res, () => this.next());
       },
     }));
   }

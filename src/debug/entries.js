@@ -21,6 +21,23 @@ import { rollBet } from '../game/bets.js';
 import { PhonePopupScene } from '../scenes/phone_popup.js';
 import { DirectorScene } from '../scenes/director.js';
 import { labelLines } from '../game/dialogs.js';
+import { makeUnnamed, getPerson } from '../gen/people.js';
+import { Rng } from '../engine/rng.js';
+import { BALANCE } from '../../data/balance.js';
+import { VAPE_WHITELIST } from '../minigames/vape_battle.js';
+
+// Пункт «мини-игра + соперник»: ←→ выбирают соперника, Z запускает.
+function mgEntry(label, opps, launch) {
+  let i = 0;
+  registerDebug('Мини-игры 4', label, (game) => launch(game, opps[i]), {
+    value: () => (opps[i] ? (getPerson(opps[i]) || { short: opps[i] }).short : '—'),
+    change: (d) => { i = (i + d + opps.length) % opps.length; },
+    set: (v) => { const k = opps.indexOf(v); if (k >= 0) i = k; },
+  });
+}
+
+// Безымянный ученик 9–11 класса для парилки/туалета/еды.
+function unnamedOpp() { return makeUnnamed(new Rng('debug-unnamed'), 'dbg', 'dbg_student'); }
 
 // Открыть сцену поверх главного меню (по X вернёмся в меню).
 function overTitle(game, scene) {
@@ -101,6 +118,49 @@ export function registerDebugEntries() {
     game.state.phase = 'lesson'; game.state.lesson = 1;
     game.scenes.push(new MinigameScene('bait', { opp: 'igor', params: { opp: 'igor', inLesson: true } }));
   });
+  // ---------- Этап 4: любая мини-игра с любым соперником ----------
+  const students = ['guza', 'igor', 'denis', 'chernyak', 'shurpo', 'levonchuk', 'bochko', 'matych', 'buy', 'smile', 'vadim', 'vitalik', 'zakha', 'anus', 'безымянный'];
+  const real = (o) => (o === 'безымянный' ? unnamedOpp() : o);
+  const phone = (id, lesson, extra = {}) => (game) => {
+    freshDay(game);
+    Object.assign(game.state, { phase: 'lesson', lesson });
+    game.scenes.push(new MinigameScene(id, { params: { lesson, ...extra } }));
+  };
+  registerDebug('Мини-игры 4', 'Телефон: блок-пазл (урок 2)', phone('phone_blocks', 2));
+  registerDebug('Мини-игры 4', 'Телефон: броулер (урок 4)', phone('phone_brawl', 4));
+  registerDebug('Мини-игры 4', 'Телефон: броулер с Денисом (кооп)', phone('phone_brawl', 4, { coop: true }));
+  registerDebug('Мини-игры 4', 'Телефон: лента (урок 6)', phone('phone_feed', 6));
+  registerDebug('Мини-игры 4', 'Телефон: короткая (урок 1, 25 с)', phone('phone_feed', 1, { short: true }));
+  mgEntry('Царь туалета', students, (game, o) => {
+    freshDay(game); game.state.phase = 'break'; game.state.lesson = 1;
+    const opp = real(o);
+    game.scenes.push(new MinigameScene('toilet', { opp, bet: rollBet(game.state, opp), params: { opp } }));
+  });
+  mgEntry('Кто больше парит', [...VAPE_WHITELIST, 'безымянный'], (game, o) => {
+    freshDay(game); game.state.phase = 'break'; game.state.lesson = 1;
+    const opp = real(o);
+    game.scenes.push(new MinigameScene('vape', { opp, bet: rollBet(game.state, opp), params: { opp } }));
+  });
+  mgEntry('Кто больше парит (завуч рядом)', VAPE_WHITELIST, (game, opp) => {
+    freshDay(game); game.state.phase = 'break'; game.state.lesson = 1;
+    game.scenes.push(new MinigameScene('vape', { opp, params: { opp, patrolNear: true },
+      onDone: (res) => { if (res && res.extra && res.extra.caught) game.scenes.push(new DirectorScene({})); } }));
+  });
+  mgEntry('Кто больше съест', students, (game, o) => {
+    freshDay(game); Object.assign(game.state, { phase: 'break', lesson: 3 });
+    if (game.state.stats.money < BALANCE.eat.entry) game.state.stats.money = BALANCE.eat.entry;
+    const opp = real(o);
+    game.scenes.push(new MinigameScene('eat', { opp, params: { opp } }));
+  });
+  mgEntry('Матыч и Буй (друг)', ['denis', 'igor', 'chernyak', 'shurpo', 'levonchuk', 'bochko'], (game, friend) => {
+    freshDay(game); game.state.phase = 'break'; game.state.lesson = 1;
+    game.scenes.push(new MinigameScene('bait_mb', { opp: 'matych', params: { friend } }));
+  });
+  mgEntry('Душ (друзья)', ['igor,denis', 'denis,chernyak', 'igor,shurpo', 'chernyak,shurpo'], (game, f) => {
+    freshDay(game); Object.assign(game.state, { phase: 'lesson', lesson: 5 });
+    game.scenes.push(new MinigameScene('shower', { params: { lesson: 5, friends: f.split(',') } }));
+  });
+
   registerDebug('Сценки', 'Сообщение отца', (game) => {
     const l = labelLines('dad', 'msg_3')[0];
     game.scenes.push(new PhonePopupScene({ from: 'батя', text: l ? l.text : '', amount: 300 }));

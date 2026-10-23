@@ -36,16 +36,6 @@ export function staminaPenalty(state) {
   return Math.min(B.vape.staminaPenaltyMax, state.puffsToday * B.vape.staminaPenaltyPerPuff);
 }
 
-// Быстрое «залипнуть в телефон» на уроке (до этапа 4, где появятся телефонные мини-игры).
-export function phoneQuick(state, rng) {
-  if (state.stats.battery <= 0) return { ok: false, reason: 'Телефон мёртв.' };
-  changeStat(state, 'battery', B.battery.perPhoneGame);
-  changeStat(state, 'stress', -5);
-  changeStat(state, 'aura', B.minigames.phone.auraMin);
-  addSuspicion(state, rng.int(B.lessonActions.phoneSuspicion[0], B.lessonActions.phoneSuspicion[1]));
-  return { ok: true };
-}
-
 export function sitQuiet(state) {
   changeStat(state, 'stress', B.lessonActions.quietStress);
   changeStat(state, 'suspicion', -B.lessonActions.quietSuspicionDrop);

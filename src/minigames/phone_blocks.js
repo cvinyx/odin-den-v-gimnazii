@@ -174,5 +174,5 @@ registerMinigame('phone_blocks', {
   music: 'minigame',
   keys: ['←→ — фигура, Z — взять', 'Стрелки — двигать, Z — поставить, C — назад', 'X — спрятать телефон (пауза)', 'Играешь, когда учитель смотрит — подозрение'],
   describe: () => `Собери ${B.target} очков за ${B.duration} с, не попавшись.`,
-  create: (ctx) => new PhoneGame(ctx, (rng, p) => new BlocksInner(rng, p), { duration: B.duration * hungerMul(ctx.state) || B.duration, title: 'Блок-пазл', help: ['←→ Z — фигура', 'стрелки Z — ставить', 'C — назад'] }),
+  create: (ctx) => new PhoneGame(ctx, (rng, p) => new BlocksInner(rng, p), { shortTarget: B.shortTarget, duration: B.duration * hungerMul(ctx.state) || B.duration, title: 'Блок-пазл', help: ['←→ Z — фигура', 'стрелки Z — ставить', 'C — назад'] }),
 });

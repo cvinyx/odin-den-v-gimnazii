@@ -180,5 +180,5 @@ registerMinigame('phone_brawl', {
   music: 'minigame',
   keys: ['Стрелки — бег, Z — выстрел', 'X — спрятать телефон (пауза)', 'Учитель вышел — играй смело', 'Рядом Денис — он помогает'],
   describe: () => `Выбей ${B.target} ботов за ${B.duration} с и не умри.`,
-  create: (ctx) => new PhoneGame(ctx, (rng, p) => new BrawlInner(rng, p), { duration: B.duration, title: 'Броулер', help: ['стрелки — бег', 'Z — огонь'] }),
+  create: (ctx) => new PhoneGame(ctx, (rng, p) => new BrawlInner(rng, p), { shortTarget: B.shortTarget, duration: B.duration, title: 'Броулер', help: ['стрелки — бег', 'Z — огонь'] }),
 });

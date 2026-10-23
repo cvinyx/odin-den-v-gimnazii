@@ -7,7 +7,7 @@ import { audio } from '../engine/audio.js';
 import { storeGet, storeSet, KEYS, autosave } from '../engine/save.js';
 import { generateSeedCode } from '../engine/rng.js';
 import { createState, applyScriptEffect, scriptStatValue, changeStat, VAPE_FRIENDS } from './state.js';
-import { puff, phoneQuick, sitQuiet, addSuspicion, checkBreakdown } from './actions.js';
+import { puff, sitQuiet, addSuspicion, checkBreakdown } from './actions.js';
 import { eventRng } from './day.js';
 import { BALANCE } from '../../data/balance.js';
 import { Hud } from '../ui/hud.js';
@@ -29,6 +29,7 @@ export class Game {
     this.toasts = [];
     this.pendingActions = [];
     this.patrolNear = false; // рядом завуч-патруль (ставит сцена мира)
+    this.condCtx = {};       // условия мини-игр для диалога перемены (см. WorldScene.talk)
     this.skipHold = 0;
     this.onSkipIntro = null; // пропуск вступления удержанием X (ставит сцена вступления)
     this.textInputActive = false;
@@ -139,12 +140,17 @@ export class Game {
         if (st.phase !== 'lesson' && this.patrolNear) this.pendingActions.push({ name: 'director_patrol' });
         break;
       }
-      case 'phone': {
-        const res = phoneQuick(st, eventRng(st, 'phone' + st.lesson + ':' + st.stats.battery));
-        if (!res.ok) this.toast(res.reason);
+      case 'phone':
+        // на уроке — короткая телефонная мини-игра после диалога (LessonScene.afterDialog)
+        if (st.stats.battery <= 0) { this.toast('Телефон мёртв.'); break; }
+        this.pendingActions.push({ name, arg });
         break;
-      }
       case 'quiet': sitQuiet(st); break;
+      case 'challenge':
+        // вызов собеседника прозвучал — второй раз за разговор не повторяется
+        this.condCtx.challenge = 0;
+        if (this.currentOpp) st.flags['challenged_' + this.currentOpp + '_' + st.lesson] = true;
+        break;
       case 'wash':
         if (!st.flags['washed' + st.lesson]) { changeStat(st, 'stress', -3); st.flags['washed' + st.lesson] = true; }
         break;
@@ -180,6 +186,10 @@ export class Game {
 
   takeActions() { const a = this.pendingActions; this.pendingActions = []; return a; }
 
-  scriptStat(name) { return scriptStatValue(this.state, name, this.currentOpp); }
+  // condCtx — величины про мини-игры на перемене (ставит сцена мира перед разговором).
+  scriptStat(name) {
+    if (name in this.condCtx) return this.condCtx[name];
+    return scriptStatValue(this.state, name, this.currentOpp);
+  }
   scriptFlag(name) { return !!this.state.flags[name]; }
 }

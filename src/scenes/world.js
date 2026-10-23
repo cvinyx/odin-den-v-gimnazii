@@ -5,7 +5,7 @@ import { Actor, Npc } from '../world/npc.js';
 import { findTalkTarget, pointInFront } from '../world/interactions.js';
 import { populate } from '../world/population.js';
 import { getMapDef, STAIRWELLS, MAPS } from '../world/maps/index.js';
-import { BuffetScene } from './buffet.js';
+import { BuffetScene, isBigBreak } from './buffet.js';
 import { patrolSees, PATROL, DIRA } from '../world/patrol.js';
 import { changeStat } from '../game/state.js';
 import { TILE } from '../gen/tiles.js';
@@ -19,7 +19,8 @@ import { MinigameScene } from './minigame_scene.js';
 import { DirectorScene } from './director.js';
 import { formatTimer } from '../ui/format.js';
 import { audio } from '../engine/audio.js';
-import { hintText, nextLesson, roomAction } from '../game/day.js';
+import { hintText, nextLesson, roomAction, eventRng } from '../game/day.js';
+import { canVapeBattle, vapeReady } from '../minigames/vape_battle.js';
 import { rollBet, creditorReminds } from '../game/bets.js';
 import { hasLabel } from '../game/dialogs.js';
 
@@ -77,6 +78,7 @@ export class WorldScene {
     const game = this.game;
     for (const a of game.takeActions()) {
       if (a.name === 'bait') this.startBait(a.arg || (this.lastTalk && this.lastTalk.id));
+      else if (a.name === 'play') this.startCompetition(a.arg, this.lastTalk && this.lastTalk.id);
       else if (a.name === 'charge_phone') this.startCharging('phone');
       else if (a.name === 'charge_vape') this.startCharging('vape');
       else if (a.name === 'charge_stop') this.stopCharging('Розетка свободна');
@@ -99,6 +101,60 @@ export class WorldScene {
         }
       },
     }));
+  }
+
+  // Соревнования на перемене (раздел 14): ставка как у байта, проверки — белый список, вейп, деньги.
+  startCompetition(kind, opp) {
+    const game = this.game;
+    const st = game.state;
+    if (!opp) return;
+    if (kind === 'mb') {
+      const friend = this.mbFriend || 'denis';
+      game.scenes.push(new MinigameScene('bait_mb', { opp: 'matych', params: { friend } }));
+      return;
+    }
+    if (kind === 'vape') {
+      if (!canVapeBattle(opp)) return this.say('Этот человек не парит. И тебе не советует.');
+      if (!vapeReady(st)) return this.say(st.stats.vapeCharge <= 0 ? 'Вейп сел. Нужна розетка.' : 'Жижка кончилась.');
+      game.scenes.push(new MinigameScene('vape', {
+        opp, bet: rollBet(st, opp), params: { opp, patrolNear: game.patrolNear },
+        onDone: (res) => { if (res && res.extra && res.extra.caught) game.scenes.push(new DirectorScene({})); },
+      }));
+      return;
+    }
+    if (kind === 'eat') {
+      if (st.stats.money < BALANCE.eat.entry) return this.say('На три смаженки не хватает денег.');
+      game.scenes.push(new MinigameScene('eat', { opp, params: { opp } }));
+      return;
+    }
+    if (kind === 'toilet') game.scenes.push(new MinigameScene('toilet', { opp, bet: rollBet(st, opp), params: { opp } }));
+  }
+
+  // Что можно предложить собеседнику (условия для меню «Давай на рубль?» и вызова от NPC).
+  miniCtx(n) {
+    const st = this.game.state;
+    const id = n.id;
+    const loc = this.def.id || this.mapId;
+    const named = !!n.def.named;
+    const intoilet = /toilet/.test(loc) ? 1 : 0;
+    const incanteen = loc === 'canteen' ? 1 : 0;
+    const bigbreak = incanteen && isBigBreak(st) ? 1 : 0;
+    const vapebattle = canVapeBattle(id) ? 1 : 0;
+    // «Матыч и Буй»: оба рядом, а собеседник — друг Ромы (он и будет в команде)
+    const near = (who) => this.npcs.some((m) => m.id === who && Math.hypot(m.x - this.player.x, m.y - this.player.y) < BALANCE.baitMB.nearPx);
+    this.mbFriend = named && !['matych', 'buy'].includes(id) && near('matych') && near('buy') ? id : null;
+    const mbnear = this.mbFriend ? 1 : 0;
+    const playable = named || vapebattle || intoilet || bigbreak ? 1 : 0;
+    // инициатива собеседника: иногда он сам предлагает сыграть (раз за перемену)
+    let challenge = 0, chalgame = 0;
+    if (st.phase === 'break' && playable && !st.flags['challenged_' + id + '_' + st.lesson]) {
+      const rng = eventRng(st, 'challenge:' + id + ':' + st.lesson);
+      if (rng.chance(BALANCE.challengeChance)) {
+        const games = [named && 1, vapebattle && vapeReady(st) && 2, intoilet && 3, bigbreak && st.stats.money >= BALANCE.eat.entry && 4].filter(Boolean);
+        if (games.length) { chalgame = rng.pick(games); challenge = 1; }
+      }
+    }
+    return { intoilet, incanteen, bigbreak, mbnear, vapebattle, playable, challenge, chalgame };
   }
 
   exitAt(tx, ty) { return (this.def.exits || []).find((e) => e.x === tx && e.y === ty) || null; }
@@ -212,6 +268,7 @@ export class WorldScene {
     }
     st.flags[flag] = true;
     if (n.id === 'nikolai') st.flags.metNikolai = true;
+    game.condCtx = this.miniCtx(n);
     game.scenes.push(new DialogScene(file, label, { opp: n.id }));
     if (n.def.named && creditorReminds(st, n.id)) game.scenes.push(new DialogScene('bets', 'remind', { opp: n.id }));
   }
