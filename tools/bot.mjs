@@ -35,7 +35,8 @@ export async function runSlice({ seed = 'BXT234', shots = null, cheatStyle = 'ca
   };
   const t0 = Date.now();
 
-  // Главное меню → Новая игра → ввести код дня
+  // Заставка «Нажми любую клавишу» → главное меню → Новая игра → ввести код дня
+  await page.keyboard.press('Space'); await page.waitForTimeout(700);
   await bot.press('ArrowDown');
   await page.evaluate(() => { window.__odin.scenes.top.menu.index = 1; });
   await bot.press('z');

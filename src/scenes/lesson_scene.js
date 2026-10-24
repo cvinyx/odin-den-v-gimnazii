@@ -17,6 +17,7 @@ import { PauseScene } from './pause.js';
 import { SchoolMapScene } from './school_map.js';
 import { changeStat } from '../game/state.js';
 import { labelLines } from '../game/dialogs.js';
+import { pickEnding } from '../game/endings.js';
 
 // Какая телефонная игра «по умолчанию» на уроке (на остальных — случайная из трёх).
 const PHONE_BY_LESSON = { 2: 'phone_blocks', 4: 'phone_brawl', 6: 'phone_feed' };
@@ -113,6 +114,7 @@ export class LessonScene {
   afterPhone(res, then) {
     const post = res && res.extra && res.extra.wrongLike;
     if (!post) return then();
+    this.game.state.flags.wrongLike = true;
     this.game.scenes.push(new DialogScene('feed', 'wrong_like', { vars: { post }, onEnd: then }));
   }
 
@@ -196,8 +198,8 @@ export class LessonScene {
     endLessonRules(st);
     finishLesson(st, this.n, this.grade ?? 1);
     if (this.n >= LAST_LESSON) {
-      st.phase = 'end';
-      import('./day_end.js').then(({ DayEndScene }) => game.scenes.reset(new DayEndScene(), { fade: true }));
+      // последний звонок — концовка дня (раздел 16)
+      import('./ending.js').then(({ EndingScene }) => game.scenes.reset(new EndingScene(pickEnding(st)), { fade: true }));
       return;
     }
     startBreak(st, this.n);

@@ -36,7 +36,9 @@ class Audio {
         this.master.connect(this.ctx.destination);
         this.musicBus = this.ctx.createGain();
         this.musicBus.gain.value = this.musicVolume;
-        this.musicBus.connect(this.master);
+        this.musicFade = this.ctx.createGain(); // плавная смена треков (без щелчков)
+        this.musicBus.connect(this.musicFade);
+        this.musicFade.connect(this.master);
         this.sfxBus = this.ctx.createGain();
         this.sfxBus.gain.value = this.sfxVolume;
         this.sfxBus.connect(this.master);
@@ -125,13 +127,23 @@ class Audio {
   // Трек: { bpm, steps (шагов на такт), loop, channels: [{ wave, vol, notes: ['C4','-',...], len }] }.
   playMusic(name, data) {
     if (this.trackName === name) return;
+    const wasPlaying = !!this.track && !!this.ctx;
     this.stopMusic();
     this.trackName = name;
     if (!data) return;
     if (!this.ctx) { this.pendingMusic = { name, data }; return; }
+    // смена трека: старый затухает за ~0,3 с, новый начинается после паузы и плавно нарастает
+    const now = this.ctx.currentTime;
+    const g = this.musicFade.gain;
+    const start = now + (wasPlaying ? 0.4 : 0.1);
+    g.cancelScheduledValues(now);
+    g.setValueAtTime(g.value, now);
+    if (wasPlaying) g.linearRampToValueAtTime(0, now + 0.3);
+    g.setValueAtTime(wasPlaying ? 0 : g.value, start - 0.01);
+    g.linearRampToValueAtTime(1, start + 0.4);
     const stepDur = 60 / data.bpm / (data.stepsPerBeat || 4);
     const length = Math.max(...data.channels.map((c) => c.notes.length));
-    this.track = { data, stepDur, length, step: 0, next: this.ctx.currentTime + 0.1 };
+    this.track = { data, stepDur, length, step: 0, next: start };
     this._schedTimer = setInterval(() => this._schedule(), 25);
     this._schedule();
   }
@@ -217,6 +229,17 @@ const SFX = {
   kick: (a) => {
     a.noise({ dur: 0.06, vol: 0.4, filter: 3000 });
     a.tone({ freq: 160, type: 'sine', dur: 0.15, vol: 0.4, slideTo: 50 });
+  },
+  // Гол: рёв зала (шум) и фанфара.
+  goal: (a) => {
+    a.noise({ dur: 1.4, vol: 0.12, filter: 1400 });
+    [523, 659, 784, 1046].forEach((f, i) => a.tone({ freq: f, type: 'square', dur: 0.16, vol: 0.12, at: i * 0.11 }));
+  },
+  // Живот Смайла: низкое урчание с «бульком».
+  tummy: (a) => {
+    a.tone({ freq: 70, type: 'sawtooth', dur: 0.5, vol: 0.2, slideTo: 45 });
+    a.tone({ freq: 140, type: 'sine', dur: 0.12, vol: 0.18, at: 0.45, slideTo: 300 });
+    a.tone({ freq: 90, type: 'sawtooth', dur: 0.4, vol: 0.16, at: 0.6, slideTo: 50 });
   },
   hit: (a) => {
     a.noise({ dur: 0.1, vol: 0.3, filter: 1200 });

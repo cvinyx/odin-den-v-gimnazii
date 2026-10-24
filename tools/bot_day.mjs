@@ -38,7 +38,8 @@ export async function runDay({ seed = 'KQ7M2P', shots = null, cheatStyle = 'caut
   const t0 = Date.now();
   const timings = { walks: [], lessons: [] };
 
-  // Новая игра с кодом дня
+  // Заставка → главное меню → новая игра с кодом дня
+  await page.keyboard.press('Space'); await page.waitForTimeout(700);
   await page.evaluate(() => { window.__odin.scenes.top.menu.index = 1; });
   await bot.press('z');
   await page.evaluate(() => { window.__odin.scenes.top.menu.index = 2; });
@@ -60,9 +61,9 @@ export async function runDay({ seed = 'KQ7M2P', shots = null, cheatStyle = 'caut
     const ls = Date.now();
     await bot.handle((t) => t === 'minigame', 120000);
     await shot(`urok-${l.n}-${l.minigame}`);
-    await bot.handle((t) => t === 'world' || t === 'day_end', 240000);
+    await bot.handle((t) => t === 'world' || t === 'results', 240000);
     timings.lessons.push({ n: l.n, sec: Math.round((Date.now() - ls) / 1000) });
-    if (l.n === 7) break;
+    if (l.n === 7 || (await bot.top()) === 'results') break; // последний урок или концовка «К директору!»
     await bot.waitFor((s) => s.top === 'world');
     const map = await bot.curMap();
     await shot(`peremena-${l.n}-${map}`);
@@ -98,7 +99,7 @@ export async function runDay({ seed = 'KQ7M2P', shots = null, cheatStyle = 'caut
       await page.keyboard.press('Tab'); await page.waitForTimeout(200);
     }
   }
-  await bot.waitFor((s) => s.top === 'day_end', 20000);
+  await bot.handle((t) => t === 'results', 60000);
   await page.waitForTimeout(800);
   await shot('final-dnya');
   const state = await page.evaluate(() => JSON.parse(JSON.stringify(window.__odin.state)));

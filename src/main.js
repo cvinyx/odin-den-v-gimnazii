@@ -1,6 +1,7 @@
 // Точка входа: создаём игру, регистрируем отладочное меню, показываем главное меню.
 import { Game } from './game/game.js';
-import { TitleScene } from './scenes/title.js';
+import { PressKeyScene } from './scenes/press_key.js';
+import { portraitOf } from './gen/people.js';
 import { DebugMenuScene } from './debug/debug_menu.js';
 import { registerDebugEntries } from './debug/entries.js';
 import { debugGroups } from './debug/registry.js';
@@ -16,7 +17,15 @@ game.debugOpener = () => {
   if (!game.scenes.top || game.scenes.top.id !== 'debug') game.scenes.push(new DebugMenuScene());
 };
 validateAllDialogs();
-game.start(new TitleScene());
+game.start(new PressKeyScene());
+// значок вкладки — пиксельный портрет Ромы (data-URI, без сетевых запросов)
+try {
+  const c = document.createElement('canvas'); c.width = 32; c.height = 32;
+  const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
+  x.drawImage(portraitOf('roma', 'happy'), 8, 4, 32, 32, 0, 0, 32, 32);
+  const link = document.querySelector('link[rel="icon"]') || document.head.appendChild(Object.assign(document.createElement('link'), { rel: 'icon' }));
+  link.href = c.toDataURL('image/png');
+} catch (e) { /* без значка — не страшно */ }
 canvas.focus();
 // Доступ для автоматических проверок (Playwright) и отладки из консоли.
 window.__odin = game;

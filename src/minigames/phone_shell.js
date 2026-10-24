@@ -141,7 +141,7 @@ export class PhoneGame {
     const t = TEACHERS[(l && l.teacher) || 'tatiana'];
     this.teacherId = t ? (l.teacher) : 'tatiana';
     this.short = !!params.short;
-    const duration = params.short ? PB.shortDuration : this.opts.duration;
+    const duration = params.short ? (this.opts.shortDuration || PB.shortDuration) : this.opts.duration;
     this.dead = st.stats.battery <= 0;
     this.shell = new PhoneShellLogic(this.rng, {
       suddenTurn: !!(t && t.params.suddenTurn), leavesRoom: !!(t && t.params.leavesRoom),

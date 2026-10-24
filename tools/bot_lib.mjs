@@ -112,7 +112,9 @@ export class Bot {
   // «Списывание» нажатиями: держит Z по выбранной стратегии с реакцией ~60 мс.
   async playCheat() {
     let holding = false, safeSince = 0;
+    const t0 = Date.now();
     for (;;) {
+      if (Date.now() - t0 > 150000) throw new Error('Бот застрял в списывании: ' + (await this.stack()));
       const c = await this.ev(() => {
         const t = window.__odin.scenes.top;
         if (!t || t.id !== 'minigame' || t.phase !== 'play') return null;

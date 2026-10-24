@@ -294,6 +294,15 @@ export class WorldScene {
     let dx = ax.x, dy = ax.y;
     if (dx && dy) { dx *= Math.SQRT1_2; dy *= Math.SQRT1_2; }
     const moved = this.player.step(dx * speed, dy * speed, this.map, this.actors, dt, run ? 12 : 8);
+    // простой: Рома стоит без дела — через 5 с глупо озирается («…» над головой)
+    if (this.player.moving || ax.x || ax.y || input.anyPressed()) { if (this.idleT > 5 && this.idleDir) this.player.dir = this.idleDir; this.idleT = 0; this.idleDir = null; }
+    else {
+      this.idleT = (this.idleT || 0) + dt;
+      if (this.idleT > 5) {
+        if (!this.idleDir) this.idleDir = this.player.dir;
+        this.player.dir = ['down', 'left', 'down', 'right'][Math.floor((this.idleT - 5) / 0.9) % 4];
+      }
+    }
     if (this.player.moving) {
       this.stepT += dt;
       if (this.stepT > (run ? 0.18 : 0.28)) { this.stepT = 0; audio.play('step'); }
@@ -379,6 +388,12 @@ export class WorldScene {
         }
         const sorted = [...this.actors].sort((a, b) => a.y - b.y);
         for (const a of sorted) a.draw(r);
+        if (this.idleT > 5 && this.game.scenes.top === this) {
+          const p = this.player, dots = 1 + Math.floor((this.idleT * 2) % 3);
+          r.box(p.x - 9, p.y - 44, 19, 11, '#ffffff', '#ffffff', 1);
+          r.rect(p.x - 1, p.y - 33, 2, 2, '#ffffff');
+          r.text('.'.repeat(dots), p.x - 6, p.y - 44, { color: '#2a2430' });
+        }
         if (this.talkTarget && this.game.scenes.top === this) {
           const n = this.talkTarget;
           const bob = Math.round(Math.sin(r.time * 6));

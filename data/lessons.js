@@ -1,7 +1,6 @@
 // Уроки: файл диалогов, метки событий, главная мини-игра (раздел 6).
 // Метки в файле: intro, seat (seat_en на английском), события, before_game, after_good, after_bad.
-// minigame — id из реестра мини-игр. Временные «запаски» (этапы 4–5 заменят их настоящими играми):
-// phone_blocks, phone_brawl, phone_feed, football, shower.
+// minigame — id из реестра мини-игр (src/minigames/, футбол — src/football/); extra — игра после главной (душ).
 export const LESSONS = {
   1: { file: 'lesson1', seat: 'seat_en', events: ['event1', 'event2', 'event3'], minigame: 'cheat', denis: false },
   2: { file: 'lesson2', seat: 'seat', events: ['event1', 'event2'], minigame: 'phone_blocks' },

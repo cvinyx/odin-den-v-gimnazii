@@ -20,6 +20,7 @@ export const GAMES = {
   eat: { opps: ['denis', 'shurpo', 'igor', 'guza', 'matych', 'buy'] },
   bait_mb: {}, shower: {},
   // короткая телефонная игра — «залипнуть в телефон» на любом уроке (25 с)
+  phone_brawl_coop: { game: 'phone_brawl', lesson: 4, params: { coop: true } }, // рядом Денис — кооп
   phone_blocks_short: { game: 'phone_blocks', lesson: 1, params: { short: true } },
   phone_brawl_short: { game: 'phone_brawl', lesson: 3, params: { short: true } },
   phone_feed_short: { game: 'phone_feed', lesson: 7, params: { short: true } },
@@ -28,25 +29,30 @@ export const GAMES = {
 const fakeGame = { r: { shake() {} }, hud: { draw() {} } };
 
 // Возвращает { result, frames, sec, out } или бросает ошибку.
-export function runGame(id, seed, { opp = null, hunger = 30, params = {} } = {}) {
+// state — играть в состоянии дня (симулятор дня), иначе — в свежем состоянии.
+export function runGame(id, seed, { opp = null, hunger = 30, params = {}, state = null } = {}) {
   const rng = new Rng('mg#' + id + '#' + seed);
   if (id === 'bait_mb') {
     const L = new MBLogic(rng, {});
     let guard = 0;
     while (!L.finished && guard++ < 20) { L.playRoma(mbBotPick(L, rng)); L.playFriend(); L.retort(); L.endRound(); }
     if (!L.finished) throw new Error('bait_mb не закончилась');
-    return { result: L.result, sec: L.round * 15, out: { deltas: {} } };
+    const deltas = L.result === 'win' ? { aura: 8 } : L.result === 'lose' ? { aura: -5, stress: 5 } : {};
+    return { result: L.result, sec: L.round * 15, out: { result: L.result, deltas } };
   }
-  const st = createState('KQ7M2P');
-  st.stats.hunger = hunger;
-  st.stats.battery = 80;
-  st.stats.suspicion = 0;
-  st.lesson = GAMES[id].lesson || 2;
+  const st = state || createState('KQ7M2P');
+  if (!state) {
+    st.stats.hunger = hunger;
+    st.stats.battery = 80;
+    st.stats.suspicion = 0;
+    st.lesson = GAMES[id].lesson || 2;
+  }
   const meta = getMinigame(GAMES[id].game || id);
   params = { ...(GAMES[id].params || {}), ...params };
   const inst = meta.create({ game: fakeGame, state: st, rng, params, opp });
   inst.autoplay = true;
   inst.start({ lesson: st.lesson, ...params });
+  if (inst.done && inst.end) return { result: inst.end().result, sec: 0, out: inst.end() };
   const input = new FakeInput();
   const dt = 1 / 60;
   let frames = 0;

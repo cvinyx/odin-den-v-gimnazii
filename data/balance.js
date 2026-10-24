@@ -118,7 +118,7 @@ export const BALANCE = {
     frontGradeBonus: 1,
   },
 
-  // Мини-игры (раздел 14) — базовые числа, детали на этапе 4.
+  // Мини-игры (раздел 14) — общие числа; детали каждой игры — ниже.
   minigames: {
     cheat: { duration: 60, secondsPerAnswer: 1.5, maxAnswers: 10, warnTime: 0.4, suspicionPerSecond: 30 },
     phone: { suspicionPerSecond: 25, auraMin: 3, auraMax: 8 },
@@ -155,6 +155,21 @@ export const BALANCE = {
       guza: { speed: 5, skill: 4 },
     },
     keepers: { smile: 7, buy: 5, bochko: 2, zakha: 4 },
+    // Физика (пиксели и секунды). Мяч отскакивает от стен, аутов нет.
+    physics: { friction: 1.1, wallBounce: 0.7, ballR: 2.5, playerR: 5, control: 8, trapSpeed: 230,
+      passSpeed: [110, 250], shotSpeed: [150, 300], dribbleLag: 14 },
+    // Скорость игрока = base + speed × perSpeed (px/с). Shift — ускорение Ромы.
+    move: { base: 32, perSpeed: 6, sprint: 1.45, accel: 8, dribble: 0.8 },
+    stamina: { drain: 0.3, regen: 0.12 },     // доли шкалы в секунду
+    ai: { decide: [0.14, 0.28], shootRange: 140, shootAlways: 38, shootChance: [0.02, 0.006], pressDist: 18, fumblePerSec: 0.06,
+      shotError: 0.13, passError: 0.025, tackleDist: 11, tackleCd: 1.2, coverDist: 40, carelessTackle: 0.3 },
+    tackle: { base: 0.45, perSkill: 0.05, behindFoul: 0.85, stun: 0.6, berserkFoul: 0.3 },
+    yellowChance: 0.4,
+    keeper: { baseSpeed: 34, perReaction: 7, dive: 2, delay: 0.035, reach: 10, perReach: 1, save: 0.52, perSave: 0.07, fastPenalty: 0.0011, hold: 0.9 },
+    diarrheaAt: [25, 150],                       // секунда матча, когда у Смайла начинается диарея
+    refLineEvery: [9, 16],                       // как часто Виктор Сергеевич что-то кричит
+    // Перерыв: выбор Ромы в споре Дениса и Шурпо (метки в football.txt) — влияет на 2-й тайм.
+    halftime: { barcaDenisSkill: 1, realShurpoSpeed: 2, realDenisSkill: -1, noneStress: -5 },
   },
 
   // Концовки (раздел 16).
@@ -164,11 +179,11 @@ export const BALANCE = {
     squeezed: { breakdowns: 2, money: 100 },
   },
 
-  // Действия на уроке через выборы (до появления телефонных мини-игр на этапе 4).
+  // Действия на уроке через выборы («сидеть тихо»; телефон на уроке — короткая телефонная мини-игра).
   lessonActions: {
-    phoneSuspicion: [10, 25],
     quietStress: 3,
     quietSuspicionDrop: 10,
+    quietAura: -2,          // тихоня ауру не фармит (баланс «Идеального дня», этап 6)
   },
 
   // Байт-дуэль (раздел 14, пункт 3). Сила реплик — сколько «закипания» добавляет сопернику.
@@ -213,33 +228,20 @@ export const BALANCE = {
     byResult: { win: 8, draw: 6, lose: 4, director: 2 },
   },
 
-  // Временная «запаска» футбола (этап 5 заменит настоящим матчем). Варианты = выборы в диалоге.
-  stubs: {
-    football: {
-      baseWin: 0.42, drawChance: 0.18,
-      options: [
-        { label: 'пас', win: 0.05, goals: [0, 1] },
-        { label: 'сам', win: 0.0, goals: [0, 2] },
-        { label: 'защита', win: 0.08, goals: [0, 0] },
-      ],
-      berserkWin: 0.1, hungryWin: -0.1,
-    },
-  },
-
   // ---------- Мини-игры этапа 4 (раздел 14) ----------
   // Телефон под партой: учитель у доски / признак поворота / смотрит; у физика — выходы из кабинета.
   phoneGames: {
     teacher: { board: [2.6, 5.0], warn: 0.4, watch: [1.2, 2.4] },
     suddenTurnWarn: 0.3,          // Татьяна Михайловна оборачивается внезапно
     outWindows: [[7, 17], [27, 16]], // Олег Николаевич выходит: [с какой секунды, на сколько]
-    shortDuration: 25,            // «залипнуть в телефон» как доп. действие на уроке
+    shortDuration: 30,            // «залипнуть в телефон» как доп. действие на уроке
     batteryCost: -8,
     auraMin: 3, auraMax: 8,
     grade: { base: [5, 7], listenBonus: 1, listenShare: 0.45, caughtPenalty: 1, caughtAt: 40 },
-    blocks: { duration: 45, target: 100, shortTarget: 50, linePoints: 10, comboBonus: 5 },
-    brawl: { duration: 45, target: 20, shortTarget: 9, hp: 5, enemyHp: 2, maxEnemies: 3, enemySpeed: [16, 24], enemyFire: [1.6, 2.6],
-      bulletSpeed: 120, enemyBullet: 52, playerSpeed: 58, fireCooldown: 0.3, denisFire: 0.75, spawnEvery: 1.6 },
-    feed: { duration: 40, target: 8, shortTarget: 5, scroll: 20, fastScroll: 55 },
+    blocks: { duration: 45, target: 100, shortTarget: 62, linePoints: 10, comboBonus: 5 },
+    brawl: { duration: 45, target: 20, shortTarget: 11, shortDuration: 31, coopTarget: 24, hp: 5, enemyHp: 2, maxEnemies: 3, enemySpeed: [16, 24], enemyFire: [1.6, 2.6],
+      bulletSpeed: 120, enemyBullet: 52, playerSpeed: 58, fireCooldown: 0.3, denisFire: 1.2, spawnEvery: 1.6 },
+    feed: { duration: 40, target: 8, shortTarget: 6, scroll: 20, fastScroll: 55 },
   },
 
   // «Царь туалета»: ползунок силы, Z в зелёной зоне — рывок. strength — сила соперника (0–1).

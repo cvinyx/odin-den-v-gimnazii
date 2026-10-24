@@ -20,7 +20,7 @@ export class BrawlLogic {
     this.enemies = [];
     this.bullets = [];
     this.kills = 0;
-    this.target = p.target || B.target;
+    this.target = p.target || (p.coop ? B.coopTarget : B.target); // с Денисом проще — и цель выше
     this.spawnT = 0.5;
     this.finished = false;
     this.dead = false;
@@ -179,6 +179,6 @@ registerMinigame('phone_brawl', {
   title: 'Телефон: аркада-броулер',
   music: 'minigame',
   keys: ['Стрелки — бег, Z — выстрел', 'X — спрятать телефон (пауза)', 'Учитель вышел — играй смело', 'Рядом Денис — он помогает'],
-  describe: () => `Выбей ${B.target} ботов за ${B.duration} с и не умри.`,
-  create: (ctx) => new PhoneGame(ctx, (rng, p) => new BrawlInner(rng, p), { shortTarget: B.shortTarget, duration: B.duration, title: 'Броулер', help: ['стрелки — бег', 'Z — огонь'] }),
+  describe: () => `Выбей ${B.target} ботов за ${B.duration} с (с Денисом — ${B.coopTarget}) и не умри.`,
+  create: (ctx) => new PhoneGame(ctx, (rng, p) => new BrawlInner(rng, p), { shortTarget: B.shortTarget, shortDuration: B.shortDuration, duration: B.duration, title: 'Броулер', help: ['стрелки — бег', 'Z — огонь'] }),
 });

@@ -9,7 +9,8 @@ import { WorldScene } from '../scenes/world.js';
 import { LessonScene } from '../scenes/lesson_scene.js';
 import { IntroScene } from '../scenes/intro.js';
 import { MinigameScene } from '../scenes/minigame_scene.js';
-import { DayEndScene } from '../scenes/day_end.js';
+import { EndingScene } from '../scenes/ending.js';
+import { ENDINGS, ENDING_TITLES } from '../game/endings.js';
 import { SchoolMapScene } from '../scenes/school_map.js';
 import { BuffetScene } from '../scenes/buffet.js';
 import { SCHEDULE } from '../../data/schedule.js';
@@ -65,7 +66,29 @@ export function registerDebugEntries() {
   registerDebug('Сцены', 'Галерея', (game) => overTitle(game, new GalleryScene()));
   registerDebug('Сцены', 'Тестовая комната', (game) => game.scenes.reset(new TestRoomScene(), { fade: true }));
   registerDebug('Сцены', 'Главное меню', (game) => game.scenes.reset(new TitleScene(), { fade: true }));
-  registerDebug('Сцены', 'Финал дня (временный)', (game) => { freshDay(game); game.scenes.reset(new DayEndScene(), { fade: true }); });
+  // Концовки: день «как будто прожит» с подходящими итогами (оценки, матч, аура…)
+  const ENDING_SETUP = {
+    director: { directorCalls: 3, aura: 40, match: -1 },
+    perfect: { directorCalls: 0, aura: 78, match: 1, grades: [7, 8, 7, 6, 9, 7, 8] },
+    legend: { directorCalls: 1, aura: 90, wins: 6, match: -1 },
+    drained: { breakdowns: 2, aura: 30, battery: 0, money: 40, match: 0 },
+    chaos: { directorCalls: 1, aura: 55, match: 0 },
+  };
+  for (const k of ENDINGS) {
+    registerDebug('Концовки', 'Концовка: ' + ENDING_TITLES[k], (game) => {
+      prepareDay(game, 7);
+      const st = game.state, c = ENDING_SETUP[k];
+      if (c.grades) st.grades = c.grades;
+      Object.assign(st, { directorCalls: c.directorCalls || 0, breakdowns: c.breakdowns || 0, wins: c.wins || 2, lesson: 7 });
+      st.stats.aura = c.aura;
+      if (c.battery != null) st.stats.battery = c.battery;
+      if (c.money != null) st.stats.money = c.money;
+      st.flags.matchResult = c.match; st.flags.matchScore = c.match > 0 ? '3:2' : c.match < 0 ? '1:4' : '2:2';
+      st.debts = [{ to: 'igor', amount: 150 }, { to: 'matych', amount: 80 }];
+      st.playTime = 2700;
+      game.scenes.reset(new EndingScene(k), { fade: true });
+    });
+  }
   registerDebug('Сцены', 'Схема школы', (game) => game.scenes.push(new SchoolMapScene()));
   registerDebug('Сцены', 'Буфет', (game) => game.scenes.push(new BuffetScene()));
 
@@ -159,6 +182,22 @@ export function registerDebugEntries() {
   mgEntry('Душ (друзья)', ['igor,denis', 'denis,chernyak', 'igor,shurpo', 'chernyak,shurpo'], (game, f) => {
     freshDay(game); Object.assign(game.state, { phase: 'lesson', lesson: 5 });
     game.scenes.push(new MinigameScene('shower', { params: { lesson: 5, friends: f.split(',') } }));
+  });
+
+  // ---------- Этап 5: Эль-Класико ----------
+  const match = (params) => (game) => {
+    freshDay(game); Object.assign(game.state, { phase: 'lesson', lesson: 5 });
+    game.scenes.push(new MinigameScene('football', { params: { lesson: 5, ...params } }));
+  };
+  registerDebug('Эль-Класико', 'Матч сразу', match({}));
+  registerDebug('Эль-Класико', 'ИИ против ИИ', match({ aiRoma: true }));
+  registerDebug('Эль-Класико', 'ИИ против ИИ ×4', match({ aiRoma: true, speed: 4 }));
+  registerDebug('Эль-Класико', 'Диарея Смайла сразу', match({ diarrhea: true, diarrheaSoon: true }));
+  registerDebug('Эль-Класико', 'Берсерк Игоря', (game) => { match({})(game); game.state.flags.igorBerserk = true; });
+  registerDebug('Эль-Класико', 'Урок 5 целиком (раздевалка → матч → душ)', (game) => {
+    prepareDay(game, 4);
+    Object.assign(game.state, { phase: 'break', lesson: 4 });
+    game.scenes.reset(new LessonScene(5), { fade: true });
   });
 
   registerDebug('Сценки', 'Сообщение отца', (game) => {

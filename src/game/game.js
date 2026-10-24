@@ -11,8 +11,9 @@ import { puff, sitQuiet, addSuspicion, checkBreakdown } from './actions.js';
 import { eventRng } from './day.js';
 import { BALANCE } from '../../data/balance.js';
 import { Hud } from '../ui/hud.js';
-import { drawToast } from '../ui/transitions.js';
+import { drawToast, drawAchievement } from '../ui/transitions.js';
 import { MUSIC } from '../../data/music.js';
+import { checkAchievements } from './achievements.js';
 
 export const DEFAULT_SETTINGS = { musicVolume: 6, sfxVolume: 8, textSpeed: 'normal', speedrunTimer: false, muted: false };
 
@@ -27,6 +28,8 @@ export class Game {
     this.state = createState(generateSeedCode());
     this.settings = { ...DEFAULT_SETTINGS, ...(storeGet(KEYS.settings, {}) || {}) };
     this.toasts = [];
+    this.achQueue = [];   // всплывающие «Достижение получено»
+    this.achT = 0;
     this.pendingActions = [];
     this.patrolNear = false; // рядом завуч-патруль (ставит сцена мира)
     this.condCtx = {};       // условия мини-игр для диалога перемены (см. WorldScene.talk)
@@ -69,7 +72,8 @@ export class Game {
         this.toast(this.settings.muted ? 'Звук выключен (M)' : 'Звук включён (M)');
       }
       if (input.pressed('fullscreen')) this.r.toggleFullscreen();
-      if (input.pressed('debug') && this.debugOpener) { input.consume('debug'); this.debugOpener(); }
+      // отладочное меню — только в режиме ?debug (в обычной игре скрыто)
+      if (input.pressed('debug') && this.debugOpener && this.debugMode) { input.consume('debug'); this.debugOpener(); }
     }
     this.scenes.update(dt);
     // пропуск вступления: удерживать X
@@ -84,6 +88,10 @@ export class Game {
     }
     this.r.update(dt);
     this.hud.update(dt, this.state);
+    // достижения: проверка раз в полсекунды, уведомления по одному
+    this.achT += dt;
+    if (this.achT >= 0.5) { this.achT = 0; for (const a of checkAchievements(this.state)) this.achQueue.push({ a, t: 0 }); }
+    if (this.achQueue.length) { const q = this.achQueue[0]; if (q.t === 0) audio.play('statUp'); q.t += dt; if (q.t > 3) this.achQueue.shift(); }
     for (const t of this.toasts) t.t += dt;
     this.toasts = this.toasts.filter((t) => t.t < t.life);
   }
@@ -96,6 +104,7 @@ export class Game {
       const t = this.toasts[this.toasts.length - 1];
       drawToast(r, t.text, t.t, t.life);
     }
+    if (this.achQueue.length) drawAchievement(r, this.achQueue[0].a, this.achQueue[0].t);
     if (this.state.phase === 'intro' && this.onSkipIntro) {
       const t = this.skipHold > 0 ? `Пропуск… ${Math.round(this.skipHold * 100)}%` : 'Удерживай X — пропустить вступление';
       r.text(t, 474, 4, { align: 'right', color: '#c8c8d8', shadow: '#000' });
@@ -158,6 +167,7 @@ export class Game {
         const ok = eventRng(st, 'seat' + st.lesson).chance(BALANCE.seating.stealChance);
         st.seat = ok ? 'steal_ok' : 'steal_fail';
         st.flags.seat_ok = ok;
+        if (ok) st.flags.satWithDenis = true;
         st.lessonMul *= ok ? BALANCE.seating.stealSuccessSuspicion : BALANCE.seating.stealFailSuspicion;
         break;
       }

@@ -39,6 +39,7 @@ export function staminaPenalty(state) {
 export function sitQuiet(state) {
   changeStat(state, 'stress', B.lessonActions.quietStress);
   changeStat(state, 'suspicion', -B.lessonActions.quietSuspicionDrop);
+  changeStat(state, 'aura', B.lessonActions.quietAura);
   return { ok: true };
 }
 

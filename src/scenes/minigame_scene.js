@@ -75,8 +75,9 @@ export class MinigameScene {
 
   finishPlay(res) {
     this.res = res;
-    if (!res.oppLine && (res.result === 'win' || res.result === 'lose')) res.oppLine = this.oppLine(res.result);
     const st = this.game.state;
+    if (res.result === 'win') st.flags['won_' + this.gameId] = true; // для достижений
+    if (!res.oppLine && (res.result === 'win' || res.result === 'lose')) res.oppLine = this.oppLine(res.result);
     for (const [k, v] of Object.entries(res.deltas || {})) if (k in st.stats && v) changeStat(st, k, v);
     if (res.money) changeStat(st, 'money', res.money);
     if (this.bet && res.result === 'win') { payWin(st, this.bet); audio.play('coin'); }
