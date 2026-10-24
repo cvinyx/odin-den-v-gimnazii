@@ -1,0 +1,176 @@
+// Перемена 6 (перед последним уроком). Корпус 2, 3 эт.: Денис, Игорь. Библиотека: Черняк, Шурпо.
+// Рекреация 1 эт.: Левончук, Бочко, Матыч, Буй, Гуза. Корпус 1, 4 эт.: Смайл, Вадим, Виталик, Заха, Анус.
+// Завуч — корпус 1, 4 эт. День почти кончился.
+
+=== denis
+@denis [norm] Ромчик, ещё один урок. Я уже не человек. Я — режим экономии энергии.
+-> denis_debt {if debt>0}
+-> menu
+
+=== denis_debt
+@denis [happy] И кстати. Ты мне должен. Я записал. В заметки. Навсегда.
+-> menu
+
+=== igor
+@igor [happy] Ромчик, последний урок! Я буду спать. Лбом на парте.
+@igor [happy] {shake}ХА!{/shake}
+-> menu
+
+=== chernyak
+@chernyak [norm] ...
+@narrator Черняк читает книгу. Или делает вид. С ним не поймёшь.
+@roma [norm] Что читаешь?
+@chernyak [happy] Тишину.
+-> menu
+
+=== shurpo
+@shurpo [norm] Ковган, я пришёл в библиотеку. Потому что тут диван.
+@roma [happy] Тут нет дивана.
+@shurpo [happy] Уже есть. Я сел.
+-> menu
+
+=== levonchuk
+@levonchuk [happy] Ромчик, вечером — танки? Я на «Тигре».
+@roma [norm] Я вечером — сон. Я на кровати.
+-> menu
+
+=== bochko
+@bochko [happy] Ромчик, я позвонил бате. Он сказал, что он банан. Всё стабильно.
+-> menu
+
+=== matych
+@matych [happy] Ромчик, последний урок! Нос чует свободу.
+-> menu
+
+=== buy
+@buy [happy] Роман, за день я заработал... ничего. Но опыт бесценен.
+-> buy_debts {if debts>=3}
+-> menu
+
+=== buy_debts
+@buy [surprised] Слушай, ты же всем должен. Ты почти бизнесмен!
+-> menu
+
+=== guza
+@guza [norm] ...
+@guza [happy] Хороший день был. Почти никого не задел.
+@roma [surprised] В смысле?!
+@guza [norm] В смысле на физре. Мячом.
+-> menu
+
+=== smile
+@smile [happy] Ковган! Auf Wiedersehen, седьмой урок! Почти.
+-> menu
+
+=== vadim
+@vadim [norm] Последний урок. Выжили.
+-> menu
+
+=== vitalik
+@vitalik [happy] Я купил ещё один скин. Теперь у меня два банана. Коля в шоке.
+-> menu
+
+=== zakha
+@zakha [norm] Если на обществоведении нужно в ворота — я готов.
+-> menu
+
+=== anus
+@anus [norm] Чипсы кончились. День окончен.
+-> menu
+
+// ---- Общее меню разговора (одинаковое во всех файлах перемен) ----
+=== menu
+// вызов от собеседника (инициатива NPC, шанс BALANCE.challengeChance) — один раз за разговор
+-> menu_challenge {if challenge>0}
+? Что дальше?
+* «Давай на рубль?» => menu_play
+* Попросить жижку. => menu_juice {if vapefriend>0}
+* Затянуться за компанию. => menu_vape {if vape>0}
+* «Ладно, бывай.» => menu_bye
+
+// Во что можно сыграть — зависит от места и времени (видно не больше 4 вариантов).
+=== menu_play
+? Во что играем?
+* Байт-дуэль: кто кого перебайтит. => menu_bait {if mbnear==0}
+* «Давай вдвоём забайтим Матыча и Буя?» => menu_mb {if mbnear>0}
+* «Кто больше парит?» => menu_vapeb {if vapebattle>0}
+* «Царь туалета: кто удержит кабинку?» => menu_toilet {if intoilet>0}
+* «Кто больше съест? Три смаженки.» => menu_eat {if bigbreak>0}
+* «Не, передумал.» => menu_bye
+
+=== menu_bait
+@opp [happy] Давай. Готовь деньги.
+# action bait
+
+=== menu_mb
+@opp [happy] О, давай! Матыч, Буй — идите сюда, разговор есть.
+# action play mb
+
+=== menu_vapeb
+-> menu_vapeb_no {if vape<=0}
+-> menu_vapeb_no {if juice<=0}
+@opp [happy] Ты? Против меня? Ну давай, облака всё покажут.
+# action play vape
+
+=== menu_vapeb_no
+@opp [norm] С пустым вейпом? Сначала заправься, потом выпендривайся.
+
+=== menu_toilet
+@opp [happy] Кабинка одна. Кто удержит дверь — тот и царь.
+# action play toilet
+
+=== menu_eat
+-> menu_eat_no {if money<3.6}
+@opp [happy] Три смаженки на скорость? Я сегодня не завтракал.
+# action play eat
+
+=== menu_eat_no
+@opp [norm] У тебя на три смаженки не хватает. Сначала разбогатей.
+
+=== menu_challenge
+# action challenge
+-> ch_vape {if chalgame==2}
+-> ch_toilet {if chalgame==3}
+-> ch_eat {if chalgame==4}
+@opp [happy] Слышь, Ромчик. Давай на рубль? Байт-дуэль, прямо сейчас.
+? Принять вызов?
+* «Давай!» => menu_bait
+* «Не сегодня.» => ch_no
+
+=== ch_vape
+@opp [happy] Слышь, Ромчик. Кто больше парит? Или слабо?
+? Принять вызов?
+* «Давай!» => menu_vapeb
+* «Не сегодня.» => ch_no
+
+=== ch_toilet
+@opp [happy] Ромчик, кабинка свободна. Кто удержит дверь — тот царь. На рубль?
+? Принять вызов?
+* «Давай!» => menu_toilet
+* «Не сегодня.» => ch_no
+
+=== ch_eat
+@opp [happy] Большая перемена! Кто больше съест? Три смаженки, проигравший — позорник.
+? Принять вызов?
+* «Давай!» => menu_eat
+* «Не сегодня.» => ch_no
+
+=== ch_no
+@opp [norm] Слабак. Так и запишем.
+# aura -1
+-> menu
+
+=== menu_juice
+# action askjuice
+-> menu_juice_yes {if flag juice_ok}
+@opp [norm] Жижку? Самому мало. Иди выигрывай.
+
+=== menu_juice_yes
+@opp [happy] На. Одна заправка. Цени.
+
+=== menu_vape
+# action vape
+@narrator Облачко пара медленно уплывает под потолок.
+
+=== menu_bye
+@opp [norm] Давай.

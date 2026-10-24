@@ -24,6 +24,8 @@ const C = {
   side: '#a9a59c', sideD: '#8e8a82',
   grass: '#4f8f3f', grassD: '#3f7a32', grassL: '#6aa856',
   brick: '#d9c9a8', brickD: '#bfae8c',
+  gym: '#c89a5a', gymD: '#a87c44',
+  water: '#3a8ac8', waterL: '#8ac8f0',
 };
 
 function paintedWall(px) {
@@ -224,6 +226,78 @@ const BUILDERS = {
     px.rect(2, 2, 12, 9, '#c9a46a');
     px.rect(3, 3, 4, 3, '#f4f4f4'); px.rect(8, 3, 5, 4, '#ffe8a0'); px.rect(4, 7, 5, 3, '#f4c0c0');
   },
+  bookshelf(px, v) {
+    px.rect(0, 0, 16, 16, C.woodD);
+    px.rect(1, 1, 14, 14, '#4a2e17');
+    for (const y of [1, 8]) {
+      px.hline(1, 14, y + 6, C.woodL);
+      for (let x = 2; x < 14; x += 2) {
+        const c = ['#b8463a', '#3a6ab8', '#e0c050', '#4a9a4a', '#8a5aa8', '#d8d8d0'][(x + y + v) % 6];
+        px.rect(x, y + (x % 4 === 0 ? 1 : 0), 2, 6 - (x % 4 === 0 ? 1 : 0), c);
+      }
+    }
+  },
+  table(px) {
+    px.rect(0, 4, 16, 9, '#c8c0b0');
+    px.hline(0, 15, 4, '#e0d8c8');
+    px.rect(0, 13, 16, 2, '#8a8478');
+    px.vline(2, 13, 15, C.metalD); px.vline(13, 13, 15, C.metalD);
+    px.rect(3, 6, 4, 3, '#f4f4f4'); px.rect(9, 7, 3, 2, '#d8b070');
+  },
+  counter(px, v) {
+    px.rect(0, 2, 16, 14, '#9a9aa4');
+    px.rect(0, 2, 16, 3, '#d8dce2');
+    px.hline(0, 15, 5, '#6a6a74');
+    if (v % 3 === 0) { px.rect(2, 0, 5, 3, '#d8a050'); px.rect(3, 0, 3, 1, '#f0c070'); }
+    if (v % 3 === 1) { px.rect(8, 0, 4, 3, '#c86a3a'); px.rect(3, 0, 3, 2, '#f4f4f4'); }
+    if (v % 3 === 2) { px.rect(4, 0, 6, 2, '#e8c060'); }
+    px.rect(2, 8, 12, 6, '#b8b8c2');
+  },
+  outlet(px) {
+    paintedWall(px);
+    px.rect(5, 8, 6, 5, '#f4f4f0');
+    px.set(7, 10, '#303030'); px.set(9, 10, '#303030');
+    px.hline(5, 10, 12, '#c0c0b8');
+    px.rect(6, 2, 4, 3, '#ffe14d'); px.set(7, 5, '#ffe14d');
+  },
+  gymfloor(px, v) {
+    px.rect(0, 0, 16, 16, C.gym);
+    for (let y = 0; y < 16; y += 4) px.hline(0, 15, y, C.gymD);
+    px.vline((v * 5) % 16, 0, 3, C.gymD); px.vline((v * 5 + 8) % 16, 4, 7, C.gymD);
+    px.vline((v * 3 + 4) % 16, 8, 11, C.gymD); px.vline((v * 7 + 2) % 16, 12, 15, C.gymD);
+  },
+  gymline(px) {
+    BUILDERS.gymfloor(px, 1);
+    px.vline(7, 0, 15, '#f4f4f4'); px.vline(8, 0, 15, '#f4f4f4');
+  },
+  wallbars(px) {
+    paintedWall(px);
+    px.vline(2, 0, 15, C.woodL); px.vline(13, 0, 15, C.woodL);
+    for (let y = 1; y < 16; y += 3) px.hline(2, 13, y, C.wood);
+  },
+  goal(px) {
+    BUILDERS.gymfloor(px, 2);
+    px.rect(2, 0, 12, 16, '#e8e8e8');
+    px.rect(4, 1, 8, 14, '#9aa3ad');
+    for (let y = 2; y < 15; y += 2) px.hline(4, 11, y, '#c8d0d8');
+  },
+  water(px, v) {
+    px.rect(0, 0, 16, 16, C.water);
+    px.hline((v * 3) % 10, (v * 3) % 10 + 5, 4 + (v % 3) * 4, C.waterL);
+    px.hline((v * 7) % 10 + 2, (v * 7) % 10 + 5, 12 - (v % 2) * 3, C.waterL);
+  },
+  pooledge(px) {
+    px.rect(0, 0, 16, 16, '#e8eef2');
+    px.hline(0, 15, 15, '#a8b8c4');
+    px.vline(0, 0, 15, '#c8d4dc');
+  },
+  shower(px) {
+    BUILDERS.tiles(px);
+    px.rect(0, 0, 16, 3, '#b9c6d0');
+    px.rect(6, 0, 4, 5, C.metal);
+    px.rect(4, 5, 8, 2, C.metalD);
+    for (let i = 0; i < 4; i++) px.vline(5 + i * 2, 8, 9 + i % 2 * 2, '#9fd3ff');
+  },
 };
 
 // Варианты тайлов (у пола — шахматка, у доски — разные «надписи мелом»).
@@ -258,6 +332,17 @@ export const TILE_DEFS = {
   'Y': { name: 'teacherDesk', solid: true, overlay: true },
   'C': { name: 'column', solid: true, overlay: true },
   'N': { name: 'notice', solid: true },
+  'K': { name: 'bookshelf', variants: 3, solid: true },
+  'U': { name: 'table', solid: true, overlay: true },
+  'O': { name: 'counter', variants: 3, solid: true, overlay: true },
+  'Q': { name: 'outlet', solid: true },
+  'j': { name: 'gymfloor', variants: 4, solid: false },
+  'J': { name: 'gymline', solid: false },
+  'A': { name: 'wallbars', solid: true },
+  'Z': { name: 'goal', solid: true },
+  'v': { name: 'water', variants: 4, solid: true },
+  'e': { name: 'pooledge', solid: false },
+  'H': { name: 'shower', solid: true },
 };
 
 const cache = new Map();

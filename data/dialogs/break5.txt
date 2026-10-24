@@ -1,0 +1,194 @@
+// Перемена 5 (после физкультуры). Раздевалка: почти все. Левончук — рекреация 1 эт.
+// Все реагируют на итог «Эль-Класико» (match: 1 — победа, −1 — поражение, 0 — ничья).
+
+=== denis
+-> denis_win {if match>0}
+-> denis_lose {if match<0}
+@denis [norm] Ничья. Как «Барса» в плохой сезон. Ладно.
+-> menu
+
+=== denis_win
+@denis [happy] Ромчик! Мы их сделали! Это как Лига чемпионов, только в спортзале!
+-> menu
+
+=== denis_lose
+@denis [angry] Проиграли. Это всё джинсы. Порвались в самый важный момент.
+-> menu
+
+=== igor
+-> igor_win {if match>0}
+@igor [norm] Ромчик, в следующий раз я буду бить лбом. Это решено.
+-> menu
+
+=== igor_win
+@igor [happy] {shake}ХА-ХА-ХА-ХА!{/shake} Чемпионы!
+@narrator От смеха Игоря в раздевалке открылись три шкафчика.
+-> menu
+
+=== chernyak
+-> chernyak_lose {if match>0}
+@chernyak [happy] ...
+@narrator Черняк молча фармит ауру после игры. У него получается.
+-> menu
+
+=== chernyak_lose
+@chernyak [norm] ...Неплохо сыграли.
+@narrator Для Черняка это целая речь. Уважение.
+-> menu
+
+=== shurpo
+@shurpo [norm] Я пробежал три метра. Это мой рекорд.
+@roma [happy] Индейцы бы сказали: «Медленный Бизон».
+@shurpo [happy] Мне нравится. Буду Медленным Бизоном.
+-> menu
+
+=== bochko
+-> bochko_smile {if flag smileDiarrhea}
+@bochko [norm] Я сегодня даже на поле не вышел. Мяч обрадовался.
+-> menu
+
+=== bochko_smile
+@bochko [surprised] Я стоял в воротах! Я! В воротах! Смайл убежал, а я стоял!
+@roma [happy] И как?
+@bochko [dumb] {slow}Мяч проходил сквозь меня, как свет.{/slow}
+-> menu
+
+=== matych
+@matych [happy] Ромчик, я попал по мячу! Один раз. Но красиво.
+-> menu
+
+=== buy
+@buy [norm] Роман, я, как вратарь, принимаю на себя ответственность. Но не убытки.
+-> menu
+
+=== guza
+@guza [angry] {shake}Я вышел во втором тайме. Я бы ещё играл.{/shake}
+-> menu
+
+=== smile
+-> smile_diarrhea {if flag smileDiarrhea}
+@smile [happy] Я стоял как стена. Немецкого качества.
+-> menu
+
+=== smile_diarrhea
+@smile [dumb] ...Не спрашивай. Это был не я. Это был обед.
+@roma [happy] Это был позорный забег века.
+-> menu
+
+=== vadim
+@vadim [norm] Хорошая игра. В следующий раз будем серьёзнее.
+-> menu
+
+=== vitalik
+@vitalik [happy] Я бегал справа. Как и обещал.
+-> menu
+
+=== zakha
+@zakha [norm] Я был готов в ворота. Всю игру готов.
+-> menu
+
+=== anus
+@anus [norm] Чипсы проиграл. Ставки — зло.
+-> menu
+
+=== levonchuk
+@levonchuk [happy] Ромчик! Дед сказал, что ты бегаешь как трактор. Это комплимент.
+@roma [dumb] От деда — комплимент. От тебя — подозрительно.
+-> menu
+
+// ---- Общее меню разговора (одинаковое во всех файлах перемен) ----
+=== menu
+// вызов от собеседника (инициатива NPC, шанс BALANCE.challengeChance) — один раз за разговор
+-> menu_challenge {if challenge>0}
+? Что дальше?
+* «Давай на рубль?» => menu_play
+* Попросить жижку. => menu_juice {if vapefriend>0}
+* Затянуться за компанию. => menu_vape {if vape>0}
+* «Ладно, бывай.» => menu_bye
+
+// Во что можно сыграть — зависит от места и времени (видно не больше 4 вариантов).
+=== menu_play
+? Во что играем?
+* Байт-дуэль: кто кого перебайтит. => menu_bait {if mbnear==0}
+* «Давай вдвоём забайтим Матыча и Буя?» => menu_mb {if mbnear>0}
+* «Кто больше парит?» => menu_vapeb {if vapebattle>0}
+* «Царь туалета: кто удержит кабинку?» => menu_toilet {if intoilet>0}
+* «Кто больше съест? Три смаженки.» => menu_eat {if bigbreak>0}
+* «Не, передумал.» => menu_bye
+
+=== menu_bait
+@opp [happy] Давай. Готовь деньги.
+# action bait
+
+=== menu_mb
+@opp [happy] О, давай! Матыч, Буй — идите сюда, разговор есть.
+# action play mb
+
+=== menu_vapeb
+-> menu_vapeb_no {if vape<=0}
+-> menu_vapeb_no {if juice<=0}
+@opp [happy] Ты? Против меня? Ну давай, облака всё покажут.
+# action play vape
+
+=== menu_vapeb_no
+@opp [norm] С пустым вейпом? Сначала заправься, потом выпендривайся.
+
+=== menu_toilet
+@opp [happy] Кабинка одна. Кто удержит дверь — тот и царь.
+# action play toilet
+
+=== menu_eat
+-> menu_eat_no {if money<3.6}
+@opp [happy] Три смаженки на скорость? Я сегодня не завтракал.
+# action play eat
+
+=== menu_eat_no
+@opp [norm] У тебя на три смаженки не хватает. Сначала разбогатей.
+
+=== menu_challenge
+# action challenge
+-> ch_vape {if chalgame==2}
+-> ch_toilet {if chalgame==3}
+-> ch_eat {if chalgame==4}
+@opp [happy] Слышь, Ромчик. Давай на рубль? Байт-дуэль, прямо сейчас.
+? Принять вызов?
+* «Давай!» => menu_bait
+* «Не сегодня.» => ch_no
+
+=== ch_vape
+@opp [happy] Слышь, Ромчик. Кто больше парит? Или слабо?
+? Принять вызов?
+* «Давай!» => menu_vapeb
+* «Не сегодня.» => ch_no
+
+=== ch_toilet
+@opp [happy] Ромчик, кабинка свободна. Кто удержит дверь — тот царь. На рубль?
+? Принять вызов?
+* «Давай!» => menu_toilet
+* «Не сегодня.» => ch_no
+
+=== ch_eat
+@opp [happy] Большая перемена! Кто больше съест? Три смаженки, проигравший — позорник.
+? Принять вызов?
+* «Давай!» => menu_eat
+* «Не сегодня.» => ch_no
+
+=== ch_no
+@opp [norm] Слабак. Так и запишем.
+# aura -1
+-> menu
+
+=== menu_juice
+# action askjuice
+-> menu_juice_yes {if flag juice_ok}
+@opp [norm] Жижку? Самому мало. Иди выигрывай.
+
+=== menu_juice_yes
+@opp [happy] На. Одна заправка. Цени.
+
+=== menu_vape
+# action vape
+@narrator Облачко пара медленно уплывает под потолок.
+
+=== menu_bye
+@opp [norm] Давай.

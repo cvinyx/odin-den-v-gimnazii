@@ -29,6 +29,7 @@ export class DialogScene {
 
   enter(game) {
     this.game = game;
+    game.currentOpp = this.opts.opp || null;
     this.box = new DialogBox(game);
     try {
       const script = this.opts.script || getDialog(this.file);

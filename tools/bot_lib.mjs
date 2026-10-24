@@ -42,6 +42,7 @@ export class Bot {
           o.phase = t.phase; o.game = t.gameId;
           if (t.inst && t.gameId === 'bait') { o.bmode = t.inst.mode; o.opts = t.inst.choice && t.inst.choice.options.map((x) => x.text); }
           if (t.inst && t.gameId === 'cheat') { const L = t.inst.logic; o.cheat = { sees: L.sees, mode: L.mode, peeking: L.peeking, finished: L.finished }; }
+          if (t.inst && t.inst.optionsAll) { o.smode = t.inst.mode; o.opts = t.inst.choice && t.inst.choice.options.map((x) => x.text); }
         }
         return o;
       });
@@ -73,6 +74,17 @@ export class Bot {
               for (let k = 0; k < i; k++) await this.press('ArrowDown');
               await this.press('z');
             } else await this.press('z');
+          } else if (s.phase === 'play' && s.smode) {
+            if (s.smode === 'choose') {
+              const i = this.policy('stub', s.opts || []);
+              this.log.push({ stub: s.game, pick: (s.opts || [])[i] });
+              for (let k = 0; k < i; k++) await this.press('ArrowDown');
+              await this.press('z');
+            } else await this.press('z');
+          } else if (s.phase === 'play') {
+            // мини-игры этапа 4 играет встроенный «средний» бот игры (autoplay)
+            await this.ev(() => { const t = window.__odin.scenes.top; if (t.inst) t.inst.autoplay = true; });
+            await this.wait(250);
           } else if (s.phase === 'loss') {
             this.log.push({ loss: this.lossOption });
             for (let k = 0; k < 3; k++) await this.press('ArrowUp');
@@ -85,6 +97,9 @@ export class Bot {
             await this.press('z');
           } else await this.wait(50);
           break;
+        case 'buffet': case 'school_map': case 'status':
+          if (s.id === 'buffet' || s.id === 'school_map' || s.id === 'status') { await this.press('Escape'); break; }
+        // eslint-disable-next-line no-fallthrough
         case 'lesson_result': case 'bell': case 'phone': case 'save_code':
           await this.wait(450); await this.press('z'); break;
         default:
@@ -97,13 +112,21 @@ export class Bot {
   // «Списывание» нажатиями: держит Z по выбранной стратегии с реакцией ~60 мс.
   async playCheat() {
     let holding = false, safeSince = 0;
+    const t0 = Date.now();
     for (;;) {
+      if (Date.now() - t0 > 150000) throw new Error('Бот застрял в списывании: ' + (await this.stack()));
       const c = await this.ev(() => {
         const t = window.__odin.scenes.top;
         if (!t || t.id !== 'minigame' || t.phase !== 'play') return null;
-        const L = t.inst.logic; return { sees: L.sees, mode: L.mode, finished: L.finished };
+        const L = t.inst.logic; return { sees: L.sees, mode: L.mode, finished: L.finished, quiz: !!t.inst.quiz };
       });
       if (!c || c.finished) break;
+      if (c.quiz) {
+        if (holding) { await this.page.keyboard.up('z'); holding = false; }
+        await this.wait(150);
+        await this.press('z'); // ответить первым вариантом (варианты перемешаны)
+        continue;
+      }
       let want;
       if (this.cheatStyle === 'greedy') want = !c.sees || !holding;
       else {
@@ -234,3 +257,104 @@ export class Bot {
     await this.wait(100);
   }
 }
+
+// ---------- Навигация по всей школе ----------
+// Граф карт: выходы-переходы, проёмы и лестницы. Возвращает следующий шаг к карте с нужным кабинетом.
+export function planRoute(data, from, room, goalMap = null) {
+  const { MAPS, STAIRWELLS } = data;
+  const isGoal = (id) => (goalMap ? id === goalMap : MAPS[id].room === room || (MAPS[id].exits || []).some((e) => e.room === room));
+  const prev = new Map([[from, null]]);
+  const q = [from];
+  while (q.length) {
+    const cur = q.shift();
+    if (isGoal(cur)) {
+      const path = [];
+      for (let c = cur; prev.get(c); c = prev.get(c).from) path.unshift(prev.get(c));
+      return path;
+    }
+    const m = MAPS[cur];
+    for (const e of m.exits || []) {
+      const targets = e.to ? [e.to] : e.stairs && STAIRWELLS[m.building] ? Object.values(STAIRWELLS[m.building]) : [];
+      for (const t of targets) {
+        if (t === cur || prev.has(t) || MAPS[t].id === 'test_room') continue;
+        const floor = e.stairs ? Number(Object.keys(STAIRWELLS[m.building]).find((k) => STAIRWELLS[m.building][k] === t)) : null;
+        prev.set(t, { from: cur, exit: e, to: t, floor });
+        q.push(t);
+      }
+    }
+  }
+  return null;
+}
+
+Bot.prototype.data = async function () {
+  if (!this._data) this._data = await this.ev(() => JSON.parse(JSON.stringify(window.__odinData)));
+  return this._data;
+};
+
+Bot.prototype.curMap = async function () {
+  return this.ev(() => { const s = window.__odin.scenes.top; return s && s.id === 'world' ? s.def.id : null; });
+};
+
+// Подойти к выходу и воспользоваться им (дверь/лестница — упереться; проём — шагнуть за край).
+Bot.prototype.useExit = async function (mapId, e) {
+  const data = await this.data();
+  const m = data.MAPS[mapId];
+  const solid = (x, y) => { const ch = (m.rows[y] || '')[x]; return !ch || '#WwDBLTPbSksMtfrhFEYCNKUOQAZvH'.includes(ch); };
+  const dirs = [[0, 1, 'ArrowUp'], [-1, 0, 'ArrowRight'], [1, 0, 'ArrowLeft'], [0, -1, 'ArrowDown']];
+  if (e.edge) {
+    const push = { left: 'ArrowLeft', right: 'ArrowRight', down: 'ArrowDown', up: 'ArrowUp' }[e.edge];
+    const [dx, dy] = { left: [1, 0], right: [-1, 0], down: [0, -1], up: [0, 1] }[e.edge];
+    await this.walkTo(e.x + dx, e.y + dy);
+    await this.page.keyboard.down(push); await this.wait(450); await this.page.keyboard.up(push);
+    return;
+  }
+  for (const [dx, dy, key] of dirs) {
+    const sx = e.x + dx, sy = e.y + dy;
+    if (solid(sx, sy)) continue;
+    try { await this.walkTo(sx, sy); } catch (err) { continue; }
+    await this.page.keyboard.down(key); await this.wait(400); await this.page.keyboard.up(key);
+    return;
+  }
+  throw new Error(`Не подойти к выходу ${mapId} ${e.x},${e.y}`);
+};
+
+// Дойти до кабинета room (через любые карты) и войти. Возвращает время в пути (мс).
+Bot.prototype.goToRoom = async function (room, opts = {}) {
+  const t0 = Date.now();
+  const data = await this.data();
+  for (let hop = 0; hop < 20; hop++) {
+    await this.waitFor((s) => s.top === 'world');
+    const cur = await this.curMap();
+    const m = data.MAPS[cur];
+    const door = (m.exits || []).find((e) => e.room === room);
+    if (door) { await this.useExit(cur, door); return Date.now() - t0; }
+    const path = planRoute(data, cur, room);
+    if (!path || !path.length) throw new Error(`Нет маршрута из ${cur} к кабинету ${room}`);
+    const step = path[0];
+    if (step.floor) this.floorWanted = step.floor;
+    await this.useExit(cur, step.exit);
+    // лестница: меню этажей
+    if (step.exit.stairs) await this.handle((t, s) => t === 'world' && s.map !== cur, 15000);
+    // если карта сама «кабинет» (спортзал) — сразу начнётся урок
+    const st = await this.waitFor((s) => (s.top === 'world' && s.map !== cur) || s.top === 'dialog' || s.top === 'lesson', 15000);
+    if (st.top !== 'world') return Date.now() - t0;
+  }
+  throw new Error('Слишком длинный путь к ' + room);
+};
+
+// Дойти до карты mapId (без входа на урок).
+Bot.prototype.goToMap = async function (mapId) {
+  const data = await this.data();
+  for (let hop = 0; hop < 20; hop++) {
+    await this.waitFor((s) => s.top === 'world');
+    const cur = await this.curMap();
+    if (cur === mapId) return;
+    const path = planRoute(data, cur, null, mapId);
+    if (!path || !path.length) throw new Error(`Нет маршрута из ${cur} в ${mapId}`);
+    const step = path[0];
+    if (step.floor) this.floorWanted = step.floor;
+    await this.useExit(cur, step.exit);
+    if (step.exit.stairs) await this.handle((t, s) => t === 'world' && s.map !== cur, 15000);
+    await this.waitFor((s) => s.top === 'world' && s.map !== cur, 15000);
+  }
+};

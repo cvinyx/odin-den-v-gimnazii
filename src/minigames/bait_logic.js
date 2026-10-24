@@ -73,7 +73,7 @@ export class BaitLogic {
   playOpp() {
     const hit = Math.round(this.roll(this.stats.attack) * this.B.retortMul);
     this.roma = Math.min(100, this.roma + hit);
-    this.addSusp();
+    // подозрение на уроке — только за реплики Ромы (учитель слышит того, кто сидит ближе и громче)
     if (!this.result && this.roma >= 100) this.result = 'lose';
     return { hit };
   }

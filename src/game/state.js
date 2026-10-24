@@ -43,6 +43,7 @@ export function createState(seedCode) {
     vapeSmell: false, // после вейп-игры — +20 к подозрению на следующем уроке
     breakdownPending: false, // после срыва следующая мини-игра или выбор проваливается
     late: true,     // опоздал на первый урок
+    charging: null, // зарядка в библиотеке: { device: 'phone'|'vape', x, y, map }
     playTime: 0,    // секунды реального времени (для спидрана)
   };
 }
@@ -140,8 +141,22 @@ export function applyScriptEffect(state, e) {
   return true;
 }
 
-// Значение статуса для условий в диалогах.
-export function scriptStatValue(state, name) {
-  const key = name === 'vape' ? 'vapeCharge' : resolveStat(name);
-  return key ? statForScript(state, key) : 0;
+// Значение для условий в диалогах. opp — собеседник (для debt и vapefriend).
+export const VAPE_FRIENDS = ['chernyak', 'denis', 'shurpo', 'levonchuk', 'bochko', 'matych', 'buy'];
+export function scriptStatValue(state, name, opp = null) {
+  switch (name) {
+    case 'lastgrade': { const g = state.grades.filter((x) => x != null); return g.length ? g[g.length - 1] : 0; }
+    case 'debt': { const d = state.debts.find((x) => x.to === opp); return d ? d.amount / 100 : 0; }
+    case 'debts': return state.debts.reduce((a, d) => a + d.amount, 0) / 100;
+    case 'wins': return state.wins;
+    case 'calls': return state.directorCalls;
+    case 'match': return state.flags.matchResult || 0;
+    case 'vapefriend': return VAPE_FRIENDS.includes(opp) ? 1 : 0;
+    case 'puffs': return state.puffsToday;
+    case 'breaknum': return state.phase === 'break' ? state.lesson : 0;
+    default: {
+      const key = name === 'vape' ? 'vapeCharge' : resolveStat(name);
+      return key ? statForScript(state, key) : 0;
+    }
+  }
 }

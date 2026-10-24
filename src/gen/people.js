@@ -1,6 +1,6 @@
 // Реестр всех персонажей: именные ученики, учителя и безымянные (генерация по сиду).
 import { CHARACTERS, UNNAMED_POOL, VOICES } from '../../data/characters.js';
-import { TEACHERS } from '../../data/teachers.js';
+import { TEACHERS, STAFF } from '../../data/teachers.js';
 import { getSheet } from './sprites.js';
 import { getPortrait } from './portraits.js';
 
@@ -10,7 +10,7 @@ export const NARRATOR = { name: '', short: '', blip: { freq: 0, wave: 'square' }
 
 export function getPerson(id) {
   if (id === 'narrator') return NARRATOR;
-  return CHARACTERS[id] || TEACHERS[id] || VOICES[id] || unnamed.get(id) || null;
+  return CHARACTERS[id] || TEACHERS[id] || STAFF[id] || VOICES[id] || unnamed.get(id) || null;
 }
 
 export function personExists(id) { return getPerson(id) !== null; }

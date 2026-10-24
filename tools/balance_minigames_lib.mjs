@@ -1,0 +1,66 @@
+// Прогон мини-игр этапа 4 «средним» ботом в node (без браузера): настоящий класс игры + autoplay.
+// «Матыч и Буй» гоняется через чистую логику (MBLogic), т. к. его игра читает диалоги через Vite.
+import { getMinigame } from '../src/minigames/registry.js';
+import '../src/minigames/phone_blocks.js';
+import '../src/minigames/phone_brawl.js';
+import '../src/minigames/phone_feed.js';
+import '../src/minigames/toilet.js';
+import '../src/minigames/vape_battle.js';
+import '../src/minigames/eat.js';
+import '../src/minigames/shower.js';
+import { MBLogic, mbBotPick } from '../src/minigames/mb_logic.js';
+import { createState } from '../src/game/state.js';
+import { Rng } from '../src/engine/rng.js';
+import { FakeInput } from '../src/minigames/kit.js';
+
+export const GAMES = {
+  phone_blocks: { lesson: 2 }, phone_brawl: { lesson: 4 }, phone_feed: { lesson: 6 },
+  toilet: { opps: ['guza', 'igor', 'denis', 'chernyak', 'shurpo', 'bochko'] },
+  vape: { opps: ['chernyak', 'denis', 'shurpo', 'levonchuk', 'bochko', 'matych', 'buy'] },
+  eat: { opps: ['denis', 'shurpo', 'igor', 'guza', 'matych', 'buy'] },
+  bait_mb: {}, shower: {},
+  // короткая телефонная игра — «залипнуть в телефон» на любом уроке (25 с)
+  phone_brawl_coop: { game: 'phone_brawl', lesson: 4, params: { coop: true } }, // рядом Денис — кооп
+  phone_blocks_short: { game: 'phone_blocks', lesson: 1, params: { short: true } },
+  phone_brawl_short: { game: 'phone_brawl', lesson: 3, params: { short: true } },
+  phone_feed_short: { game: 'phone_feed', lesson: 7, params: { short: true } },
+};
+
+const fakeGame = { r: { shake() {} }, hud: { draw() {} } };
+
+// Возвращает { result, frames, sec, out } или бросает ошибку.
+// state — играть в состоянии дня (симулятор дня), иначе — в свежем состоянии.
+export function runGame(id, seed, { opp = null, hunger = 30, params = {}, state = null } = {}) {
+  const rng = new Rng('mg#' + id + '#' + seed);
+  if (id === 'bait_mb') {
+    const L = new MBLogic(rng, {});
+    let guard = 0;
+    while (!L.finished && guard++ < 20) { L.playRoma(mbBotPick(L, rng)); L.playFriend(); L.retort(); L.endRound(); }
+    if (!L.finished) throw new Error('bait_mb не закончилась');
+    const deltas = L.result === 'win' ? { aura: 8 } : L.result === 'lose' ? { aura: -5, stress: 5 } : {};
+    return { result: L.result, sec: L.round * 15, out: { result: L.result, deltas } };
+  }
+  const st = state || createState('KQ7M2P');
+  if (!state) {
+    st.stats.hunger = hunger;
+    st.stats.battery = 80;
+    st.stats.suspicion = 0;
+    st.lesson = GAMES[id].lesson || 2;
+  }
+  const meta = getMinigame(GAMES[id].game || id);
+  params = { ...(GAMES[id].params || {}), ...params };
+  const inst = meta.create({ game: fakeGame, state: st, rng, params, opp });
+  inst.autoplay = true;
+  inst.start({ lesson: st.lesson, ...params });
+  if (inst.done && inst.end) return { result: inst.end().result, sec: 0, out: inst.end() };
+  const input = new FakeInput();
+  const dt = 1 / 60;
+  let frames = 0;
+  while (!inst.done) {
+    inst.update(dt, input);
+    if (++frames > 60 * 200) throw new Error(id + ': не закончилась за 200 с');
+  }
+  const out = inst.end();
+  if (!['win', 'lose', 'draw', 'director'].includes(out.result)) throw new Error(id + ': странный результат ' + out.result);
+  return { result: out.result, sec: frames / 60, out };
+}

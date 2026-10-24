@@ -6,13 +6,14 @@ import { input } from '../engine/input.js';
 import { audio } from '../engine/audio.js';
 import { storeGet, storeSet, KEYS, autosave } from '../engine/save.js';
 import { generateSeedCode } from '../engine/rng.js';
-import { createState, applyScriptEffect, scriptStatValue, changeStat } from './state.js';
-import { puff, phoneQuick, sitQuiet, addSuspicion, checkBreakdown } from './actions.js';
+import { createState, applyScriptEffect, scriptStatValue, changeStat, VAPE_FRIENDS } from './state.js';
+import { puff, sitQuiet, addSuspicion, checkBreakdown } from './actions.js';
 import { eventRng } from './day.js';
 import { BALANCE } from '../../data/balance.js';
 import { Hud } from '../ui/hud.js';
-import { drawToast } from '../ui/transitions.js';
+import { drawToast, drawAchievement } from '../ui/transitions.js';
 import { MUSIC } from '../../data/music.js';
+import { checkAchievements } from './achievements.js';
 
 export const DEFAULT_SETTINGS = { musicVolume: 6, sfxVolume: 8, textSpeed: 'normal', speedrunTimer: false, muted: false };
 
@@ -27,8 +28,11 @@ export class Game {
     this.state = createState(generateSeedCode());
     this.settings = { ...DEFAULT_SETTINGS, ...(storeGet(KEYS.settings, {}) || {}) };
     this.toasts = [];
+    this.achQueue = [];   // всплывающие «Достижение получено»
+    this.achT = 0;
     this.pendingActions = [];
     this.patrolNear = false; // рядом завуч-патруль (ставит сцена мира)
+    this.condCtx = {};       // условия мини-игр для диалога перемены (см. WorldScene.talk)
     this.skipHold = 0;
     this.onSkipIntro = null; // пропуск вступления удержанием X (ставит сцена вступления)
     this.textInputActive = false;
@@ -68,7 +72,8 @@ export class Game {
         this.toast(this.settings.muted ? 'Звук выключен (M)' : 'Звук включён (M)');
       }
       if (input.pressed('fullscreen')) this.r.toggleFullscreen();
-      if (input.pressed('debug') && this.debugOpener) { input.consume('debug'); this.debugOpener(); }
+      // отладочное меню — только в режиме ?debug (в обычной игре скрыто)
+      if (input.pressed('debug') && this.debugOpener && this.debugMode) { input.consume('debug'); this.debugOpener(); }
     }
     this.scenes.update(dt);
     // пропуск вступления: удерживать X
@@ -83,6 +88,10 @@ export class Game {
     }
     this.r.update(dt);
     this.hud.update(dt, this.state);
+    // достижения: проверка раз в полсекунды, уведомления по одному
+    this.achT += dt;
+    if (this.achT >= 0.5) { this.achT = 0; for (const a of checkAchievements(this.state)) this.achQueue.push({ a, t: 0 }); }
+    if (this.achQueue.length) { const q = this.achQueue[0]; if (q.t === 0) audio.play('statUp'); q.t += dt; if (q.t > 3) this.achQueue.shift(); }
     for (const t of this.toasts) t.t += dt;
     this.toasts = this.toasts.filter((t) => t.t < t.life);
   }
@@ -95,6 +104,7 @@ export class Game {
       const t = this.toasts[this.toasts.length - 1];
       drawToast(r, t.text, t.t, t.life);
     }
+    if (this.achQueue.length) drawAchievement(r, this.achQueue[0].a, this.achQueue[0].t);
     if (this.state.phase === 'intro' && this.onSkipIntro) {
       const t = this.skipHold > 0 ? `Пропуск… ${Math.round(this.skipHold * 100)}%` : 'Удерживай X — пропустить вступление';
       r.text(t, 474, 4, { align: 'right', color: '#c8c8d8', shadow: '#000' });
@@ -139,12 +149,17 @@ export class Game {
         if (st.phase !== 'lesson' && this.patrolNear) this.pendingActions.push({ name: 'director_patrol' });
         break;
       }
-      case 'phone': {
-        const res = phoneQuick(st, eventRng(st, 'phone' + st.lesson + ':' + st.stats.battery));
-        if (!res.ok) this.toast(res.reason);
+      case 'phone':
+        // на уроке — короткая телефонная мини-игра после диалога (LessonScene.afterDialog)
+        if (st.stats.battery <= 0) { this.toast('Телефон мёртв.'); break; }
+        this.pendingActions.push({ name, arg });
         break;
-      }
       case 'quiet': sitQuiet(st); break;
+      case 'challenge':
+        // вызов собеседника прозвучал — второй раз за разговор не повторяется
+        this.condCtx.challenge = 0;
+        if (this.currentOpp) st.flags['challenged_' + this.currentOpp + '_' + st.lesson] = true;
+        break;
       case 'wash':
         if (!st.flags['washed' + st.lesson]) { changeStat(st, 'stress', -3); st.flags['washed' + st.lesson] = true; }
         break;
@@ -152,6 +167,7 @@ export class Game {
         const ok = eventRng(st, 'seat' + st.lesson).chance(BALANCE.seating.stealChance);
         st.seat = ok ? 'steal_ok' : 'steal_fail';
         st.flags.seat_ok = ok;
+        if (ok) st.flags.satWithDenis = true;
         st.lessonMul *= ok ? BALANCE.seating.stealSuccessSuspicion : BALANCE.seating.stealFailSuspicion;
         break;
       }
@@ -162,6 +178,17 @@ export class Game {
       case 'seat_igor':
         st.seat = 'igor';
         break;
+      case 'askjuice': {
+        // жижку можно попросить у друзей из списка вейп-игры (раздел 7), у каждого — раз в день
+        const opp = this.currentOpp;
+        const key = 'askedJuice_' + opp;
+        let ok = false;
+        if (VAPE_FRIENDS.includes(opp) && !st.flags[key]) ok = eventRng(st, key).chance(BALANCE.vape.askJuiceChance);
+        st.flags[key] = true;
+        st.flags.juice_ok = ok;
+        if (ok) changeStat(st, 'juice', 1);
+        break;
+      }
       default:
         this.pendingActions.push({ name, arg });
     }
@@ -169,6 +196,10 @@ export class Game {
 
   takeActions() { const a = this.pendingActions; this.pendingActions = []; return a; }
 
-  scriptStat(name) { return scriptStatValue(this.state, name); }
+  // condCtx — величины про мини-игры на перемене (ставит сцена мира перед разговором).
+  scriptStat(name) {
+    if (name in this.condCtx) return this.condCtx[name];
+    return scriptStatValue(this.state, name, this.currentOpp);
+  }
   scriptFlag(name) { return !!this.state.flags[name]; }
 }

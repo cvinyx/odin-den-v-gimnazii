@@ -1,7 +1,7 @@
 // Галерея: все персонажи в ряд с именами (рост и силуэты сравнимы), выбранный — крупно в 4 направлениях
 // и портреты во всех эмоциях.
 import { CHARACTERS, STUDENT_ORDER } from '../../data/characters.js';
-import { TEACHERS, TEACHER_ORDER } from '../../data/teachers.js';
+import { TEACHERS, TEACHER_ORDER, STAFF } from '../../data/teachers.js';
 import { sheetOf, portraitOf, makeUnnamed, getPerson } from '../gen/people.js';
 import { frameRect, WALK_CYCLE, FRAME_W, FRAME_H, DIRS, heightPx } from '../gen/sprites.js';
 import { EMOTIONS, EMOTION_NAMES } from '../gen/portraits.js';
@@ -17,6 +17,7 @@ export class GalleryScene {
     this.groups = [
       { title: 'Ученики', ids: STUDENT_ORDER },
       { title: 'Учителя', ids: TEACHER_ORDER },
+      { title: 'Персонал', ids: Object.keys(STAFF) },
       { title: 'Безымянные (по сиду)', ids: this.unnamed },
     ];
   }

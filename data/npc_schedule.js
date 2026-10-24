@@ -1,5 +1,5 @@
 // Где стоят именные NPC на переменах (раздел 11). Ключ — номер перемены 1..6, значение — id локации.
-// id — это id карт из src/world/maps/ (часть карт появится на этапе 3).
+// id — это id карт из src/world/maps/.
 export const NPC_SCHEDULE = {
   denis:     { 1: 'k2_f4', 2: 'k2_f4_toilet', 3: 'canteen', 4: 'rec_f1', 5: 'locker_room', 6: 'k2_f3' },
   igor:      { 1: 'k2_f4', 2: 'k2_f4_toilet', 3: 'canteen', 4: 'rec_f1', 5: 'locker_room', 6: 'k2_f3' },

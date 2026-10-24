@@ -252,4 +252,144 @@ export const MUSIC = {
       },
     ],
   },
+
+  // Столовая: весёлый вальсок с позвякиванием.
+  canteen: {
+    bpm: 132,
+    stepsPerBeat: 2,
+    loop: true,
+    channels: [
+      {
+        wave: 'square', vol: 0.045, len: 1.5,
+        notes: seq(`
+          G4 . B4 D5 . B4 C5 . E5 G5 . E5 D5 . B4 G4 . .
+          A4 . C5 E5 . C5 B4 . D5 G5 . D5 C5 . A4 G4 . .
+        `),
+      },
+      {
+        wave: 'triangle', vol: 0.15, len: 1.2,
+        notes: seq(`
+          G2 . . C3 . . G2 . . D3 . . A2 . . G2 . .
+        `),
+      },
+      {
+        wave: 'noise', vol: 0.05,
+        notes: seq(`
+          k . h h . h k . h h . h k . h h . h
+        `),
+      },
+    ],
+  },
+
+  // Библиотека: очень тихо.
+  library: {
+    bpm: 60,
+    stepsPerBeat: 4,
+    loop: true,
+    channels: [
+      {
+        wave: 'sine', vol: 0.05, len: 4,
+        notes: seq(`
+          C5 . . . . . . . E5 . . . . . . . D5 . . . . . . . G4 . . . . . . .
+        `),
+      },
+      {
+        wave: 'triangle', vol: 0.06, len: 8,
+        notes: seq(`
+          C3 . . . . . . . . . . . . . . . G2 . . . . . . . . . . . . . . .
+        `),
+      },
+    ],
+  },
+
+  // Спортзал: бодрый марш со свистком в ритме.
+  gym: {
+    bpm: 140,
+    stepsPerBeat: 4,
+    loop: true,
+    channels: [
+      {
+        wave: 'square', vol: 0.05, len: 1,
+        notes: seq(`
+          C5 . C5 . G4 . C5 . E5 . . . D5 . C5 .
+          D5 . D5 . A4 . D5 . F5 . . . E5 . D5 .
+        `),
+      },
+      {
+        wave: 'triangle', vol: 0.16, len: 1,
+        notes: seq(`
+          C3 . G2 . C3 . G2 . D3 . A2 . D3 . A2 .
+        `),
+      },
+      {
+        wave: 'noise', vol: 0.1,
+        notes: seq(`
+          k . h . s . h . k k h . s . h h
+        `),
+      },
+    ],
+  },
+
+  // ---------- Мотивы концовок (этап 6) ----------
+  // «Идеальный день»: торжественная фанфара в до мажоре.
+  end_perfect: {
+    bpm: 120, stepsPerBeat: 4, loop: true,
+    channels: [
+      { wave: 'square', vol: 0.06, len: 1.6, notes: seq(`
+        C5 . E5 . G5 . C6 . . . G5 . E5 . G5 .
+        F5 . A5 . C6 . A5 . G5 . . . . . . .
+        E5 . G5 . C6 . E6 . D6 . C6 . B5 . C6 .
+        D6 . . . B5 . G5 . C6 . . . . . . .
+      `) },
+      { wave: 'triangle', vol: 0.16, len: 2, notes: seq(`
+        C3 . . . G2 . . . F2 . . . G2 . . .
+        A2 . . . E2 . . . F2 . G2 . C3 . . .
+      `) },
+      { wave: 'noise', vol: 0.08, notes: seq('k . h . s . h . k . h h s . h .') },
+    ],
+  },
+  // «Легенда байта»: развязный свинг.
+  end_legend: {
+    bpm: 104, stepsPerBeat: 4, loop: true,
+    channels: [
+      { wave: 'square', vol: 0.055, len: 1.2, notes: seq(`
+        E5 . . G5 . A5 . . A#5 . A5 . G5 . E5 .
+        D5 . . E5 . G5 . . E5 . . . . . . .
+        E5 . . G5 . A5 . . C6 . A5 . G5 . A5 .
+        B5 . . A5 . G5 . . E5 . . . . . . .
+      `) },
+      { wave: 'triangle', vol: 0.16, len: 1, notes: seq(`
+        E2 . E3 . G2 . G3 . A2 . A3 . A#2 . B2 .
+      `) },
+      { wave: 'noise', vol: 0.08, notes: seq('k . . h s . h . k . k h s . . h') },
+    ],
+  },
+  // «Выжатый»: медленно и грустно, ре минор.
+  end_drained: {
+    bpm: 66, stepsPerBeat: 4, loop: true,
+    channels: [
+      { wave: 'triangle', vol: 0.09, len: 3, notes: seq(`
+        D5 . . . C5 . . . A#4 . . . A4 . . .
+        G4 . . . A4 . . . F4 . . . E4 . . .
+      `) },
+      { wave: 'sine', vol: 0.1, len: 6, notes: seq(`
+        D3 . . . . . . . A#2 . . . . . . .
+        G2 . . . . . . . A2 . . . . . . .
+      `) },
+    ],
+  },
+  // «Хаос как обычно»: бодрая суета, как перемена.
+  end_chaos: {
+    bpm: 150, stepsPerBeat: 4, loop: true,
+    channels: [
+      { wave: 'square', vol: 0.05, len: 1, notes: seq(`
+        A4 C5 E5 C5 B4 D5 G5 D5 C5 E5 A5 E5 G#5 . E5 .
+        F5 E5 D5 C5 B4 C5 D5 B4 A4 . E4 . A4 . . .
+      `) },
+      { wave: 'triangle', vol: 0.15, len: 1, notes: seq(`
+        A2 . A3 . G2 . G3 . F2 . F3 . E2 . E3 .
+      `) },
+      { wave: 'noise', vol: 0.09, notes: seq('k h s h k k s h k h s h k k s s') },
+    ],
+  },
 };

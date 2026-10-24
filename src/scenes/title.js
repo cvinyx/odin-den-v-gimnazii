@@ -7,6 +7,8 @@ import { NewGameScene } from './new_game.js';
 import { SettingsScene } from './settings.js';
 import { TextInputScene } from './text_input.js';
 import { continueFrom } from '../game/flow.js';
+import { AchievementsScene } from './achievements_scene.js';
+import { CreditsScene } from './credits.js';
 
 const LINEUP = ['chernyak', 'igor', 'roma', 'denis', 'levonchuk'];
 
@@ -30,9 +32,10 @@ export class TitleScene {
       { label: 'Новая игра', action: () => game.scenes.push(new NewGameScene()) },
       { label: 'Ввести код сохранения', action: () => this.enterCode() },
       { label: 'Настройки', action: () => game.scenes.push(new SettingsScene()) },
-      { label: 'Достижения', soon: true },
-    ], { lineH: 17, align: 'center' });
-    this.menu.index = Math.min(prev, 4);
+      { label: 'Достижения', action: () => game.scenes.push(new AchievementsScene()) },
+      { label: 'Титры', action: () => game.scenes.push(new CreditsScene()) },
+    ], { lineH: 15, align: 'center' });
+    this.menu.index = Math.min(prev, 5);
     this.menu.skipDisabled();
   }
 
@@ -84,8 +87,8 @@ export class TitleScene {
     });
     r.text('Один день', 240, 10, { align: 'center', color: '#ffe14d', scale: 2, shadow: '#000' });
     r.text('в гимназии', 240, 30, { align: 'center', color: '#ffffff', scale: 2, shadow: '#000' });
-    r.alpha(0.75, () => r.rect(120, 168, 240, 90, '#000'));
-    this.menu.draw(r, 240, 174, this.time);
+    r.alpha(0.75, () => r.rect(120, 160, 240, 98, '#000'));
+    this.menu.draw(r, 240, 162, this.time);
     r.text('Z — выбрать · M — звук · F — полный экран', 240, 260, { align: 'center', color: '#9a9aa8' });
   }
 }

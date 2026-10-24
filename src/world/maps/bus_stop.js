@@ -25,7 +25,9 @@ export const BUS_STOP = {
   },
   exits: [
   ],
+  objects: [
+  ],
   npcs: [
-    { id: 'levonchuk', x: 14, y: 6, dir: 'left', talk: { file: 'intro', label: 'levonchuk' } },
+    { id: "levonchuk", x: 14, y: 6, dir: "left", talk: { file: "intro", label: "levonchuk" } },
   ],
 };

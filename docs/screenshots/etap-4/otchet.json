@@ -1,0 +1,197 @@
+{
+ "report": [
+  {
+   "game": "phone_blocks",
+   "label": "Телефон: блок-пазл (урок 2)",
+   "opp": null,
+   "first": {
+    "result": "win",
+    "grade": 7,
+    "summary": "Очки: 102 из 100 · прятал 17 с",
+    "oppLine": null,
+    "deltas": {
+     "battery": -8,
+     "aura": 5,
+     "suspicion": 9
+    }
+   }
+  },
+  {
+   "game": "phone_brawl",
+   "label": "Телефон: броулер (урок 4)",
+   "opp": null,
+   "first": {
+    "result": "lose",
+    "grade": 7,
+    "summary": "Очки: 12 из 20 · прятал 2 с",
+    "oppLine": null,
+    "deltas": {
+     "battery": -8,
+     "aura": 3,
+     "suspicion": 0
+    }
+   }
+  },
+  {
+   "game": "phone_brawl",
+   "label": "Телефон: броулер с Денисом (кооп)",
+   "opp": null,
+   "first": {
+    "result": "lose",
+    "grade": 5,
+    "summary": "Очки: 22 из 24 · прятал 7 с",
+    "oppLine": null,
+    "deltas": {
+     "battery": -8,
+     "aura": 3,
+     "suspicion": 7
+    }
+   }
+  },
+  {
+   "game": "phone_feed",
+   "label": "Телефон: лента (урок 6)",
+   "opp": null,
+   "first": {
+    "result": "win",
+    "grade": 5,
+    "summary": "Очки: 13 из 8 · прятал 14 с",
+    "oppLine": null,
+    "deltas": {
+     "battery": -8,
+     "aura": 8,
+     "suspicion": 1
+    }
+   }
+  },
+  {
+   "game": "phone_feed",
+   "label": "Телефон: короткая (урок 1, 25 с)",
+   "opp": null,
+   "first": {
+    "result": "win",
+    "grade": 5,
+    "summary": "Очки: 7 из 6 · прятал 12 с",
+    "oppLine": null,
+    "deltas": {
+     "battery": -8,
+     "aura": 6,
+     "suspicion": 0
+    }
+   }
+  },
+  {
+   "game": "toilet",
+   "label": "Царь туалета",
+   "opp": "guza",
+   "first": {
+    "result": "lose",
+    "summary": "Раунды: Рома 0 — Гуза 2",
+    "oppLine": "Я же говорил. По-хорошему.",
+    "deltas": {
+     "aura": -5
+    }
+   }
+  },
+  {
+   "game": "vape",
+   "label": "Кто больше парит",
+   "opp": "shurpo",
+   "first": {
+    "result": "win",
+    "summary": "Облака: Рома 347 — Шурпо 320",
+    "oppLine": "Повезло. Жижка у тебя просто нормальная.",
+    "deltas": {
+     "vapeCharge": -20,
+     "juice": -1,
+     "aura": 6
+    }
+   }
+  },
+  {
+   "game": "vape",
+   "label": "Кто больше парит",
+   "opp": "безымянный",
+   "first": {
+    "result": "lose",
+    "summary": "Облака: Рома 315 — Ученица 383",
+    "oppLine": "Кашляешь, как дед на морозе. Иди тренируйся.",
+    "deltas": {
+     "vapeCharge": -20,
+     "juice": -1,
+     "aura": -3
+    }
+   }
+  },
+  {
+   "game": "vape",
+   "label": "Кто больше парит (завуч рядом)",
+   "opp": "chernyak",
+   "first": {
+    "result": "lose",
+    "summary": "Облака: Рома 300 — Черняк 335 · Завуч всё видела!",
+    "oppLine": "…(молча фармит ауру)",
+    "deltas": {
+     "vapeCharge": -20,
+     "juice": -1,
+     "aura": -3
+    }
+   }
+  },
+  {
+   "game": "eat",
+   "label": "Кто больше съест",
+   "opp": "denis",
+   "first": {
+    "result": "win",
+    "summary": "Съедено: Рома 10 — Денис 9",
+    "oppLine": "Это джинсы давили. Они на пределе.",
+    "deltas": {
+     "hunger": -40,
+     "money": -360,
+     "aura": 7
+    }
+   }
+  },
+  {
+   "game": "bait_mb",
+   "label": "Матыч и Буй (друг)",
+   "opp": "igor",
+   "first": {
+    "result": "win",
+    "summary": "Матыч 74 · Буй 86 · Рома 87",
+    "oppLine": "Всё, всё! Мы закипели. Довольны?",
+    "deltas": {
+     "aura": 8
+    }
+   }
+  },
+  {
+   "game": "shower",
+   "label": "Душ (друзья)",
+   "opp": "igor,denis",
+   "first": {
+    "result": "win",
+    "summary": "Рома: 48 с (вышел сам) · Игорь 48 с · Денис 29 с",
+    "oppLine": null,
+    "deltas": {
+     "aura": 4
+    }
+   }
+  }
+ ],
+ "fps": {
+  "phone_blocks": 60,
+  "phone_brawl": 60,
+  "phone_feed": 60,
+  "toilet": 60,
+  "vape": 60,
+  "eat": 60,
+  "bait_mb": 60,
+  "shower": 60
+ },
+ "heapMB": [
+  9.5367431640625,
+  9.5367431640625
+ ]
+}

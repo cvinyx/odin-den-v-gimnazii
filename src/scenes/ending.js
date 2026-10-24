@@ -1,37 +1,52 @@
-// Концовки (раздел 16). На этапе 2 полностью работает «К директору!»; остальные — этап 6.
+// Концовка (раздел 16): короткая сцена с друзьями (data/dialogs/endings.txt, метка = id концовки)
+// под свой музыкальный мотив, затем экран итогов (results.js).
 import { DialogScene } from './dialog_scene.js';
-import { SCHEDULE } from '../../data/schedule.js';
-import { formatMoney } from '../game/state.js';
-import { totalDebt } from '../game/bets.js';
+import { ResultsScene } from './results.js';
+import { ENDING_TITLES, ENDING_MUSIC, ENDING_COLORS } from '../game/endings.js';
+import { checkAchievements } from '../game/achievements.js';
+import { storeRemove, KEYS } from '../engine/save.js';
+import { sheetOf } from '../gen/people.js';
+import { frameRect } from '../gen/sprites.js';
+import { audio } from '../engine/audio.js';
 
-const TITLES = { director: 'К директору!' };
+// Кто стоит в кадре концовки.
+const CAST = {
+  director: ['roma'],
+  perfect: ['denis', 'roma', 'igor', 'chernyak'],
+  legend: ['matych', 'roma', 'buy', 'igor'],
+  drained: ['roma'],
+  chaos: ['levonchuk', 'denis', 'roma', 'igor', 'shurpo'],
+};
+const BG = { director: '#1a0c0c', perfect: '#1c2a14', legend: '#1e1030', drained: '#14161c', chaos: '#0e2026' };
 
 export class EndingScene {
-  constructor(kind) { this.id = 'ending'; this.kind = kind; this.opaque = true; this.t = 0; this.talked = false; }
+  constructor(kind) { this.id = 'ending'; this.kind = kind; this.opaque = true; this.t = 0; }
   enter(game) {
     this.game = game;
-    game.state.phase = 'end';
-    game.playMusic('director');
-    game.scenes.push(new DialogScene('endings', this.kind, { onEnd: () => { this.talked = true; } }));
+    const st = game.state;
+    st.phase = 'end';
+    st.flags.ending = this.kind;
+    storeRemove(KEYS.autosave); // день окончен — «Продолжить» больше нечего
+    game.playMusic(ENDING_MUSIC[this.kind] || 'menu');
+    audio.play('bell');
+    for (const a of checkAchievements(st, true)) game.achQueue.push({ a, t: 0 });
+    game.scenes.push(new DialogScene('endings', this.kind, {
+      onEnd: () => game.scenes.reset(new ResultsScene(this.kind), { fade: true }),
+    }));
   }
-  update(dt) {
-    this.t += dt;
-    if (this.talked && this.game.input.pressed('confirm')) {
-      this.game.input.consume('confirm');
-      import('./title.js').then(({ TitleScene }) => this.game.scenes.reset(new TitleScene(), { fade: true }));
-    }
-  }
+  update(dt) { this.t += dt; }
   draw(r) {
-    const st = this.game.state;
-    r.rect(0, 0, 480, 270, '#1a0c0c');
-    r.text('КОНЦОВКА', 240, 12, { align: 'center', color: '#9a9aa8' });
-    r.text(TITLES[this.kind] || this.kind, 240, 26, { align: 'center', color: '#ff5a5a', scale: 2 });
-    if (!this.talked) return;
-    let y = 60;
-    SCHEDULE.forEach((l, i) => { if (st.grades[i] != null) { r.text(`${l.subject}: ${st.grades[i]}`, 240, y, { align: 'center', color: '#ffffff' }); y += 11; } });
-    r.text(`Вызовы к директору: ${st.directorCalls}`, 240, y + 6, { align: 'center', color: '#ffffff' });
-    r.text(`Долги, которые Рома никогда не вернёт: ${formatMoney(totalDebt(st))} BYN`, 240, y + 20, { align: 'center', color: '#ff8a8a' });
-    r.text(`Код дня: ${st.seed}`, 240, 220, { align: 'center', color: '#9fd3ff' });
-    r.text('Z — в главное меню', 240, 250, { align: 'center', color: '#9a9aa8' });
+    const k = this.kind;
+    r.rect(0, 0, 480, 270, BG[k] || '#101024');
+    for (let y = 120; y < 234; y += 6) r.rect(0, y, 480, 3, '#ffffff08');
+    r.text('КОНЦОВКА', 240, 10, { align: 'center', color: '#9a9aa8' });
+    r.text(ENDING_TITLES[k], 240, 24, { align: 'center', color: ENDING_COLORS[k], scale: 3, shadow: '#000' });
+    const cast = CAST[k] || ['roma'];
+    cast.forEach((id, i) => {
+      const f = frameRect('down', k === 'chaos' ? Math.floor(this.t * 4 + i) % 3 : 0);
+      const x = 240 + (i - (cast.length - 1) / 2) * 46;
+      const bob = k === 'perfect' || k === 'legend' ? Math.round(Math.abs(Math.sin(this.t * 4 + i)) * -4) : 0;
+      r.sprite(sheetOf(id), f.sx, f.sy, f.sw, f.sh, x - f.sw, 70 + bob, 2);
+    });
   }
 }

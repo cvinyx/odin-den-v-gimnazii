@@ -36,7 +36,8 @@ export class DialogRunner {
         case 'choice': {
           const visible = c.options
             .map((o, i) => ({ ...o, index: i }))
-            .filter((o) => checkCondition(o.cond, this.hooks.stat, this.hooks.flag));
+            .filter((o) => checkCondition(o.cond, this.hooks.stat, this.hooks.flag))
+            .slice(0, 4); // на экране максимум A–D
           if (!visible.length) break; // все варианты скрыты — идём дальше
           this.pendingChoice = visible;
           return { type: 'choice', question: c.question, options: visible.map((o) => ({ text: o.text })) };

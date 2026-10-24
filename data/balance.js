@@ -56,6 +56,7 @@ export const BALANCE = {
     emptyStressPerLesson: 5,    // если заряд 0 или жижка 0
     chargePerSecond: 1,         // та же розетка в библиотеке
     critical: 10,
+    askJuiceChance: 0.5,        // друг из списка вейп-игры даёт заправку (раз в день)
   },
 
   suspicion: {
@@ -117,7 +118,7 @@ export const BALANCE = {
     frontGradeBonus: 1,
   },
 
-  // Мини-игры (раздел 14) — базовые числа, детали на этапе 4.
+  // Мини-игры (раздел 14) — общие числа; детали каждой игры — ниже.
   minigames: {
     cheat: { duration: 60, secondsPerAnswer: 1.5, maxAnswers: 10, warnTime: 0.4, suspicionPerSecond: 30 },
     phone: { suspicionPerSecond: 25, auraMin: 3, auraMax: 8 },
@@ -154,6 +155,21 @@ export const BALANCE = {
       guza: { speed: 5, skill: 4 },
     },
     keepers: { smile: 7, buy: 5, bochko: 2, zakha: 4 },
+    // Физика (пиксели и секунды). Мяч отскакивает от стен, аутов нет.
+    physics: { friction: 1.1, wallBounce: 0.7, ballR: 2.5, playerR: 5, control: 8, trapSpeed: 230,
+      passSpeed: [110, 250], shotSpeed: [150, 300], dribbleLag: 14 },
+    // Скорость игрока = base + speed × perSpeed (px/с). Shift — ускорение Ромы.
+    move: { base: 32, perSpeed: 6, sprint: 1.45, accel: 8, dribble: 0.8 },
+    stamina: { drain: 0.3, regen: 0.12 },     // доли шкалы в секунду
+    ai: { decide: [0.14, 0.28], shootRange: 140, shootAlways: 38, shootChance: [0.02, 0.006], pressDist: 18, fumblePerSec: 0.06,
+      shotError: 0.13, passError: 0.025, tackleDist: 11, tackleCd: 1.2, coverDist: 40, carelessTackle: 0.3 },
+    tackle: { base: 0.45, perSkill: 0.05, behindFoul: 0.85, stun: 0.6, berserkFoul: 0.3 },
+    yellowChance: 0.4,
+    keeper: { baseSpeed: 34, perReaction: 7, dive: 2, delay: 0.035, reach: 10, perReach: 1, save: 0.52, perSave: 0.07, fastPenalty: 0.0011, hold: 0.9 },
+    diarrheaAt: [25, 150],                       // секунда матча, когда у Смайла начинается диарея
+    refLineEvery: [9, 16],                       // как часто Виктор Сергеевич что-то кричит
+    // Перерыв: выбор Ромы в споре Дениса и Шурпо (метки в football.txt) — влияет на 2-й тайм.
+    halftime: { barcaDenisSkill: 1, realShurpoSpeed: 2, realDenisSkill: -1, noneStress: -5 },
   },
 
   // Концовки (раздел 16).
@@ -163,11 +179,11 @@ export const BALANCE = {
     squeezed: { breakdowns: 2, money: 100 },
   },
 
-  // Действия на уроке через выборы (до появления телефонных мини-игр на этапе 4).
+  // Действия на уроке через выборы («сидеть тихо»; телефон на уроке — короткая телефонная мини-игра).
   lessonActions: {
-    phoneSuspicion: [10, 25],
     quietStress: 3,
     quietSuspicionDrop: 10,
+    quietAura: -2,          // тихоня ауру не фармит (баланс «Идеального дня», этап 6)
   },
 
   // Байт-дуэль (раздел 14, пункт 3). Сила реплик — сколько «закипания» добавляет сопернику.
@@ -202,8 +218,66 @@ export const BALANCE = {
     coneHalf: 24, coneHalfWide: 32, coneLength: 230,
     pRoma: 0.3,                // как часто учитель смотрит прямо на Рому
     progressDecay: 1.0,         // как быстро теряется прогресс ответа, если отпустить Z (в долях в секунду)
+    quizTimes: [14, 30, 46],    // секунды, когда учитель обществоведения задаёт вопрос
+    quizWrong: 6,               // неверный ответ: подозрение растёт
     spotBonus: 3,               // разовый скачок подозрения, когда учитель «заметил» подсматривание
   },
+
+  // Оценка за урок, если главная мини-игра сама её не ставит (байт-дуэль на русском).
+  lessonGrades: {
+    byResult: { win: 8, draw: 6, lose: 4, director: 2 },
+  },
+
+  // ---------- Мини-игры этапа 4 (раздел 14) ----------
+  // Телефон под партой: учитель у доски / признак поворота / смотрит; у физика — выходы из кабинета.
+  phoneGames: {
+    teacher: { board: [2.6, 5.0], warn: 0.4, watch: [1.2, 2.4] },
+    suddenTurnWarn: 0.3,          // Татьяна Михайловна оборачивается внезапно
+    outWindows: [[7, 17], [27, 16]], // Олег Николаевич выходит: [с какой секунды, на сколько]
+    shortDuration: 30,            // «залипнуть в телефон» как доп. действие на уроке
+    batteryCost: -8,
+    auraMin: 3, auraMax: 8,
+    grade: { base: [5, 7], listenBonus: 1, listenShare: 0.45, caughtPenalty: 1, caughtAt: 40 },
+    blocks: { duration: 45, target: 100, shortTarget: 62, linePoints: 10, comboBonus: 5 },
+    brawl: { duration: 45, target: 20, shortTarget: 11, shortDuration: 31, coopTarget: 24, hp: 5, enemyHp: 2, maxEnemies: 3, enemySpeed: [16, 24], enemyFire: [1.6, 2.6],
+      bulletSpeed: 120, enemyBullet: 52, playerSpeed: 58, fireCooldown: 0.3, denisFire: 1.2, spawnEvery: 1.6 },
+    feed: { duration: 40, target: 8, shortTarget: 6, scroll: 20, fastScroll: 55 },
+  },
+
+  // «Царь туалета»: ползунок силы, Z в зелёной зоне — рывок. strength — сила соперника (0–1).
+  toilet: {
+    rounds: 3, roundTime: 15, sliderSpeed: 1.35, green: [0.4, 0.6], pull: 0.09, miss: 0.03,
+    oppEvery: [0.6, 1.0], oppPull: 0.071,
+    strength: { default: 0.55, guza: 0.74, igor: 0.72, denis: 0.55, chernyak: 0.6, shurpo: 0.5, matych: 0.5, buy: 0.52,
+      levonchuk: 0.55, bochko: 0.5, smile: 0.55, vadim: 0.65, vitalik: 0.55, zakha: 0.55, anus: 0.5 },
+  },
+
+  // «Кто больше парит»: держишь Z — шкала растёт; отпустил в зелёной зоне — большое облако.
+  vapeBattle: {
+    rounds: 5, fillSpeed: 0.3, fillAccel: 0.35, green: [0.72, 0.9], oppTurn: 2.4, roundPause: 1.6,
+    chargeCost: -20, juiceCost: -1, stressAfter: 5, patrolCatch: 0.5,
+    skill: { default: 0.58, chernyak: 0.6, denis: 0.56, shurpo: 0.66, levonchuk: 0.56, bochko: 0.5, matych: 0.52, buy: 0.56 },
+  },
+
+  // «Кто больше съест»: ритм-игра, серия попаданий = съеденная смаженка.
+  eat: {
+    duration: 40, entry: 360, notesPerSmazhenka: 6, stomachMax: 10, window: 0.13, beat: 0.42,
+    skill: { default: 7, denis: 7.2, shurpo: 7.4, igor: 7.2, guza: 7.3, matych: 7, buy: 6.8, chernyak: 7, levonchuk: 7,
+      bochko: 6.8, smile: 7, vadim: 7.2, vitalik: 6.8, zakha: 7, anus: 6.8 },
+  },
+
+  // «Кто забайтит Матыча и Буя»: Рома и друг против двоих.
+  baitMB: { rounds: 4, mid: [18, 26], strong: [32, 46], strongChance: 0.55, backfire: 10, friend: [8, 18], retort: [9, 15], winSum: 160, nearPx: 112 },
+
+  // «Душ»: держи Z, держи температуру в зоне, отбивайся X от толчков. friends — сколько секунд стоят друзья.
+  shower: {
+    maxTime: 60, comfort: [0.36, 0.64], drift: 0.28, jumpEvery: [2.2, 4], jump: 0.3, adjust: 0.75, discomfort: 0.3,
+    pushEvery: [6, 10], pushWindow: 0.9, loseStress: 10,
+    friends: { igor: [30, 50], denis: [26, 44], chernyak: [28, 48], shurpo: [22, 38], default: [26, 44] },
+  },
+
+  // Кто может предложить игру сам (инициатива NPC): шанс при разговоре.
+  challengeChance: 0.3,
 
   // Движение по карте (пикселей в секунду).
   move: {

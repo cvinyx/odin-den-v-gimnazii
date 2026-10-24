@@ -30,4 +30,8 @@ export const STREET = {
     { x: 14, y: 3, to: "rec_f1", spawn: "entrance" },
     { x: 15, y: 3, to: "rec_f1", spawn: "entrance" },
   ],
+  objects: [
+  ],
+  npcs: [
+  ],
 };

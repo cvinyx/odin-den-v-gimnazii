@@ -33,3 +33,29 @@
 
 === sink_out
 @narrator Кран продолжает капать.
+
+=== outlet
+@narrator Розетка. Единственная в библиотеке. Сокровище.
+? Что заряжать?
+* Телефон (+1 % в секунду, стой рядом). => outlet_phone
+* Вейп (+1 % в секунду, стой рядом). => outlet_vape
+* Ничего / выдернуть провод. => outlet_stop
+
+=== outlet_phone
+# action charge_phone
+@narrator Телефон на зарядке. Пока Рома рядом — заряд идёт.
+
+=== outlet_vape
+# action charge_vape
+@narrator Вейп на зарядке. Пока Рома рядом — заряд идёт.
+
+=== outlet_stop
+# action charge_stop
+@narrator Розетка свободна.
+
+=== shelf
+@narrator Стеллаж. «Война и мир», «Физика 9 класс», «Как стать бизнесменом» с пометкой «Буй, верни».
+
+=== buffet
+@cook [happy] Что будем брать, молодой человек?
+# action buffet

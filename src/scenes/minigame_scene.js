@@ -7,6 +7,7 @@ import { formatMoney, changeStat } from '../game/state.js';
 import { payWin, resolveLoss } from '../game/bets.js';
 import { eventRng } from '../game/day.js';
 import { DialogScene } from './dialog_scene.js';
+import { labelLines, hasLabel } from '../game/dialogs.js';
 import { HUD_SLOTS } from '../ui/hud.js';
 import { audio } from '../engine/audio.js';
 
@@ -35,8 +36,21 @@ export class MinigameScene {
     this.introMenu = new Menu(this.bet
       ? [{ label: 'Играть', action: () => this.begin() }, { label: 'Отказаться', action: () => this.refuse() }]
       : [{ label: 'Начать', action: () => this.begin() }], { lineH: 14 });
+    this.introLine = this.oppLine('intro');
     game.playMusic(this.meta.music || 'minigame');
     game.hud.hint = null;
+  }
+
+  // Реплика соперника из mg_lines.txt: его собственная, иначе общая (@opp).
+  oppLine(kind) {
+    if (!this.opp || !hasLabel('mg_lines', this.gameId + '_' + kind)) return null;
+    const lines = labelLines('mg_lines', this.gameId + '_' + kind);
+    const own = lines.filter((l) => l.who === this.opp);
+    const pool = own.length ? own : lines.filter((l) => l.who === 'opp');
+    if (!pool.length) return null;
+    const st = this.game.state;
+    const t = eventRng(st, 'mgline:' + kind + ':' + st.flags.mgCount).pick(pool).text.replace(/\{\/?\w+\}/g, '');
+    return t === '...' ? '…(молча фармит ауру)' : t;
   }
 
   begin() {
@@ -62,6 +76,8 @@ export class MinigameScene {
   finishPlay(res) {
     this.res = res;
     const st = this.game.state;
+    if (res.result === 'win') st.flags['won_' + this.gameId] = true; // для достижений
+    if (!res.oppLine && (res.result === 'win' || res.result === 'lose')) res.oppLine = this.oppLine(res.result);
     for (const [k, v] of Object.entries(res.deltas || {})) if (k in st.stats && v) changeStat(st, k, v);
     if (res.money) changeStat(st, 'money', res.money);
     if (this.bet && res.result === 'win') { payWin(st, this.bet); audio.play('coin'); }
@@ -151,6 +167,7 @@ export class MinigameScene {
         r.text(p.short, 86, y + 24, { color: '#ffffff', scale: 2 });
         if (this.bet) r.text('Ставка: ' + formatMoney(this.bet) + ' BYN', 86, y + 48, { color: '#6be36b' });
       }
+      if (this.introLine) r.text('«' + this.introLine + '»', 240, 140, { align: 'center', color: '#9fd3ff' });
       const kx = this.opp ? 236 : 60;
       r.box(kx, y, this.opp ? 224 : 360, 70 + (this.opp ? 0 : 20), '#4a4668', '#000', 1);
       r.text('Клавиши:', kx + 10, y + 8, { color: '#9a9aa8' });
