@@ -9,6 +9,7 @@ import { MAPS, STAIRWELLS } from './world/maps/index.js';
 import { SCHEDULE } from '../data/schedule.js';
 import './minigames/index.js';
 import { validateAllDialogs } from './game/dialogs.js';
+import { encodeSaveCode } from './engine/save.js';
 
 const canvas = document.getElementById('screen');
 const game = new Game(canvas);
@@ -35,5 +36,7 @@ window.__odinDebug = (label, arg) => {
   for (const g of debugGroups()) for (const it of g.items) if (it.label === label) { if (arg != null && it.set) it.set(arg); it.action(game); return true; }
   return false;
 };
+// Код сохранения текущего дня — тот же, что в меню паузы (для проверок).
+window.__odinSaveCode = () => encodeSaveCode(game.state);
 // Данные карт и расписания для бота (поиск пути между локациями).
 window.__odinData = { MAPS, STAIRWELLS, SCHEDULE };

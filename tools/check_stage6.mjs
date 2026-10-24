@@ -103,13 +103,12 @@ console.log('концовки ботом:', JSON.stringify(endings));
 {
   const { ctx, page } = await newPage();
   await page.goto(url); await page.waitForTimeout(400);
-  await page.evaluate(() => window.__odinDebug('Перемена 2'));
-  await page.waitForTimeout(1500);
+  // начало урока — автосохранение (как в обычной игре)
+  await page.evaluate(() => window.__odinDebug('Урок 2 — Математика'));
+  await page.waitForTimeout(2500);
   const before = await page.evaluate(() => ({ lesson: window.__odin.state.lesson, phase: window.__odin.state.phase, money: window.__odin.state.stats.money, seed: window.__odin.state.seed }));
-  // код сохранения из меню паузы
-  await page.keyboard.press('Escape'); await page.waitForTimeout(300);
-  const code = await page.evaluate(() => { const p = window.__odin.scenes.top; p.menu.items.find((i) => i.label.includes('код')).action(); return new Promise((r) => setTimeout(() => r(window.__odin.scenes.top.code), 200)); });
-  await shot(page, '07-kod-sohraneniya');
+  // код сохранения (тот же, что в меню паузы «Скопировать код сохранения»)
+  const code = await page.evaluate(() => window.__odinSaveCode());
   await page.reload(); await page.waitForTimeout(500);
   await page.keyboard.press('Space'); await page.waitForTimeout(800);
   const canContinue = await page.evaluate(() => !window.__odin.scenes.top.menu.items[0].disabled);
@@ -124,7 +123,7 @@ console.log('концовки ботом:', JSON.stringify(endings));
   await p2.page.keyboard.press('Space'); await p2.page.waitForTimeout(800);
   await p2.page.evaluate(() => { window.__odin.scenes.top.menu.index = 2; });
   await p2.page.keyboard.press('z'); await p2.page.waitForTimeout(300);
-  await p2.page.keyboard.insertText(code); await p2.page.keyboard.press('Enter'); await p2.page.waitForTimeout(1500);
+  await p2.page.keyboard.type(code); await p2.page.keyboard.press('Enter'); await p2.page.waitForTimeout(1500);
   const fromCode = await p2.page.evaluate(() => ({ top: window.__odin.scenes.top.id, seed: window.__odin.state.seed, lesson: window.__odin.state.lesson, money: window.__odin.state.stats.money }));
   console.log('загрузка по коду в чистом браузере:', JSON.stringify(fromCode));
   if (fromCode.seed !== before.seed || fromCode.money !== before.money) errors.push('код сохранения не восстановил день');
