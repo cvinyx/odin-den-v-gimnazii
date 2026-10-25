@@ -26,7 +26,7 @@ execFileSync('node', [path.join(root, 'tools/render_maps.mjs'), path.join(shots,
   const ids = await page.evaluate(() => Object.keys(window.__odinData.MAPS).filter((id) => id !== 'test_room'));
   const dir = path.join(shots, 'lokatsii');
   fs.mkdirSync(dir, { recursive: true });
-  for (const [b, list] of [[4, ids.filter((x) => !x.startsWith('cab_'))], [3, ['canteen']], [5, ['locker_room']], [6, ['library', 'k1_f4']]]) {
+  for (const [b, list] of [[4, ids.filter((x) => !x.startsWith('cab_'))], [3, ['canteen']], [5, ['locker_room']], [6, ['library', 'c2_f4']]]) {
     await page.evaluate((b) => window.__odinDebug('Перемена ' + b), b);
     await page.waitForTimeout(1200);
     for (const id of list) {

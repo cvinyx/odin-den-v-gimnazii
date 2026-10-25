@@ -22,7 +22,7 @@ import { audio } from '../engine/audio.js';
 import { hintText, nextLesson, roomAction, eventRng } from '../game/day.js';
 import { canVapeBattle, vapeReady } from '../minigames/vape_battle.js';
 import { rollBet, creditorReminds } from '../game/bets.js';
-import { hasLabel } from '../game/dialogs.js';
+import { hasLabel, labelsOf, labelLines } from '../game/dialogs.js';
 
 const DIRV = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 
@@ -136,7 +136,7 @@ export class WorldScene {
     const id = n.id;
     const loc = this.def.id || this.mapId;
     const named = !!n.def.named;
-    const intoilet = /toilet/.test(loc) ? 1 : 0;
+    const intoilet = this.def.toilet ? 1 : 0;
     const incanteen = loc === 'canteen' ? 1 : 0;
     const bigbreak = incanteen && isBigBreak(st) ? 1 : 0;
     const vapebattle = canVapeBattle(id) ? 1 : 0;
@@ -181,16 +181,19 @@ export class WorldScene {
       this.say(ex.locked);
       return;
     }
+    if (ex.deny) return this.denyToilet(ex.deny);
     if (ex.to) {
-      // карта-«кабинет» (спортзал, раздевалка): вход в неё на нужной перемене начинает урок
+      // карта-«кабинет» (спортзал, раздевалка, классы): вход в неё на нужной перемене начинает урок
       const target = MAPS[ex.to];
       if (target && target.room) {
         const act = roomAction(game.state, target.room);
         if (act.type === 'lesson') return this.startLesson(act.n);
+        // кабинеты классов открыты только на переменах (Л-22)
+        if (target.classRoom && game.state.phase !== 'break') { audio.play('menuDenied'); return this.say(act.text); }
       }
       return this.goTo(ex.to, ex.spawn);
     }
-    if (ex.stairs) return this.stairsMenu();
+    if (ex.stairs) return this.stairsMenu(ex.stairsSpawn || 'stairs');
     if (ex.room) {
       const act = roomAction(game.state, ex.room);
       if (act.type === 'lesson') this.startLesson(act.n);
@@ -234,19 +237,56 @@ export class WorldScene {
     if (st.stats[key] >= 100) this.stopCharging(c.device === 'phone' ? 'Телефон заряжен' : 'Вейп заряжен');
   }
 
-  stairsMenu() {
+  faceIdCheck(dt) {
+    if (this.faceHold > 0) {
+      this.faceHold -= dt;
+      this.player.moving = false;
+      return true;
+    }
+    const ch = this.map.charAt ? this.map.charAt(Math.floor(this.player.x / TILE), Math.floor((this.player.y - 2) / TILE)) : null;
+    if (ch !== '|') { this.onTurnstile = false; return false; }
+    if (this.onTurnstile) return false;
+    this.onTurnstile = true;
+    const st = this.game.state;
+    const fail = eventRng(st, `faceid:${st.day}:${st.phase}:${st.lesson}:${(this.faceN = (this.faceN || 0) + 1)}`).chance(BALANCE.faceId.failChance);
+    this.faceFlash = { t: 0.6, ok: !fail };
+    if (fail) {
+      audio.play('menuDenied');
+      this.faceHold = BALANCE.faceId.failDelay;
+      const l = labelLines('places', 'faceid_fail')[0];
+      if (l) this.game.toast(l.text);
+    } else audio.play('menuSelect');
+    return false;
+  }
+
+  // Женский и учительский туалеты (Л-18): Рому не пускают, аура −5.
+  denyToilet(kind) {
+    audio.play('menuDenied');
+    changeStat(this.game.state, 'aura', BALANCE.toilets.wrongDoorAura);
+    this.game.scenes.push(new DialogScene('places', 'wc_' + kind));
+  }
+
+  stairsMenu(spawn = 'stairs') {
     const floors = STAIRWELLS[this.def.building];
     if (!floors) return;
     const nums = Object.keys(floors).map(Number);
     const opts = nums.map((n) => ({ text: n === this.def.floorNo ? `${n} этаж (ты здесь)` : `${n} этаж` }));
     this.game.scenes.push(new ChoiceScene('Лестница. На какой этаж?', opts, (i) => {
       if (i < 0 || nums[i] === this.def.floorNo) return;
-      this.goTo(floors[nums[i]], 'stairs');
+      this.goTo(floors[nums[i]], spawn);
     }));
   }
 
   useObject(o) {
     this.cooldown = 0.6;
+    // объект с набором реплик (сцена актового зала): метка по коду дня и перемене
+    if (o.file && o.pick) {
+      const st = this.game.state;
+      const labels = labelsOf(o.file).filter((l) => l.startsWith(o.pick));
+      const label = eventRng(st, `${o.file}:${st.day}:${st.lesson}:${st.phase}`).pick(labels);
+      this.game.scenes.push(new DialogScene(o.file, label));
+      return;
+    }
     this.game.scenes.push(new DialogScene('objects', o.kind));
   }
 
@@ -309,6 +349,9 @@ export class WorldScene {
     }
     if (this.cooldown > 0) { this.updateCamera(); return; }
 
+    // турникеты Face-ID сразу за входом (ИС-6): писк и зелёный огонёк, иногда «Лицо не распознано»
+    if (this.faceIdCheck(dt)) { this.updateCamera(); return; }
+
     // выход «на ходу» (проёмы и края карты)
     const ptx = Math.floor(this.player.x / TILE), pty = Math.floor((this.player.y - 2) / TILE);
     const here = this.exitAt(ptx, pty);
@@ -368,10 +411,17 @@ export class WorldScene {
       r.rect(cx - w / 2, y, w, 10, '#e8e2cf');
       r.frame(cx - w / 2, y, w, 10, '#3b3346');
       r.text(ex.label, cx, y + 1, { align: 'center', color: '#2a2430' });
-      if (showNext && ex.room === next.room) {
+      if (showNext && (ex.room || (MAPS[ex.to] || {}).room) === next.room) {
         const bob = Math.round(Math.sin(r.time * 5) * 2);
         r.text('▼', cx, y - 10 + bob, { align: 'center', color: '#ffe14d', shadow: '#000' });
       }
+    }
+    // таблички (столы классов в столовой, Л-11)
+    for (const sg of this.def.signs || []) {
+      const cx = sg.x * TILE + TILE / 2, y = sg.y * TILE + 3;
+      const w = r.measure(sg.text) + 4;
+      r.rect(cx - w / 2, y, w, 10, '#f4f2ea');
+      r.text(sg.text, cx, y + 1, { align: 'center', color: '#5a2a2a' });
     }
   }
 
@@ -403,6 +453,10 @@ export class WorldScene {
       });
     });
     if (this.def.tint) r.alpha(0.08, () => r.rect(0, 0, 480, GAME_H, this.def.tint));
+    if (this.faceFlash && this.faceFlash.t > 0) {
+      this.faceFlash.t -= 1 / 60;
+      r.alpha(0.18, () => r.rect(0, 0, 480, GAME_H, this.faceFlash.ok ? '#40ff60' : '#ff4040'));
+    }
     if (this.game.settings.speedrunTimer && this.game.state.phase !== 'intro') r.text(formatTimer(this.game.state.playTime), 474, 4, { align: 'right', color: '#ffe14d', shadow: '#000' });
     this.game.hud.draw(r, this.game.state, { hint: this.game.scenes.top === this });
   }

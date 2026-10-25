@@ -1,4 +1,4 @@
-// Бассейн (0 эт., спуск из рекреации): дорожки, душевые.
+// Бассейн (0 эт., спуск из корпуса 1): дорожки, душевые, лавочки для тех, кто без формы (У-3).
 // Легенда тайлов — src/gen/tiles.js (TILE_DEFS). Координаты — в тайлах.
 export const POOL = {
   id: 'pool',
@@ -22,7 +22,7 @@ export const POOL = {
     '#xxxevvvvvvvvvvvvvvvvvvvvexxx#',
     '#xxxeeeeeeeeeeeeeeeeeeeeeexxx#',
     '#xxxxxxxxxxxxxxxxxxxxxxxxxxxx#',
-    '#xbbxxxxxxxxxxxxxxxxxxxxxxxxx#',
+    '#xbbbbbbxxxxxxxxxxxxxxxxbbbbx#',
     '##############################',
   ],
   spawns: {
@@ -30,7 +30,7 @@ export const POOL = {
     showers: {x:27,y:2,dir:"down"},
   },
   exits: [
-    { x: 2, y: 1, to: "rec_f1", spawn: "pool", label: "Наверх" },
+    { x: 2, y: 1, to: "c1_f1", spawn: "pool", label: "Наверх" },
     { x: 27, y: 1, to: "showers", spawn: "door", label: "Душ" },
   ],
   objects: [

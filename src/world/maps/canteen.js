@@ -1,56 +1,332 @@
-// Столовая (1 эт.): буфет с продавщицей, столы. Большая перемена — все здесь.
+// Столовая — карта версии 2 (этап V2-3), сгенерирована tools/gen_maps_v2.mjs.
 // Легенда тайлов — src/gen/tiles.js (TILE_DEFS). Координаты — в тайлах.
 export const CANTEEN = {
-  id: 'canteen',
-  name: 'Столовая',
-  floor: 'x',
-  music: 'canteen',
-  tint: '#ffe0a0',
-  ambient: 'crowd',
-  rows: [
-    '##############################',
-    '#WWwWWWWwWWWWwWWWWwWWWWwWWWDW#',
-    '#Pxxxxxxxxxxxxxxxxxxxxxxxxxxx#',
-    '#xxxOOOOOOOOOOxxxxxxxxxxxxxxx#',
-    '#xxxxxxxxxxxxxxxxxxxxxxxxxxxx#',
-    '#xxxxxxxxxxxxxxxxxxxxxxxxxxxx#',
-    '#xxxxxxxxxxxxxxxxxxxxxxxxxxxx#',
-    '#xxxUUUxxxUUUxxxxUUUxxxUUUxxx#',
-    '#xxxxxxxxxxxxxxxxxxxxxxxxxxxx#',
-    '#xxxxxxxxxxxxxxxxxxxxxxxxxxxx#',
-    '#xxxxxxxxxxxxxxxxxxxxxxxxxxxx#',
-    '#xxxUUUxxxUUUxxxxUUUxxxUUUxxx#',
-    '#xxxxxxxxxxxxxxxxxxxxxxxxxxxx#',
-    '#xxxxxxxxxxxxxxxxxxxxxxxxxxxx#',
-    '#xxxxxxxxxxxxxxxxxxxxxxxxxxxx#',
-    '#xxxUUUxxxUUUxxxxUUUxxxUUUxxx#',
-    '#xxxxxxxxxxxxxxxxxxxxxxxxxxxx#',
-    '##############################',
+  "id": "canteen",
+  "name": "Столовая",
+  "floor": "x",
+  "music": "canteen",
+  "tint": "#ffe0b0",
+  "ambient": "crowd",
+  "rows": [
+    "########################################",
+    "#WWDWWWWwWWWWwWWWWwWWWWwWWWWwWWWWwWWWDw#",
+    "#Pxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx#",
+    "#xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx#",
+    "#xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx#",
+    "#xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx#",
+    "#xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx#",
+    "#xUUUUUUUxxUUUUUUUxxUUUUUUUxxUUUUUUUxxx#",
+    "#xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx#",
+    "#xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx#",
+    "#xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx#",
+    "#xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx#",
+    "#xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx#",
+    "#xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx#",
+    "#xUUUUUUUxxUUUUUUUxxUUUUUUUxxUUUUUUUxxx#",
+    "#xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx#",
+    "#xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx#",
+    "#xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx#",
+    "#xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx#",
+    "########################################"
   ],
-  spawns: {
-    rec: {x:27,y:2,dir:"down"},
+  "spawns": {
+    "rec": {
+      "x": 37,
+      "y": 2,
+      "dir": "down"
+    },
+    "buffet": {
+      "x": 3,
+      "y": 2,
+      "dir": "down"
+    }
   },
-  exits: [
-    { x: 27, y: 1, to: "rec_f1", spawn: "canteen", label: "Выход" },
+  "exits": [
+    {
+      "x": 37,
+      "y": 1,
+      "to": "c1_f1",
+      "spawn": "canteen",
+      "label": "Рекреация"
+    },
+    {
+      "x": 3,
+      "y": 1,
+      "to": "buffet",
+      "spawn": "canteen",
+      "label": "Буфет"
+    }
   ],
-  objects: [
-    { x: 4, y: 3, kind: "buffet" },
-    { x: 5, y: 3, kind: "buffet" },
-    { x: 6, y: 3, kind: "buffet" },
-    { x: 7, y: 3, kind: "buffet" },
-    { x: 8, y: 3, kind: "buffet" },
-    { x: 9, y: 3, kind: "buffet" },
-    { x: 10, y: 3, kind: "buffet" },
-    { x: 11, y: 3, kind: "buffet" },
-    { x: 12, y: 3, kind: "buffet" },
-    { x: 13, y: 3, kind: "buffet" },
+  "objects": [],
+  "npcs": [],
+  "signs": [
+    {
+      "x": 5,
+      "y": 7,
+      "text": "11 «И»"
+    },
+    {
+      "x": 14,
+      "y": 7,
+      "text": "11 «И»"
+    },
+    {
+      "x": 23,
+      "y": 7,
+      "text": "11 «М»"
+    },
+    {
+      "x": 32,
+      "y": 7,
+      "text": "11 «М»"
+    },
+    {
+      "x": 5,
+      "y": 14,
+      "text": "11 «Я»"
+    },
+    {
+      "x": 14,
+      "y": 14,
+      "text": "11 «Я»"
+    },
+    {
+      "x": 23,
+      "y": 14,
+      "text": "11 «У»"
+    },
+    {
+      "x": 32,
+      "y": 14,
+      "text": "11 «У»"
+    }
   ],
-  npcs: [
-    { id: "cook", x: 8, y: 2, dir: "down", talk: { file: "staff", label: "cook" } },
-  ],
-  spots: {
-    named: [[4, 8], [6, 8], [10, 8], [12, 8], [17, 8], [19, 8], [23, 8], [25, 8], [4, 12], [6, 12], [10, 12], [12, 12], [17, 12], [19, 12], [23, 12]],
-    crowd: [[5, 14], [11, 14], [18, 14], [24, 14], [16, 5], [22, 5]],
-    patrol: [[16, 4], [26, 4], [26, 14], [16, 14]],
-  },
+  "spots": {
+    "named": [
+      [
+        5,
+        6
+      ],
+      [
+        7,
+        6
+      ],
+      [
+        5,
+        8
+      ],
+      [
+        7,
+        8
+      ],
+      [
+        9,
+        6
+      ],
+      [
+        3,
+        8
+      ],
+      [
+        14,
+        6
+      ],
+      [
+        16,
+        8
+      ],
+      [
+        23,
+        6
+      ],
+      [
+        25,
+        8
+      ],
+      [
+        32,
+        13
+      ],
+      [
+        30,
+        15
+      ],
+      [
+        12,
+        13
+      ],
+      [
+        14,
+        15
+      ],
+      [
+        3,
+        6
+      ],
+      [
+        5,
+        6
+      ],
+      [
+        12,
+        6
+      ],
+      [
+        14,
+        6
+      ],
+      [
+        21,
+        6
+      ],
+      [
+        23,
+        6
+      ],
+      [
+        30,
+        6
+      ],
+      [
+        32,
+        6
+      ],
+      [
+        3,
+        8
+      ],
+      [
+        5,
+        8
+      ],
+      [
+        12,
+        8
+      ],
+      [
+        14,
+        8
+      ],
+      [
+        21,
+        8
+      ],
+      [
+        23,
+        8
+      ],
+      [
+        30,
+        8
+      ],
+      [
+        32,
+        8
+      ],
+      [
+        3,
+        13
+      ],
+      [
+        5,
+        13
+      ],
+      [
+        12,
+        13
+      ],
+      [
+        14,
+        13
+      ],
+      [
+        21,
+        13
+      ],
+      [
+        23,
+        13
+      ],
+      [
+        30,
+        13
+      ],
+      [
+        32,
+        13
+      ],
+      [
+        3,
+        15
+      ],
+      [
+        5,
+        15
+      ],
+      [
+        12,
+        15
+      ],
+      [
+        14,
+        15
+      ],
+      [
+        21,
+        15
+      ],
+      [
+        23,
+        15
+      ],
+      [
+        30,
+        15
+      ],
+      [
+        32,
+        15
+      ]
+    ],
+    "crowd": [
+      [
+        26,
+        4
+      ],
+      [
+        18,
+        10
+      ],
+      [
+        8,
+        17
+      ],
+      [
+        34,
+        10
+      ],
+      [
+        20,
+        17
+      ],
+      [
+        10,
+        4
+      ]
+    ],
+    "patrol": [
+      [
+        18,
+        4
+      ],
+      [
+        18,
+        17
+      ],
+      [
+        36,
+        10
+      ]
+    ]
+  }
 };

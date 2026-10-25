@@ -48,7 +48,7 @@ const extraErrors = [];
   await dbg('Вызов к директору', 1500);
   await shot('extra-3-direktor');
   await bot.handle((t) => t === 'world');
-  await dbg('k2_f4_toilet');
+  await dbg('c3_f4_wc');
   await bot.walkTo(12, 3);
   await bot.face('up'); await bot.press('z');
   await bot.handle((t, s) => t === 'dialog' && s.mode === 'choice');

@@ -4,7 +4,8 @@ import { NPC_SCHEDULE } from '../../data/npc_schedule.js';
 import { CAMEO_TEACHERS } from '../../data/teachers.js';
 import { eventRng } from '../game/day.js';
 
-export const CAMEO_MAPS = ['rec_f1', 'rec_f2', 'k1_f1', 'k2_f1', 'k1_f4', 'k2_f4', 'canteen', 'library'];
+// первые этажи корпусов 2 и 3 — тоже: там младшие классы и иногда учителя (Л-16)
+export const CAMEO_MAPS = ['c1_f1', 'c1_f2', 'c2_f1', 'c3_f1', 'c2_f4', 'c3_f4', 'canteen', 'library'];
 
 // Номер перемены → id именных NPC на карте.
 export function namedAt(breakN, mapId) {

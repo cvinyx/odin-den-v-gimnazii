@@ -213,7 +213,7 @@ export class LessonScene {
     if (this.n >= lastLesson()) { import('./day_flow.js').then(({ goHome }) => goHome(game)); return; }
     startBreak(st, this.n);
     const where = this.info.room === 'бассейн' ? ['pool', 'stairs']
-      : this.info.building === 0 ? ['locker_room', 'gym'] : [`k${this.info.building}_f${this.info.floor}`, 'door' + this.info.room];
+      : this.info.building === 0 ? ['locker_room', 'gym'] : [`c${this.info.building}_f${this.info.floor}`, 'door' + this.info.room];
     import('./world.js').then(({ WorldScene }) => {
       game.scenes.reset(new WorldScene(where[0], where[1], { autosave: true }), { fade: true });
     });
@@ -239,10 +239,10 @@ function peView() {
   const L = LINEUPS;
   const fiz = [L.fizmat.keeper, ...L.fizmat.field, ...L.fizmat.bench];
   const iny = [L.inyaz.keeper, ...L.inyaz.field, ...L.inyaz.bench];
-  // «Физмат» — левая половина раздевалки, «ИнЯз» — правая
-  fiz.forEach((id, i) => cast.push({ id, x: 2 + i, y: i % 2 ? 6 : 3, dir: 'right' }));
-  iny.forEach((id, i) => cast.push({ id, x: 11 + i, y: i % 2 ? 6 : 3, dir: 'left' }));
-  cast.push({ id: 'ivan', x: 9, y: 2, dir: 'down' });
+  // раздевалка (Л-25): «ИнЯз» — на лавке у одной стены, «Физмат» — у противоположной
+  iny.forEach((id, i) => cast.push({ id, x: 3 + i * 2, y: 3, dir: 'down' }));
+  fiz.forEach((id, i) => cast.push({ id, x: 2 + i * 2, y: 6, dir: 'up' }));
+  cast.push({ id: 'ivan', x: 13, y: 4, dir: 'left' });
   const v = new MapView('locker_room', cast.map((c) => ({ ...c, x: Math.round(c.x) })));
   return v;
 }

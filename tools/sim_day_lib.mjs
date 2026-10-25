@@ -336,7 +336,7 @@ export class SimDay {
 
   miniCtx(id, loc, n) {
     const st = this.st;
-    const intoilet = /toilet/.test(loc) ? 1 : 0, incanteen = loc === 'canteen' ? 1 : 0;
+    const intoilet = /_wc$/.test(loc) ? 1 : 0, incanteen = loc === 'canteen' ? 1 : 0;
     const bigbreak = incanteen && isBigBreak(st) ? 1 : 0;
     const vapebattle = canVapeBattle(id) ? 1 : 0;
     const near = (w) => NPC_SCHEDULE[w][n] === loc;

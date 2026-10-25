@@ -1,4 +1,4 @@
-// Тайлы 16×16, генерируются кодом один раз. Атмосфера постсоветской школы: зелёная панель на стенах,
+// Тайлы 16×16, генерируются кодом один раз. Атмосфера постсоветской школы: стены — низ зелёный, верх салатовый (Л-6),
 // линолеум «в клетку», батареи под окнами, коричневые парты, тёмно-зелёная доска.
 import { Pixels } from './pixels.js';
 import { shade } from './color.js';
@@ -8,7 +8,7 @@ export const TILE = 16;
 const C = {
   floor: '#c9b48a', floorD: '#b59f74', floorL: '#d8c59c',
   wallTop: '#3b3346', wallTopL: '#4e445c',
-  paintLow: '#5f8f6e', paintLowD: '#4d775a', paintHigh: '#e8e2cf', paintHighD: '#d2cbb5', stripe: '#3f6650',
+  paintLow: '#5f8f6e', paintLowD: '#4d775a', paintHigh: '#c6e39a', paintHighD: '#b2d084', stripe: '#3f6650',
   wood: '#8a5a32', woodD: '#6b4424', woodL: '#a8733f',
   board: '#2f4a3a', boardD: '#243a2d', chalk: '#e8efe8',
   glass: '#9ccbe8', glassL: '#cfe8f7', frame: '#f2f2ee',
@@ -298,6 +298,112 @@ const BUILDERS = {
     px.rect(4, 5, 8, 2, C.metalD);
     for (let i = 0; i < 4; i++) px.vline(5 + i * 2, 8, 9 + i % 2 * 2, '#9fd3ff');
   },
+  // ---------- V2-3: туалет (Л-9), актовый зал (Л-20), трудовик, классы (Л-21), улица (ИС-6) ----------
+  blueTile(px) {
+    px.rect(0, 0, 16, 16, '#3f6fb8');
+    px.hline(0, 15, 0, '#5a88cc'); px.vline(0, 0, 15, '#5a88cc');
+    px.hline(0, 15, 8, '#2f5a9a'); px.vline(8, 0, 15, '#2f5a9a');
+  },
+  toiletWall(px) {
+    px.rect(0, 0, 16, 16, '#f4f6fa');
+    px.rect(0, 5, 16, 4, '#a8c8f0');
+    px.rect(0, 9, 16, 7, '#3f6fb8');
+    for (let x = 0; x < 16; x += 4) px.vline(x, 9, 15, '#2f5a9a');
+    px.hline(0, 15, 12, '#2f5a9a');
+  },
+  urinal(px) {
+    BUILDERS.toiletWall(px);
+    px.rect(5, 4, 6, 10, '#f8f8f8'); px.rect(6, 6, 4, 7, '#dfe8ee'); px.rect(7, 2, 2, 2, C.metal);
+  },
+  dryer(px) {
+    BUILDERS.toiletWall(px);
+    px.rect(4, 3, 8, 6, '#e8e8ec'); px.rect(4, 8, 8, 1, '#9aa3ad'); px.rect(7, 9, 2, 1, '#555a60');
+  },
+  darkFloor(px) {
+    px.rect(0, 0, 16, 16, '#3a2e2a');
+    px.hline(0, 15, 7, '#33282a'); px.hline(0, 15, 15, '#2c2224');
+  },
+  chair(px) {
+    px.rect(3, 2, 10, 5, '#e8822a'); px.rect(3, 7, 10, 5, '#f09a40');
+    px.hline(3, 12, 6, '#c86a1e'); px.rect(4, 12, 1, 3, '#2a2a2e'); px.rect(11, 12, 1, 3, '#2a2a2e');
+  },
+  stage(px) {
+    px.rect(0, 0, 16, 16, '#8a5a32');
+    px.hline(0, 15, 0, '#a8733f'); px.hline(0, 15, 8, '#7a4e2a');
+    px.vline(5, 0, 7, '#7a4e2a'); px.vline(11, 8, 15, '#7a4e2a');
+  },
+  stageEdge(px) {
+    BUILDERS.stage(px);
+    px.rect(0, 9, 16, 7, '#5a3a20'); px.hline(0, 15, 9, '#3a2412');
+  },
+  lectern(px) {
+    BUILDERS.stage(px);
+    px.rect(3, 3, 10, 12, '#6b4424'); px.rect(2, 2, 12, 3, '#a8733f'); px.rect(6, 7, 4, 3, '#d8c070');
+  },
+  plasma(px) {
+    paintedWall(px);
+    px.rect(0, 1, 16, 11, '#141418'); px.rect(1, 2, 14, 9, '#2a4a8a'); px.rect(2, 3, 6, 3, '#4a7ac8');
+  },
+  aircon(px) {
+    paintedWall(px);
+    px.rect(1, 2, 14, 5, '#f4f4f4'); px.hline(2, 13, 5, '#c8c8cc'); px.hline(2, 13, 6, '#9aa3ad');
+  },
+  machine(px) {
+    px.rect(2, 4, 12, 10, '#4a6a5a'); px.rect(3, 2, 6, 4, '#5a7a6a'); px.rect(10, 6, 3, 2, C.metal);
+    px.rect(4, 8, 8, 2, '#2a2a2e'); px.rect(2, 14, 12, 2, '#2a3a32');
+  },
+  mats(px) {
+    for (let i = 0; i < 5; i++) px.rect(1, 3 + i * 2, 14, 2, i % 2 ? '#3a5aa8' : '#2a4a98');
+    px.rect(1, 13, 14, 1, '#1a2a68');
+  },
+  wardrobe(px) {
+    px.rect(0, 0, 16, 16, '#b89a6a');
+    px.rect(1, 1, 7, 15, '#c8aa7a'); px.rect(8, 1, 7, 15, '#c8aa7a');
+    px.vline(8, 0, 15, '#8a6a42'); px.set(6, 8, '#3a3a3a'); px.set(9, 8, '#3a3a3a');
+    px.hline(0, 15, 0, '#8a6a42');
+  },
+  classDesk(px) {
+    px.rect(1, 4, 14, 9, C.woodD); px.rect(1, 3, 14, 2, C.wood);
+    px.rect(2, 1, 5, 4, '#2a6a3a'); px.rect(3, 0, 5, 3, '#8a2a2a'); px.rect(9, 2, 4, 3, '#f2f2ee'); px.vline(13, 1, 4, '#3a5aa8');
+  },
+  redFence(px) {
+    BUILDERS.grass(px, 0);
+    px.hline(0, 15, 3, '#b02828'); px.hline(0, 15, 12, '#b02828');
+    for (let x = 1; x < 16; x += 3) px.vline(x, 1, 15, '#c83a3a');
+  },
+  ironDoor(px) {
+    paintedWall(px);
+    px.rect(2, 0, 12, 16, '#5a5e66'); px.rect(3, 1, 10, 14, '#7a7e86');
+    for (let y = 3; y < 15; y += 4) px.hline(3, 12, y, '#4a4e56');
+    px.rect(11, 8, 1, 2, '#2a2a2e');
+  },
+  turnstile(px) {
+    BUILDERS.terrazzo(px, 1);
+    px.rect(0, 2, 3, 12, '#9aa3ad'); px.rect(13, 2, 3, 12, '#9aa3ad');
+    px.rect(1, 3, 1, 2, '#5ad65a'); px.rect(14, 3, 1, 2, '#5ad65a');
+    px.rect(3, 6, 4, 4, '#cfe8f7'); px.rect(9, 6, 4, 4, '#cfe8f7');
+  },
+  steps(px) {
+    px.rect(0, 0, 16, 16, '#b8b4aa');
+    for (let y = 0; y < 16; y += 4) { px.hline(0, 15, y, '#d4d0c6'); px.hline(0, 15, y + 3, '#8e8a82'); }
+  },
+  greenFloor(px) {
+    px.rect(0, 0, 16, 16, '#7ab86a'); px.hline(0, 15, 0, '#8ac87a'); px.vline(0, 0, 15, '#8ac87a');
+    px.rect(8, 8, 8, 8, '#6aa85a');
+  },
+  hangers(px) {
+    paintedWall(px);
+    px.hline(1, 14, 4, C.metalD);
+    for (let x = 2; x < 15; x += 4) { px.vline(x, 4, 6, C.metal); px.rect(x - 1, 7, 3, 6, x % 8 ? '#2a2a2e' : '#f2f2ee'); }
+  },
+  trash(px) {
+    px.rect(4, 5, 8, 10, '#5a5e66'); px.rect(3, 4, 10, 2, '#7a7e86');
+    px.rect(5, 2, 2, 4, '#9ccbe8'); px.rect(8, 1, 2, 4, '#8a2a2a'); px.rect(10, 3, 3, 2, '#f2f2ee');
+  },
+  socks(px) {
+    px.rect(4, 4, 3, 9, '#e8e8e0'); px.rect(4, 11, 5, 3, '#e8e8e0'); px.rect(9, 6, 3, 8, '#d8d8c8'); px.rect(9, 12, 4, 2, '#d8d8c8');
+    px.set(5, 2, '#9a9a40'); px.set(10, 3, '#9a9a40');
+  },
 };
 
 // Варианты тайлов (у пола — шахматка, у доски — разные «надписи мелом»).
@@ -343,6 +449,30 @@ export const TILE_DEFS = {
   'v': { name: 'water', variants: 4, solid: true },
   'e': { name: 'pooledge', solid: false },
   'H': { name: 'shower', solid: true },
+  // V2-3
+  'u': { name: 'blueTile', solid: false },
+  'R': { name: 'toiletWall', solid: true },
+  'y': { name: 'urinal', solid: true },
+  'z': { name: 'dryer', solid: true },
+  'd': { name: 'darkFloor', solid: false },
+  'o': { name: 'chair', solid: true, overlay: true },
+  'm': { name: 'stage', solid: true },
+  'n': { name: 'stageEdge', solid: true },
+  'l': { name: 'lectern', solid: true },
+  'i': { name: 'aircon', solid: true },
+  'V': { name: 'plasma', solid: true },
+  'I': { name: 'machine', solid: true, overlay: true },
+  'G': { name: 'mats', solid: true, overlay: true },
+  'X': { name: 'wardrobe', solid: true },
+  '%': { name: 'redFence', solid: true },
+  '=': { name: 'ironDoor', solid: true },
+  '|': { name: 'turnstile', solid: false },
+  '^': { name: 'steps', solid: false },
+  '+': { name: 'greenFloor', solid: false },
+  '-': { name: 'hangers', solid: true },
+  '$': { name: 'trash', solid: true, overlay: true },
+  '~': { name: 'socks', solid: true, overlay: true },
+  '&': { name: 'classDesk', solid: true, overlay: true },
 };
 
 const cache = new Map();

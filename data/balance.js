@@ -85,7 +85,17 @@ export const BALANCE = {
     topChoco: { name: '«Топ с шоколадом»', price: 180, hunger: -20, stress: -5 },
     lunch: { name: 'Комплексный обед', price: 350, hunger: -50, stress: 0, lunchOnly: true },
     tea: { name: 'Чай', price: 40, hunger: -5, stress: -3 },
+    // Л-12 (V2-3)
+    carbonara: { name: 'Карбонарка', price: 200, hunger: -35, stress: -3 },
+    shashlik: { name: 'Шашлычок', price: 200, hunger: -30, stress: -5 },
+    vitba: { name: 'Батончик «Витьба»', price: 90, hunger: -12, stress: -4 },
+    bun: { name: 'Булочка с повидлом', price: 120, hunger: -18, stress: -2 },
+    juice: { name: 'Сок 1 литр', price: 250, hunger: -8, stress: -6 },
   },
+
+  // V2-3: туалеты (Л-18) и турникеты Face-ID (ИС-6)
+  toilets: { wrongDoorAura: -5 },
+  faceId: { failChance: 0.15, failDelay: 1.5 },
 
   director: {
     stress: 20,

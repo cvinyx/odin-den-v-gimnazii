@@ -27,7 +27,7 @@ export const LIBRARY = {
     outlet: {x:3,y:2,dir:"up"},
   },
   exits: [
-    { x: 20, y: 1, to: "rec_f2", spawn: "library", label: "Выход" },
+    { x: 20, y: 1, to: "c1_f2", spawn: "library", label: "Выход" },
   ],
   objects: [
     { x: 3, y: 1, kind: "outlet" },

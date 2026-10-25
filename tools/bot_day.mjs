@@ -93,6 +93,7 @@ export async function runDay({ seed = 'KQ7M2P', shots = null, cheatStyle = 'caut
       if (l.n === 3) {
         await bot.goToMap('canteen');
         await shot(`d${day}-stolovaya`);
+        await bot.goToMap('buffet'); // V2-3: буфет — отдельная комната рядом со столовой
         await bot.talkTo('cook');
         await bot.handle((t) => t === 'buffet');
         await page.evaluate(() => { const b = window.__odin.scenes.top; b.menu.index = 2; });

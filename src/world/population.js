@@ -40,7 +40,8 @@ export function populate(def, state, solidAt) {
   for (let i = 0; i < count; i++) {
     const p = spots.crowd[i];
     if (taken.has(p[0] + ':' + p[1])) continue;
-    const id = makeUnnamed(rng, 'crowd', `crowd_${def.id}_${b || 0}_${i}`);
+    // первые этажи корпусов 2 и 3 — младшие классы (Л-16)
+    const id = makeUnnamed(rng, def.kids ? 'kid' : 'crowd', `crowd_${def.id}_${b || 0}_${i}`, def.kids ? { kids: true } : {});
     const route = [[p[0], p[1]]];
     const dx = rng.pick([-3, -2, 2, 3]);
     let ok = true;
@@ -50,6 +51,11 @@ export function populate(def, state, solidAt) {
       id, x: p[0], y: p[1], dir: 'down', route: route.length > 1 ? route : [], wait: rng.float(1.5, 4), speed: rng.int(18, 30),
       talk: { file: 'crowd', label: rng.pick(crowdLabels) },
     });
+  }
+  // актовый зал (Л-20): на сцене всегда кто-то выступает
+  if (def.performer) {
+    const p = def.performer;
+    out.push({ id: makeUnnamed(eventRng(state, 'performer:' + (b || state.phase)), 'stage', 'stage_performer'), x: p.x, y: p.y, dir: 'down', route: [] });
   }
   return out;
 }

@@ -259,11 +259,11 @@ export function registerDebugEntries() {
 
   // V2-1: новые и переименованные персонажи в диалоге (на фоне их места на перемене)
   for (const [label, id, file, lab, map, b] of [
-    ['Ваня Максимов', 'vanya', 'break1', 'vanya', 'k2_f2', 1],
-    ['Святослав Гулько', 'svyat', 'break1', 'svyat', 'k2_f2', 1],
-    ['Миша Аносов', 'anosov', 'break1', 'anosov', 'k1_f4', 1],
+    ['Ваня Максимов', 'vanya', 'break1', 'vanya', 'c3_f2', 1],
+    ['Святослав Гулько', 'svyat', 'break1', 'svyat', 'c3_f2', 1],
+    ['Миша Аносов', 'anosov', 'break1', 'anosov', 'c2_f4', 1],
     ['Иван Владимирович', 'ivan', 'lesson_pe', 'intro', 'locker_room', 4],
-    ['Василий', 'vasily', 'staff', 'vasily', 'rec_f1', 3],
+    ['Василий', 'vasily', 'staff', 'vasily', 'c1_f1', 3],
   ]) {
     registerDebug('Персонажи', label + ' (диалог)', (game) => {
       prepareDay(game, b);

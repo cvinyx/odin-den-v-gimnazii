@@ -23,14 +23,14 @@ import { planRoute } from '../tools/bot_lib.mjs';
 
 // Таблица раздела 11 (как в спецификации) — с названиями мест, переведёнными в id карт.
 const TABLE = {
-  'denis,igor': ['k2_f4', 'k2_f4_toilet', 'canteen', 'rec_f1', 'locker_room', 'k2_f3'],
-  'chernyak,shurpo': ['k1_f4_toilet', 'k1_f4_toilet', 'canteen', 'rec_toilet', 'locker_room', 'library'],
-  'levonchuk': ['k1_f4', 'rec_f2', 'canteen', 'k1_f4', 'rec_f1', 'rec_f1'],
-  'bochko': ['k1_f4', 'rec_f2', 'canteen', 'k1_f4', 'locker_room', 'rec_f1'],
-  'matych,buy,guza': ['rec_f1', 'k2_f4', 'canteen', 'k2_f4_toilet', 'locker_room', 'rec_f1'],
-  'smile,vadim,vitalik,zakha,anosov': ['k1_f4', 'k1_f4_toilet', 'canteen', 'rec_f1', 'locker_room', 'k1_f4'],
-  'vanya,svyat': ['k2_f2', 'rec_f2', 'canteen', 'k2_f2', 'rec_f1', 'k2_f2'],
-  'olga': [null, 'rec_f1', 'canteen', 'k2_f4', null, 'k1_f4'],
+  'denis,igor': ['c3_f4', 'c3_f4_wc', 'canteen', 'c1_f1', 'locker_room', 'c3_f3'],
+  'chernyak,shurpo': ['c2_f4_wc', 'c2_f4_wc', 'canteen', 'c1_wc', 'locker_room', 'library'],
+  'levonchuk': ['c2_f4', 'c1_f2', 'canteen', 'c2_f4', 'c1_f1', 'c1_f1'],
+  'bochko': ['c2_f4', 'c1_f2', 'canteen', 'c2_f4', 'locker_room', 'c1_f1'],
+  'matych,buy,guza': ['c1_f1', 'c3_f4', 'canteen', 'c3_f4_wc', 'locker_room', 'c1_f1'],
+  'smile,vadim,vitalik,zakha,anosov': ['c2_f4', 'c2_f4_wc', 'canteen', 'c1_f1', 'locker_room', 'c2_f4'],
+  'vanya,svyat': ['c3_f2', 'c1_f2', 'canteen', 'c3_f2', 'c1_f1', 'c3_f2'],
+  'olga': [null, 'c1_f1', 'canteen', 'c3_f4', null, 'c2_f4'],
 };
 
 test('на каждой перемене каждый именной NPC стоит там, где сказано в таблице раздела 11', () => {
@@ -98,8 +98,8 @@ test('уроки: у каждого есть файл диалогов со вс
     if (l.minigame.endsWith('_stub')) assert.ok(d.labels[l.minigame], `${l.file}: нет ${l.minigame}`);
     if (l.building) {
       assert.ok(MAPS[ROOM_MAPS[l.room]], 'нет карты кабинета ' + l.room);
-      const corridor = MAPS[`k${l.building}_f${l.floor}`];
-      assert.ok(corridor.exits.some((e) => e.room === l.room), `дверь ${l.room} в ${corridor.id}`);
+      const corridor = MAPS[`c${l.building}_f${l.floor}`];
+      assert.ok(corridor.exits.some((e) => e.room === l.room || e.to === 'cab_' + l.room), `дверь ${l.room} в ${corridor.id}`);
     } else {
       assert.ok(Object.values(MAPS).some((m) => m.room === l.room), l.room);
     }
@@ -125,7 +125,7 @@ test('на перемене N вход в кабинет урока N+1 начи
 
 test('из улицы можно дойти до каждого кабинета расписания и до каждой карты', () => {
   const data = { MAPS, STAIRWELLS };
-  const roomMap = (l) => (l.building ? `k${l.building}_f${l.floor}` : l.room === 'бассейн' ? 'pool' : 'gym');
+  const roomMap = (l) => (l.building ? `c${l.building}_f${l.floor}` : l.room === 'бассейн' ? 'pool' : 'gym');
   for (const S of WEEK_DAYS) {
     for (const l of S) assert.ok(planRoute(data, 'street', l.room), 'нет пути к ' + l.room);
     // и между любыми двумя кабинетами подряд
@@ -160,8 +160,10 @@ test('буфет: цены, обед только на большой перем
 
 test('схема школы: у каждой карты есть зона', () => {
   for (const id of Object.keys(MAPS)) if (id !== 'test_room') assert.ok(zoneOf(id), id);
-  assert.equal(zoneOf('k1_f3'), 'k1');
-  assert.equal(zoneOf('cab_404'), 'k2');
+  // V2-3: новая нумерация корпусов (Л-1)
+  assert.equal(zoneOf('c2_f3'), 'c2');
+  assert.equal(zoneOf('cab_343'), 'c3');
+  assert.equal(zoneOf('c1_back'), 'passage');
   assert.equal(zoneOf('library'), 'rec');
   assert.equal(zoneOf('showers'), 'pool');
 });

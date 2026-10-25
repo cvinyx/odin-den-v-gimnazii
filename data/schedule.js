@@ -1,6 +1,6 @@
 // Расписание недели (EDITS_V2: У-2, Л-8, Р-1). Звонки — как в версии 1, 7-й урок — 14:40–15:25.
-// room — кабинет на ТЕКУЩЕЙ карте (номер на двери), roomV2 — номер по новой нумерации Л-2/Л-8
-// (карты переедут на этапе V2-3, тогда room = roomV2).
+// room — номер кабинета по Л-2 (корпус, этаж, номер на этаже); с этапа V2-3 карты по новой нумерации,
+// roomV2 оставлен равным room для совместимости.
 
 export const DAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница'];
 export const DAY_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт'];
@@ -15,43 +15,38 @@ export const BELLS = [
   { start: '14:40', end: '15:25' },
 ];
 
-// Кабинеты текущей карты: корпус и этаж (корпус 1 — левый, 2 — правый; 0 — спортзал/бассейн).
-const ROOMS = {
-  '404': { building: 2, floor: 4 },
-  '305': { building: 1, floor: 3 },
-  '208': { building: 2, floor: 2 },
-  '214': { building: 1, floor: 2 },
-  '312': { building: 2, floor: 3 },
-  '115': { building: 1, floor: 1 },
-  'спортзал': { building: 0, floor: 1 },
-  'бассейн': { building: 0, floor: 0 },
-};
+// Корпус и этаж кабинета — по номеру (Л-2). Корпус 0 — спортзал и бассейн.
+function roomPlace(room) {
+  if (room === 'спортзал') return { building: 0, floor: 1 };
+  if (room === 'бассейн') return { building: 0, floor: 0 };
+  return { building: +room[0], floor: +room[1] };
+}
 
 // Предметы. exact — точный (минимальная оценка 1, Р-6), иначе гуманитарный (минимум 2).
 // graded: false — оценок нет никогда (У-6). games — главная мини-игра по очереди за неделю.
-// Где по Л-8: всё гуманитарное + математика — 343 (класс 11 «И»); информатика — 2-й корпус, 2 эт.
-// (за железной дверью); физика и астрономия — 3-й корпус, 2 эт.; биология — 3-й корпус, 3 эт.;
-// химия — 2-й корпус, 4 эт.; английский — 2-й корпус, 3 эт., вдоль коридора (решение V2-2).
+// Где по Л-8: всё гуманитарное + математика — 343 (класс 11 «И»); информатика — 224 (корпус 2, 2 эт.,
+// за железной дверью); физика и астрономия — 321; биология — 331; химия — 241; английский — 232
+// (корпус 2, 3 эт., вдоль коридора — решение V2-2).
 export const SUBJECTS = {
-  english: { name: 'Английский', short: 'Англ. яз.', teacher: 'english', file: 'lesson_english', room: '305', roomV2: '232', exact: false, games: ['cheat'] },
-  algebra: { name: 'Алгебра', short: 'Алгебра', teacher: 'math', file: 'lesson_math', room: '404', roomV2: '343', exact: true, games: ['phone_blocks', 'cheat'] },
-  geometry: { name: 'Геометрия', short: 'Геометрия', teacher: 'math', file: 'lesson_math', room: '404', roomV2: '343', exact: true, games: ['cheat'] },
-  russian: { name: 'Русский язык', short: 'Русск. яз.', teacher: 'russian', file: 'lesson_russian', room: '404', roomV2: '343', exact: false, games: ['bait', 'cheat', 'phone_feed'] },
-  rus_lit: { name: 'Русская литература', short: 'Русск. лит.', teacher: 'russian', file: 'lesson_lit', room: '404', roomV2: '343', exact: false, games: ['phone_feed', 'bait'] },
-  belarusian: { name: 'Белорусский язык', short: 'Бел. яз.', teacher: 'belarusian', file: 'lesson_belarusian', room: '404', roomV2: '343', exact: false, games: ['phone_feed'] },
-  bel_lit: { name: 'Белорусская литература', short: 'Бел. лит.', teacher: 'belarusian', file: 'lesson_bellit', room: '404', roomV2: '343', exact: false, games: ['bait'] },
-  physics: { name: 'Физика', short: 'Физика', teacher: 'physics', file: 'lesson_physics', room: '208', roomV2: '321', exact: true, games: ['phone_brawl', 'cheat'] },
-  astronomy: { name: 'Астрономия', short: 'Астрономия', teacher: 'physics', file: 'lesson_astronomy', room: '208', roomV2: '321', exact: true, games: ['phone_brawl'] },
-  chemistry: { name: 'Химия', short: 'Химия', teacher: 'chemistry', file: 'lesson_chemistry', room: '305', roomV2: '241', exact: true, games: ['cheat', 'phone_blocks'] },
-  biology: { name: 'Биология', short: 'Биология', teacher: 'biology', file: 'lesson_biology', room: '312', roomV2: '331', exact: false, games: ['phone_feed', 'cheat'] },
-  informatics: { name: 'Информатика', short: 'Информатика', teacher: 'informatics', file: 'lesson_informatics', room: '214', roomV2: '221', exact: true, games: ['phone_brawl'] },
-  hist_by: { name: 'История Беларуси', short: 'Ист. Беларуси', teacher: 'history', file: 'lesson_history', room: '404', roomV2: '343', exact: false, games: ['cheat'] },
-  hist_world: { name: 'Всемирная история', short: 'Всем. история', teacher: 'history', file: 'lesson_history', room: '404', roomV2: '343', exact: false, games: ['bait'] },
-  geography: { name: 'География', short: 'География', teacher: 'geography', file: 'lesson_geography', room: '404', roomV2: '343', exact: false, games: ['phone_blocks', 'phone_feed'] },
-  social: { name: 'Обществоведение', short: 'Обществовед.', teacher: 'social', file: 'lesson_social', room: '404', roomV2: '343', exact: false, games: ['cheat_quiz'] },
+  english: { name: 'Английский', short: 'Англ. яз.', teacher: 'english', file: 'lesson_english', room: '232', roomV2: '232', exact: false, games: ['cheat'] },
+  algebra: { name: 'Алгебра', short: 'Алгебра', teacher: 'math', file: 'lesson_math', room: '343', roomV2: '343', exact: true, games: ['phone_blocks', 'cheat'] },
+  geometry: { name: 'Геометрия', short: 'Геометрия', teacher: 'math', file: 'lesson_math', room: '343', roomV2: '343', exact: true, games: ['cheat'] },
+  russian: { name: 'Русский язык', short: 'Русск. яз.', teacher: 'russian', file: 'lesson_russian', room: '343', roomV2: '343', exact: false, games: ['bait', 'cheat', 'phone_feed'] },
+  rus_lit: { name: 'Русская литература', short: 'Русск. лит.', teacher: 'russian', file: 'lesson_lit', room: '343', roomV2: '343', exact: false, games: ['phone_feed', 'bait'] },
+  belarusian: { name: 'Белорусский язык', short: 'Бел. яз.', teacher: 'belarusian', file: 'lesson_belarusian', room: '343', roomV2: '343', exact: false, games: ['phone_feed'] },
+  bel_lit: { name: 'Белорусская литература', short: 'Бел. лит.', teacher: 'belarusian', file: 'lesson_bellit', room: '343', roomV2: '343', exact: false, games: ['bait'] },
+  physics: { name: 'Физика', short: 'Физика', teacher: 'physics', file: 'lesson_physics', room: '321', roomV2: '321', exact: true, games: ['phone_brawl', 'cheat'] },
+  astronomy: { name: 'Астрономия', short: 'Астрономия', teacher: 'physics', file: 'lesson_astronomy', room: '321', roomV2: '321', exact: true, games: ['phone_brawl'] },
+  chemistry: { name: 'Химия', short: 'Химия', teacher: 'chemistry', file: 'lesson_chemistry', room: '241', roomV2: '241', exact: true, games: ['cheat', 'phone_blocks'] },
+  biology: { name: 'Биология', short: 'Биология', teacher: 'biology', file: 'lesson_biology', room: '331', roomV2: '331', exact: false, games: ['phone_feed', 'cheat'] },
+  informatics: { name: 'Информатика', short: 'Информатика', teacher: 'informatics', file: 'lesson_informatics', room: '224', roomV2: '224', exact: true, games: ['phone_brawl'] },
+  hist_by: { name: 'История Беларуси', short: 'Ист. Беларуси', teacher: 'history', file: 'lesson_history', room: '343', roomV2: '343', exact: false, games: ['cheat'] },
+  hist_world: { name: 'Всемирная история', short: 'Всем. история', teacher: 'history', file: 'lesson_history', room: '343', roomV2: '343', exact: false, games: ['bait'] },
+  geography: { name: 'География', short: 'География', teacher: 'geography', file: 'lesson_geography', room: '343', roomV2: '343', exact: false, games: ['phone_blocks', 'phone_feed'] },
+  social: { name: 'Обществоведение', short: 'Обществовед.', teacher: 'social', file: 'lesson_social', room: '343', roomV2: '343', exact: false, games: ['cheat_quiz'] },
   pe_football: { name: 'Физкультура', short: 'Физра', teacher: 'ivan', file: 'lesson_pe', room: 'спортзал', roomV2: 'спортзал', exact: false, graded: false, games: ['football'] },
   pe_swim: { name: 'Плавание', short: 'Плавание', teacher: 'ivan', file: 'lesson_swim', room: 'бассейн', roomV2: 'бассейн', exact: false, graded: false, games: ['swim_stub'] },
-  classhour: { name: 'Классный час', short: 'Кл. час', teacher: 'classteacher', file: 'lesson_classhour', room: '404', roomV2: '343', exact: false, graded: false, games: ['classhour_stub'] },
+  classhour: { name: 'Классный час', short: 'Кл. час', teacher: 'classteacher', file: 'lesson_classhour', room: '343', roomV2: '343', exact: false, graded: false, games: ['classhour_stub'] },
 };
 
 // Неделя 11 «И» (Рома). Условия У-2 проверяет тест (tests/v2_2.test.mjs).
@@ -109,7 +104,7 @@ export function daySchedule(day, cls = 'I') {
     let occ = 0;
     for (let d = 0; d < day - 1; d++) occ += week[d].filter((x) => x === sid).length;
     occ += list.slice(0, i).filter((x) => x === sid).length;
-    const R = ROOMS[S.room];
+    const R = roomPlace(S.room);
     return {
       n: i + 1, ...BELLS[i], subject: S.name, short: S.short, subjectId: sid, room: S.room, roomV2: S.roomV2,
       building: R.building, floor: R.floor, teacher: S.teacher, file: S.file,
