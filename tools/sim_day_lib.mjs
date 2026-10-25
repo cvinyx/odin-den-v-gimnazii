@@ -13,7 +13,8 @@ import { startLesson, endLessonRules, finishLesson, startBreak, eventRng, lesson
 import { rollBet, payWin, resolveLoss } from '../src/game/bets.js';
 import { pickEnding, avgGrade } from '../src/game/endings.js';
 import { LESSON_FILES } from '../data/lessons.js';
-import { NPC_SCHEDULE } from '../data/npc_schedule.js';
+import { placesFor } from '../data/npc_schedule.js';
+import { BAIT_LIST, EAT_FRIENDS } from '../data/rules.js';
 import { TEACHERS } from '../data/teachers.js';
 import { BALANCE } from '../data/balance.js';
 import { buyFood, isBigBreak } from '../src/scenes/buffet.js';
@@ -361,11 +362,12 @@ export class SimDay {
     if (charge) changeStat(st, 'battery', Math.round(BALANCE.battery.chargePerSecond * 45));
     else if (s !== 'cautious' && st.stats.vapeCharge < 30 && r.chance(0.5)) changeStat(st, 'vapeCharge', Math.round(BALANCE.vape.chargePerSecond * 45));
     // разговоры с именными на перемене
-    const here = Object.entries(NPC_SCHEDULE).filter(([, row]) => row[n]).map(([id]) => id);
+    const places = placesFor(st.seed, st.day, n);
+    const here = Object.keys(places).filter((id) => places[id]);
     const talks = { cautious: 2, average: 3, chaotic: 4 }[s];
     for (let k = 0; k < talks && !this.over; k++) {
       const id = r.pick(here);
-      const loc = NPC_SCHEDULE[id][n];
+      const loc = places[id];
       this.patrolNear = s !== 'cautious' && r.chance(0.12);
       this.condCtx = this.miniCtx(id, loc, n);
       const label = st.flags[`talked_break${n}_${id}`] ? null : id;
@@ -381,20 +383,25 @@ export class SimDay {
 
   miniCtx(id, loc, n) {
     const st = this.st;
+    const places = placesFor(st.seed, st.day, n);
     const intoilet = /_wc$/.test(loc) ? 1 : 0, incanteen = loc === 'canteen' ? 1 : 0;
     const bigbreak = incanteen && isBigBreak(st) ? 1 : 0;
-    const vapebattle = canVapeBattle(id) ? 1 : 0;
-    const near = (w) => NPC_SCHEDULE[w][n] === loc;
-    this.mbFriend = !['matych', 'buy'].includes(id) && near('matych') && near('buy') ? id : null;
+    const baitok = BAIT_LIST.includes(id) ? 1 : 0;
+    const vapebattle = (intoilet || loc === 'locker_room') && canVapeBattle(id) ? 1 : 0;
+    const eatok = bigbreak && EAT_FRIENDS.includes(id) ? 1 : 0;
+    const near = (w) => places[w] === loc;
+    this.mbFriend = baitok && !['matych', 'buy'].includes(id) && near('matych') && near('buy') ? id : null;
+    const playable = baitok || vapebattle || intoilet || eatok ? 1 : 0;
     let challenge = 0, chalgame = 0;
-    if (!st.flags['challenged_' + id + '_' + st.lesson]) {
+    if (playable && !st.flags['challenged_' + id + '_' + st.lesson]) {
       const rng = eventRng(st, 'challenge:' + id + ':' + st.lesson);
       if (rng.chance(BALANCE.challengeChance)) {
-        const games = [1, vapebattle && vapeReady(st) && 2, intoilet && 3, bigbreak && st.stats.money >= BALANCE.eat.entry && 4].filter(Boolean);
-        chalgame = rng.pick(games); challenge = 1;
+        const games = [baitok && 1, vapebattle && vapeReady(st) && 2, intoilet && 3, eatok && 4].filter(Boolean);
+        if (games.length) { chalgame = rng.pick(games); challenge = 1; }
       }
     }
-    return { intoilet, incanteen, bigbreak, mbnear: this.mbFriend ? 1 : 0, vapebattle, playable: 1, challenge, chalgame };
+    const vapeOk = intoilet || loc === 'locker_room' || /^cab_/.test(loc);
+    return { intoilet, incanteen, bigbreak, mbnear: this.mbFriend ? 1 : 0, vapebattle, playable, challenge, chalgame, baitok, baitsolo: baitok && !this.mbFriend ? 1 : 0, eatok, power: 0, askok: 0, ...(vapeOk ? {} : { vape: 0 }) };
   }
 
   breakActions(opp) {
@@ -403,15 +410,21 @@ export class SimDay {
     for (const a of acts) {
       if (this.over) return;
       if (a.name === 'director_patrol') this.director();
-      else if (a.name === 'bait') { const o = a.arg || opp; this.minigame('bait', { opp: o, bet: rollBet(st, o), params: { opp: o } }); }
-      else if (a.name === 'buffet') { if (st.stats.hunger > 40) buyFood(st, 'smazhenka'); }
+      else if (a.name === 'bait') { const o = a.arg || opp; if (!BAIT_LIST.includes(o)) continue; this.minigame('bait', { opp: o, bet: rollBet(st, o), params: { opp: o } }); }
+      else if (a.name === 'buffet') {
+        if (st.stats.hunger > 40 && buyFood(st, 'smazhenka').diarrhea) {
+          // М-2: 90 % игроков успевают в туалет (аура −), остальным «Это позор» — день окончен
+          st.flags.diarrheaT = 0;
+          if (this.rng.chance(0.9)) changeStat(st, 'aura', BALANCE.diarrhea.aura.sock); else { this.over = true; this.shame = true; }
+        }
+      }
       else if (a.name === 'play') {
         const k = a.arg;
         if (k === 'mb') this.minigame('bait_mb', { opp: 'matych', params: { friend: this.mbFriend || 'denis' } });
         else if (k === 'vape' && canVapeBattle(opp) && vapeReady(st)) {
           const r = this.minigame('vape', { opp, bet: rollBet(st, opp), params: { opp, patrolNear: this.patrolNear } });
           if (r.extra && r.extra.caught) this.director();
-        } else if (k === 'eat' && st.stats.money >= BALANCE.eat.entry) this.minigame('eat', { opp, params: { opp } });
+        } else if (k === 'eat') this.minigame('eat', { opp, params: { opp } });
         else if (k === 'toilet') this.minigame('toilet', { opp, bet: rollBet(st, opp), params: { opp } });
       }
     }

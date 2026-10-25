@@ -3,6 +3,7 @@ import { Menu } from '../ui/menu.js';
 import { BALANCE } from '../../data/balance.js';
 import { changeStat, formatMoney } from '../game/state.js';
 import { BREAKS } from '../../data/schedule.js';
+import { eventRng } from '../game/day.js';
 import { portraitOf } from '../gen/people.js';
 import { audio } from '../engine/audio.js';
 
@@ -20,6 +21,14 @@ export function buyFood(state, key) {
   changeStat(state, 'money', -f.price);
   if (f.hunger) changeStat(state, 'hunger', f.hunger);
   if (f.stress) changeStat(state, 'stress', f.stress);
+  // М-2: после смаженки с шансом 33 % диарея — 30 с до туалета
+  if (key === 'smazhenka' && !state.flags.diarrheaT) {
+    state.flags.smazhN = (state.flags.smazhN || 0) + 1;
+    if (eventRng(state, `diarrhea:${state.day}:${state.lesson}:${state.flags.smazhN}`).chance(BALANCE.diarrhea.chance)) {
+      state.flags.diarrheaT = BALANCE.diarrhea.seconds;
+      return { ok: true, diarrhea: true };
+    }
+  }
   return { ok: true };
 }
 
@@ -29,7 +38,7 @@ export class BuffetScene {
     this.game = game;
     const st = game.state;
     const items = Object.entries(BALANCE.food).map(([key, f]) => ({
-      label: `${f.name} — ${formatMoney(f.price)}`,
+      label: `${key === 'lunch' ? 'Комплексный обед: ' + BALANCE.dishes[(st.day || 1) - 1] : f.name} — ${formatMoney(f.price)}`,
       disabled: f.lunchOnly && !isBigBreak(st),
       action: () => this.buy(key),
     }));
@@ -38,7 +47,7 @@ export class BuffetScene {
   }
   buy(key) {
     const res = buyFood(this.game.state, key);
-    if (res.ok) { audio.play('coin'); this.game.toast('Куплено: ' + BALANCE.food[key].name); }
+    if (res.ok) { audio.play('coin'); this.game.toast('Куплено: ' + BALANCE.food[key].name); if (res.diarrhea) import('./dialog_scene.js').then(({ DialogScene }) => this.game.scenes.push(new DialogScene('places', 'dia_start'))); }
     else { audio.play('menuDenied'); this.game.toast(res.reason); }
   }
   update(dt) {

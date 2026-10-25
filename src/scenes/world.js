@@ -7,7 +7,7 @@ import { populate } from '../world/population.js';
 import { getMapDef, STAIRWELLS, MAPS } from '../world/maps/index.js';
 import { BuffetScene, isBigBreak } from './buffet.js';
 import { patrolSees, PATROL, DIRA } from '../world/patrol.js';
-import { changeStat } from '../game/state.js';
+import { changeStat, scriptStatValue } from '../game/state.js';
 import { TILE } from '../gen/tiles.js';
 import { GAME_H } from '../engine/renderer.js';
 import { BALANCE } from '../../data/balance.js';
@@ -21,7 +21,13 @@ import { formatTimer } from '../ui/format.js';
 import { audio } from '../engine/audio.js';
 import { hintText, nextLesson, roomAction, eventRng } from '../game/day.js';
 import { canVapeBattle, vapeReady } from '../minigames/vape_battle.js';
+import { BAIT_LIST, EAT_FRIENDS, POWERBANK_LIST, vapeBattlePlaceOk, vapePlaceOk } from '../../data/rules.js';
+import { askable, askAnswers } from '../game/ask.js';
+import { nextToiletStep } from '../world/route.js';
 import { rollBet, creditorReminds } from '../game/bets.js';
+import { buyFood } from './buffet.js';
+import { rollPowerbank } from '../game/powerbank.js';
+import { nextText, countText, testText, gradeText } from '../game/ask.js';
 import { hasLabel, labelsOf, labelLines } from '../game/dialogs.js';
 
 const DIRV = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
@@ -79,6 +85,9 @@ export class WorldScene {
     for (const a of game.takeActions()) {
       if (a.name === 'bait') this.startBait(a.arg || (this.lastTalk && this.lastTalk.id));
       else if (a.name === 'play') this.startCompetition(a.arg, this.lastTalk && this.lastTalk.id);
+      else if (a.name === 'kid_bait') this.startBait(this.lastTalk && this.lastTalk.id);
+      else if (a.name === 'gossip') this.gossip();
+      else if (a.name === 'lunch') { const r = buyFood(game.state, 'lunch'); game.toast(r.ok ? 'Съедено: блюдо дня' : r.reason); }
       else if (a.name === 'charge_phone') this.startCharging('phone');
       else if (a.name === 'charge_vape') this.startCharging('vape');
       else if (a.name === 'charge_stop') this.stopCharging('Розетка свободна');
@@ -91,9 +100,12 @@ export class WorldScene {
   startBait(opp) {
     if (!opp) return;
     const game = this.game;
-    const bet = rollBet(game.state, opp);
+    // ИС-7: байт на перемене — только именные из списка и пятиклассник в кабинке (Л-10), у него ставки нет
+    const kid = !!(this.lastTalk && this.lastTalk.def.kid5);
+    if (!kid && !BAIT_LIST.includes(opp)) return this.say('С ним не выйдет: байтить можно только своих.');
+    const bet = kid ? 0 : rollBet(game.state, opp);
     game.scenes.push(new MinigameScene('bait', {
-      opp, bet, params: { opp },
+      opp, bet, params: { opp, kid },
       onDone: (res) => {
         if (res && res.extra && res.extra.rage) {
           game.state.flags.igorRage = true;
@@ -123,38 +135,51 @@ export class WorldScene {
       return;
     }
     if (kind === 'eat') {
-      if (st.stats.money < BALANCE.eat.entry) return this.say('На три смаженки не хватает денег.');
+      if (!EAT_FRIENDS.includes(opp)) return this.say('С ним за один стол не подсесть.');
       game.scenes.push(new MinigameScene('eat', { opp, params: { opp } }));
       return;
     }
     if (kind === 'toilet') game.scenes.push(new MinigameScene('toilet', { opp, bet: rollBet(st, opp), params: { opp } }));
   }
 
-  // Что можно предложить собеседнику (условия для меню «Давай на рубль?» и вызова от NPC).
+  // Что можно предложить собеседнику (условия для меню разговора и вызова от NPC). Правила V2-5:
+  // рейджбайт — только именные из BAIT_LIST (ИС-7); вейп-баттл — только туалет/раздевалка и список ИС-7;
+  // затянуться — только туалет, раздевалка, класс (ИС-7); безымянные вне туалета — только разговор и сплетня (ИС-8);
+  // «Кто больше съест» — на большой перемене с Игорем, Денисом, Гузой, Матычем, Буем (Л-13);
+  // пауэрбанк (М-1) и вопросы про уроки (М-7) — у именных.
   miniCtx(n) {
     const st = this.game.state;
     const id = n.id;
-    const loc = this.def.id || this.mapId;
     const named = !!n.def.named;
     const intoilet = this.def.toilet ? 1 : 0;
-    const incanteen = loc === 'canteen' ? 1 : 0;
+    const incanteen = this.def.id === 'canteen' ? 1 : 0;
     const bigbreak = incanteen && isBigBreak(st) ? 1 : 0;
-    const vapebattle = canVapeBattle(id) ? 1 : 0;
+    const baitok = named && BAIT_LIST.includes(id) ? 1 : 0;
+    const vapebattle = vapeBattlePlaceOk(this.def) && canVapeBattle(id) ? 1 : 0;
+    const eatok = bigbreak && EAT_FRIENDS.includes(id) ? 1 : 0;
     // «Матыч и Буй»: оба рядом, а собеседник — друг Ромы (он и будет в команде)
     const near = (who) => this.npcs.some((m) => m.id === who && Math.hypot(m.x - this.player.x, m.y - this.player.y) < BALANCE.baitMB.nearPx);
-    this.mbFriend = named && !['matych', 'buy'].includes(id) && near('matych') && near('buy') ? id : null;
+    this.mbFriend = baitok && !['matych', 'buy'].includes(id) && near('matych') && near('buy') ? id : null;
     const mbnear = this.mbFriend ? 1 : 0;
-    const playable = named || vapebattle || intoilet || bigbreak ? 1 : 0;
+    const playable = baitok || vapebattle || (intoilet && (named || canVapeBattle(id))) || eatok ? 1 : 0;
     // инициатива собеседника: иногда он сам предлагает сыграть (раз за перемену)
     let challenge = 0, chalgame = 0;
     if (st.phase === 'break' && playable && !st.flags['challenged_' + id + '_' + st.lesson]) {
       const rng = eventRng(st, 'challenge:' + id + ':' + st.lesson);
       if (rng.chance(BALANCE.challengeChance)) {
-        const games = [named && 1, vapebattle && vapeReady(st) && 2, intoilet && 3, bigbreak && st.stats.money >= BALANCE.eat.entry && 4].filter(Boolean);
+        const games = [baitok && 1, vapebattle && vapeReady(st) && 2, intoilet && named && 3, eatok && 4].filter(Boolean);
         if (games.length) { chalgame = rng.pick(games); challenge = 1; }
       }
     }
-    return { intoilet, incanteen, bigbreak, mbnear, vapebattle, playable, challenge, chalgame };
+    // пауэрбанк: телефон или вейп на 0 %, раз за перемену у одного человека
+    const dead = st.stats.battery <= 0 || st.stats.vapeCharge <= 0;
+    const power = named && POWERBANK_LIST.includes(id) && dead && st.phase === 'break' && !st.flags['power_' + id + '_' + st.lesson] ? 1 : 0;
+    // вопросы ученикам других классов (М-7)
+    const askok = named && askable(id) && st.phase === 'break' && !st.flags['asked_' + id + '_' + st.lesson]
+      && eventRng(st, `ask:${id}:${st.day}:${st.lesson}`).chance(BALANCE.ask.chance) ? 1 : 0;
+    // затянуться — только в разрешённых местах (на уроке — как раньше)
+    const vape = st.phase === 'lesson' || vapePlaceOk(this.def) ? scriptStatValue(st, 'vape') : 0;
+    return { intoilet, incanteen, bigbreak, mbnear, vapebattle, playable, challenge, chalgame, baitok, baitsolo: baitok && !mbnear ? 1 : 0, eatok, power, askok, vape };
   }
 
   exitAt(tx, ty) { return (this.def.exits || []).find((e) => e.x === tx && e.y === ty) || null; }
@@ -185,6 +210,7 @@ export class WorldScene {
     if (ex.to) {
       // карта-«кабинет» (спортзал, раздевалка, классы): вход в неё на нужной перемене начинает урок
       const target = MAPS[ex.to];
+      if (target && (target.room || target.classRoom) && game.state.flags.diarrheaT > 0) { this.say('Терпеть некогда — сначала в туалет!'); return; }
       if (target && target.room) {
         const act = roomAction(game.state, target.room);
         if (act.type === 'lesson') return this.startLesson(act.n);
@@ -195,6 +221,7 @@ export class WorldScene {
     }
     if (ex.stairs) return this.stairsMenu(ex.stairsSpawn || 'stairs');
     if (ex.room) {
+      if (game.state.flags.diarrheaT > 0) return this.say('Терпеть некогда — сначала в туалет!');
       const act = roomAction(game.state, ex.room);
       if (act.type === 'lesson') this.startLesson(act.n);
       else this.say(act.text);
@@ -309,14 +336,124 @@ export class WorldScene {
     st.flags[flag] = true;
     if (n.id === 'vasily') st.flags.metVasily = true;
     game.condCtx = this.miniCtx(n);
-    game.scenes.push(new DialogScene(file, label, { opp: n.id }));
+    const vars = { dish: BALANCE.dishes[(st.day || 1) - 1] };
+    game.scenes.push(new DialogScene(file, label, { opp: n.id, vars, onEnd: () => this.afterTalk(n) }));
+    // подколы друзей после диарейного позора (М-2): раз на человека
+    if (st.flags.diarrheaSeen && n.def.named && !st.flags['joked_' + n.id]) {
+      st.flags['joked_' + n.id] = true;
+      const js = labelsOf('places').filter((l) => /^j\d$/.test(l));
+      game.scenes.push(new DialogScene('places', eventRng(st, `joke:${n.id}:${st.lesson}`).pick(js), { opp: n.id }));
+    }
     if (n.def.named && creditorReminds(st, n.id)) game.scenes.push(new DialogScene('bets', 'remind', { opp: n.id }));
+  }
+
+  // После разговора с именным: «Ещё»: пауэрбанк (М-1) и вопросы про уроки (М-7), если можно.
+  afterTalk(n) {
+    const game = this.game;
+    if (game.pendingActions.length || !n.def.named) return;
+    const c = this.miniCtx(n);
+    const opts = [];
+    if (c.power) opts.push({ text: '«Дай пауэрбанк?»', run: () => this.powerbank(n) });
+    if (c.askok) opts.push({ text: '«Спросить про уроки.»', run: () => this.askLessons(n) });
+    if (!opts.length) return;
+    opts.push({ text: 'Больше ничего.', run: () => {} });
+    game.scenes.push(new ChoiceScene('Ещё что-то?', opts.map((o) => ({ text: o.text })), (i) => { if (i >= 0 && opts[i]) opts[i].run(); }));
+  }
+
+  // М-1: шанс 25 %; при успехе Рома выбирает, что заряжать (до 67–98 %). Раз за перемену у одного человека.
+  powerbank(n) {
+    const game = this.game, st = game.state;
+    st.flags['power_' + n.id + '_' + st.lesson] = true;
+    const roll = rollPowerbank(st, n.id);
+    if (!roll.ok) { game.scenes.push(new DialogScene('places', 'power_no', { opp: n.id })); return; }
+    const lvl = roll.level;
+    game.scenes.push(new DialogScene('places', 'power_yes', { opp: n.id, onEnd: () => {
+      game.scenes.push(new ChoiceScene(`Что заряжать? (до ${lvl} %)`, [{ text: 'Телефон' }, { text: 'Вейп' }], (i) => {
+        if (i < 0) return;
+        const key = i === 0 ? 'battery' : 'vapeCharge';
+        changeStat(st, key, Math.max(0, lvl - st.stats[key]));
+        game.toast(i === 0 ? `Телефон: ${lvl} %` : `Вейп: ${lvl} %`);
+      }));
+    } }));
+  }
+
+  // М-7: вопросы ученику другого класса; ответы — из расписания его класса и «состояния тестов» класса.
+  askLessons(n) {
+    const game = this.game, st = game.state;
+    st.flags['asked_' + n.id + '_' + st.lesson] = true;
+    const a = askAnswers(st, n.id);
+    const opts = [
+      { text: '«Какой у вас следующий урок?»', lines: [nextText(a)] },
+      { text: a.test ? `«Вы уже писали тест по предмету «${a.test.subject}»?»` : '«Вы уже писали тест?»', lines: a.test && a.test.wrote ? [testText(a), '(Рома:) А что тебе поставили?', gradeText(a)] : [testText(a)] },
+      { text: '«Сколько у вас сегодня уроков?»', lines: [countText(a)] },
+    ];
+    game.scenes.push(new ChoiceScene('О чём спросить?', opts.map((o) => ({ text: o.text })), (i) => {
+      if (i < 0) return;
+      game.scenes.push(DialogScene.message(opts[i].lines.map((t) => (t.startsWith('(Рома:)') ? { who: 'roma', text: t.slice(8) } : { who: n.id, text: t })), {}));
+    }));
+  }
+
+  // ИС-8: сплетня безымянного — одна из пула gossip.txt (40+), по коду дня и месту.
+  gossip() {
+    const st = this.game.state;
+    const n = this.lastTalk;
+    const ls = labelsOf('gossip').filter((l) => /^g\d+$/.test(l));
+    const label = eventRng(st, `gossip:${st.day}:${st.lesson}:${n ? n.id : ''}:${st.flags.gossipN = (st.flags.gossipN || 0) + 1}`).pick(ls);
+    this.game.scenes.push(new DialogScene('gossip', label, { opp: n ? n.id : null }));
+  }
+
+  // Диарея (М-2): 30 с до туалета, стрелка-подсказка, не успел — «Это позор» (конец дня).
+  updateDiarrhea(dt) {
+    const st = this.game.state;
+    if (!(st.flags.diarrheaT > 0)) return;
+    if (this.def.toilet) { this.diarrheaStall(); return; }
+    st.flags.diarrheaT -= dt;
+    if (st.flags.diarrheaT <= 0) {
+      st.flags.diarrheaT = 0;
+      import('./day_flow.js').then(({ DayOverScene }) => this.game.scenes.reset(new DayOverScene('shame'), { fade: true }));
+    }
+  }
+
+  diarrheaStall() {
+    const st = this.game.state;
+    st.flags.diarrheaT = 0;
+    this.game.scenes.push(new DialogScene('places', 'dia_stall'));
+  }
+
+  // Баскетбол (М-3): мяч летит от игрока к кольцу справа; иногда попадает.
+  updateBall(dt) {
+    const players = this.npcs.filter((n) => n.def.bb);
+    if (!players.length) return;
+    const B = BALANCE.basketball;
+    this.ball = this.ball || { t: 99, from: null, hit: false };
+    this.ball.t += dt;
+    if (this.ball.t > B.throwEvery) {
+      const p = players[Math.floor(this.time2 = (this.time2 || 0) + 1) % players.length];
+      const st = this.game.state;
+      const rng = eventRng(st, `ball:${st.day}:${st.lesson}:${this.time2}`);
+      this.ball = { t: 0, from: { x: p.x, y: p.y - 14 }, hit: rng.chance(B.hitChance) };
+    }
+  }
+
+  drawBall(r) {
+    const b = this.ball;
+    if (!b || !b.from || b.t > 1.1) return;
+    const hoop = { x: 28 * TILE + 4, y: 9 * TILE };
+    const k = Math.min(1, b.t / 1.0);
+    const x = b.from.x + (hoop.x - b.from.x) * k;
+    const y = b.from.y + (hoop.y - b.from.y) * k - Math.sin(k * Math.PI) * 28 + (b.hit || k < 0.9 ? 0 : (k - 0.9) * 120);
+    r.rect(Math.round(x) - 2, Math.round(y) - 2, 5, 5, '#e87a2a');
+    r.rect(Math.round(x) - 2, Math.round(y), 5, 1, '#8a3a10');
+    if (b.t > 0.95 && b.hit) r.text('+2', Math.round(hoop.x) - 6, Math.round(hoop.y) - 14, { color: '#ffe14d', shadow: '#000' });
   }
 
   update(dt) {
     const game = this.game;
     const input = game.input;
     const st = game.state;
+    game.vapeAllowed = vapePlaceOk(this.def);
+    this.updateDiarrhea(dt);
+    this.updateBall(dt);
     this.cooldown = Math.max(0, this.cooldown - dt);
     if (st.phase !== 'intro') st.playTime += dt;
     for (const n of this.npcs) n.update(dt, this.map, this.actors);
@@ -400,6 +537,22 @@ export class WorldScene {
     else { r.cam.x += (cx - r.cam.x) * 0.2; r.cam.y += (cy - r.cam.y) * 0.2; }
   }
 
+  // Стрелка к ближайшему мужскому туалету и таймер (М-2).
+  drawToiletArrow(r) {
+    const T = this.game.state.flags.diarrheaT;
+    if (!(T > 0)) return;
+    const step = nextToiletStep(this.def.id);
+    if (!step) return;
+    const tx = step.exit.x * TILE + 8, ty = step.exit.y * TILE + 8;
+    const dx = tx - this.player.x, dy = ty - (this.player.y - 8);
+    const d = Math.hypot(dx, dy) || 1;
+    const ax = this.player.x + (dx / d) * 28, ay = this.player.y - 16 + (dy / d) * 22;
+    const ang = Math.atan2(dy, dx);
+    const ctx = r.ctx;
+    ctx.save(); ctx.translate(ax, ay); ctx.rotate(ang); ctx.fillStyle = '#ffe14d'; ctx.strokeStyle = '#000';
+    ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(-5, -6); ctx.lineTo(-2, 0); ctx.lineTo(-5, 6); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+  }
+
   drawLabels(r) {
     const next = nextLesson(this.game.state);
     const showNext = next && (this.game.state.phase === 'late' || this.game.state.phase === 'break');
@@ -438,6 +591,8 @@ export class WorldScene {
         }
         const sorted = [...this.actors].sort((a, b) => a.y - b.y);
         for (const a of sorted) a.draw(r);
+        this.drawBall(r);
+        this.drawToiletArrow(r);
         if (this.idleT > 5 && this.game.scenes.top === this) {
           const p = this.player, dots = 1 + Math.floor((this.idleT * 2) % 3);
           r.box(p.x - 9, p.y - 44, 19, 11, '#ffffff', '#ffffff', 1);
@@ -453,6 +608,11 @@ export class WorldScene {
       });
     });
     if (this.def.tint) r.alpha(0.08, () => r.rect(0, 0, 480, GAME_H, this.def.tint));
+    if (this.game.state.flags.diarrheaT > 0) {
+      const T = Math.ceil(this.game.state.flags.diarrheaT);
+      r.rect(120, 16, 240, 24, '#000000cc');
+      r.text('В ТУАЛЕТ! ' + T + ' с', 240, 24, { align: 'center', color: T <= 10 ? '#ff4a4a' : '#ffe14d', scale: 2 });
+    }
     if (this.faceFlash && this.faceFlash.t > 0) {
       this.faceFlash.t -= 1 / 60;
       r.alpha(0.18, () => r.rect(0, 0, 480, GAME_H, this.faceFlash.ok ? '#40ff60' : '#ff4040'));

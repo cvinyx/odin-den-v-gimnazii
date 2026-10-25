@@ -51,18 +51,19 @@
 
 === cmenu
 -> menu_challenge {if challenge>0}
--> cmenu_ask {if playable>0}
-
-=== cmenu_ask
 ? Что дальше?
-* «Давай на рубль?» => cplay
+* «А что ещё слышно?» => cgossip
+* «Давай на рубль?» => cplay {if playable>0}
 * «Ладно, бывай.» => menu_bye
+
+// ИС-8: безымянные вне туалета — только поговорить и послушать сплетню (пул — gossip.txt)
+=== cgossip
+# action gossip
 
 === cplay
 ? Во что играем?
 * «Кто больше парит?» => menu_vapeb {if vapebattle>0}
 * «Царь туалета: кто удержит кабинку?» => menu_toilet {if intoilet>0}
-* «Кто больше съест? Три смаженки.» => menu_eat {if bigbreak>0}
 * «Не, передумал.» => menu_bye
 
 // Общие метки (как в break*.txt).
@@ -70,7 +71,7 @@
 // вызов от собеседника (инициатива NPC, шанс BALANCE.challengeChance) — один раз за разговор
 -> menu_challenge {if challenge>0}
 ? Что дальше?
-* «Давай на рубль?» => menu_play
+* «Давай на рубль?» => menu_play {if playable>0}
 * Попросить жижку. => menu_juice {if vapefriend>0}
 * Затянуться за компанию. => menu_vape {if vape>0}
 * «Ладно, бывай.» => menu_bye
@@ -78,12 +79,12 @@
 // Во что можно сыграть — зависит от места и времени (видно не больше 4 вариантов).
 === menu_play
 ? Во что играем?
-* Байт-дуэль: кто кого перебайтит. => menu_bait {if mbnear==0}
+* Байт-дуэль: кто кого перебайтит. => menu_bait {if baitsolo>0}
 * «Давай вдвоём забайтим Матыча и Буя?» => menu_mb {if mbnear>0}
 * «Кто больше парит?» => menu_vapeb {if vapebattle>0}
 * «Царь туалета: кто удержит кабинку?» => menu_toilet {if intoilet>0}
-* «Кто больше съест? Три смаженки.» => menu_eat {if bigbreak>0}
-* «Не, передумал.» => menu_bye
+* «Кто больше съест? Три смаженки, бесплатно.» => menu_eat {if eatok>0}
+* «Просто съем свою порцию.» => menu_own {if bigbreak>0}
 
 === menu_bait
 @opp [happy] Давай. Готовь деньги.
@@ -107,12 +108,12 @@
 # action play toilet
 
 === menu_eat
--> menu_eat_no {if money<3.6}
-@opp [happy] Три смаженки на скорость? Я сегодня не завтракал.
+@opp [happy] Три смаженки на скорость? Бесплатно, я угощаю. Я сегодня не завтракал.
 # action play eat
 
-=== menu_eat_no
-@opp [norm] У тебя на три смаженки не хватает. Сначала разбогатей.
+=== menu_own
+@opp [norm] Правильно. Сегодня %dish% — остынет же.
+# action lunch
 
 === menu_challenge
 # action challenge

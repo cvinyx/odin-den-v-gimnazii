@@ -17,7 +17,8 @@ import { TEACHERS, STAFF } from '../../data/teachers.js';
 const B = BALANCE.vapeBattle;
 
 // Белый список (раздел 14). Безымянные — только ученики (не учителя и не персонал), классы 9–11.
-export const VAPE_WHITELIST = ['chernyak', 'denis', 'shurpo', 'levonchuk', 'bochko', 'matych', 'buy'];
+import { VAPE_BATTLE_LIST } from '../../data/rules.js';
+export const VAPE_WHITELIST = VAPE_BATTLE_LIST; // ИС-7
 export function canVapeBattle(id, person = null) {
   if (!id) return false;
   if (VAPE_WHITELIST.includes(id)) return true;

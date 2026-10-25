@@ -12,7 +12,7 @@ export class BaitLogic {
     this.rng = rng;
     this.p = p;
     this.B = BALANCE.bait;
-    this.stats = this.B.opponents[p.opp] || this.B.opponents.default;
+    this.stats = this.B.opponents[p.opp] || (p.kid ? this.B.opponents.kid5 : this.B.opponents.default);
     this.roma = 0;
     this.opp = 0;
     this.round = 1;

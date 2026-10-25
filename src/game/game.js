@@ -143,7 +143,14 @@ export class Game {
   performAction(name, arg) {
     const st = this.state;
     switch (name) {
+      case 'dia_check':
+        // М-2: в кабинке кто-то мог заметить (флаг дня — друзья подкалывают, автобус тоже)
+        st.flags.diarrheaT = 0;
+        st.flags.diarrheaSeen = eventRng(st, `dianotice:${st.day}:${st.lesson}`).chance(BALANCE.diarrhea.noticedChance);
+        break;
       case 'vape': {
+        // ИС-7: вне урока — только мужской туалет, раздевалка, кабинет класса (флаг ставит сцена мира)
+        if (st.phase !== 'lesson' && this.vapeAllowed === false) { this.toast('Не здесь.'); break; }
         const res = puff(st);
         if (!res.ok) { this.toast(res.reason); break; }
         audio.play('puff');

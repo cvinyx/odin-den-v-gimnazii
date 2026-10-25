@@ -35,9 +35,10 @@ class BaitGame {
   start(params) {
     const st = this.ctx.state;
     this.opp = this.ctx.opp || params.opp;
-    this.file = baitFile(this.opp);
+    this.kid = !!params.kid; // пятиклассник в кабинке (Л-10): свои фразы, без ставки
+    this.file = this.kid ? 'bait_kid5' : baitFile(this.opp);
     this.logic = new BaitLogic(this.rng, {
-      opp: this.opp,
+      opp: this.opp, kid: this.kid,
       inLesson: !!params.inLesson,
       sulk: !!params.sulk,
       hungerSlow: st.stats.hunger > BALANCE.hunger.slowThreshold,

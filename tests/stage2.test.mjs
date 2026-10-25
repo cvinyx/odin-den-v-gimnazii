@@ -6,7 +6,7 @@ import { eventRng, startLesson, endLessonRules, finishLesson, startBreak, lesson
 import { puff, addSuspicion, checkBreakdown, directorCall, directorEndsDay, staminaPenalty } from '../src/game/actions.js';
 import { rollBet, resolveLoss, totalDebt, creditorReminds } from '../src/game/bets.js';
 import { BALANCE } from '../data/balance.js';
-import { NPC_SCHEDULE } from '../data/npc_schedule.js';
+import { placesFor } from '../data/npc_schedule.js';
 import { MAPS, STAIRWELLS } from '../src/world/maps/index.js';
 import { TILE_DEFS, isSolidChar } from '../src/gen/tiles.js';
 import { CheatLogic, makeBot } from '../src/minigames/cheat_logic.js';
@@ -180,14 +180,9 @@ test('путь от улицы до каб. 404 существует (по ка�
   assert.ok(MAPS.c3_f4.exits.some((e) => e.to === 'cab_343')); // V2-3: класс 11 «И» — 343
 });
 
-test('перемена 1: NPC стоят там, где сказано в таблице раздела 11', () => {
-  const b1 = (id) => NPC_SCHEDULE[id][1];
-  assert.equal(b1('denis'), 'c3_f4');
-  assert.equal(b1('igor'), 'c3_f4');
-  for (const id of ['matych', 'buy', 'guza']) assert.equal(b1(id), 'c1_f1');
-  // у всех именных, кто стоит на картах этапа 2, есть диалоги перемены 1
+test('перемена 1: у всех именных, кто стоит на картах, есть диалоги перемены 1', () => {
   const d = parseDialog(readDialog('break1'));
-  for (const [id, row] of Object.entries(NPC_SCHEDULE)) if (MAPS[row[1]]) assert.ok(d.labels[id], 'нет диалога ' + id);
+  for (const [id, where] of Object.entries(placesFor('KQ7M2P', 1, 1))) if (where && MAPS[where] && id !== 'olga') assert.ok(d.labels[id], 'нет диалога ' + id);
 });
 
 test('файлы байт-дуэли: у каждого есть все метки', () => {

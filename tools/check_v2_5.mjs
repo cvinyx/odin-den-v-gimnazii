@@ -1,0 +1,71 @@
+// Проверка этапа V2-5 в браузере: столовая (столы, подсесть, буфет), диарея (таймер, кабинка), пятиклассник,
+// баскетбол, пауэрбанк, вопросы М-7. Скриншоты — docs/screenshots/v2-5/.
+import path from 'node:path';
+import fs from 'node:fs';
+import { chromium } from './pw.mjs';
+import { Bot } from './bot_lib.mjs';
+
+const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const shots = process.argv[2] || path.join(root, 'docs/screenshots/v2-5');
+fs.mkdirSync(shots, { recursive: true });
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 960, height: 540 } });
+const errors = [];
+page.on('pageerror', (e) => errors.push(e.message));
+page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+await page.goto('file://' + path.join(root, 'dist/index.html'));
+await page.waitForTimeout(400);
+await page.keyboard.press('Space'); await page.waitForTimeout(500);
+const bot = new Bot(page, { policy: () => 0 });
+const shot = (n) => page.locator('#screen').screenshot({ path: path.join(shots, n + '.png') });
+const dbg = async (l) => { await page.evaluate((l) => window.__odinDebug(l), l); await page.waitForTimeout(2200); };
+const press = async (k, ms = 300) => { await page.keyboard.press(k); await page.waitForTimeout(ms); };
+const top = () => page.evaluate(() => window.__odin.scenes.top.id);
+const res = {};
+
+await dbg('Столовая: большая перемена');
+await shot('01-stolovaya-stoly');
+res.crowd = await page.evaluate(() => window.__odin.scenes.top.npcs.length);
+// подсесть к Денису: два разговора — второй даёт общее меню
+await bot.talkTo('denis');
+await bot.handle((t) => t === 'world', 60000);
+await bot.talkTo('denis');
+await page.waitForTimeout(600);
+for (let i = 0; i < 6 && !(await page.evaluate(() => { const t = window.__odin.scenes.top; return t.mode === 'choice' && /дальше/.test(t.choice.question || ''); })); i++) await press('z', 400);
+await shot('02-podsest-k-denisu');
+res.menu = await page.evaluate(() => window.__odin.scenes.top.choice.options.map((o) => o.text));
+await bot.handle((t) => t === 'world', 60000);
+await bot.goToMap('buffet');
+await bot.talkTo('cook');
+await bot.handle((t) => t === 'buffet');
+await page.waitForTimeout(400);
+await shot('03-bufet');
+res.buffet = await page.evaluate(() => window.__odin.scenes.top.menu.items.map((i) => i.label));
+await press('Escape');
+
+await dbg('Диарея: таймер и стрелка');
+await page.waitForTimeout(1500);
+await shot('04-diareya-taymer');
+await dbg('Диарея: кабинка с выбором');
+await page.waitForTimeout(800);
+for (let i = 0; i < 4 && !(await page.evaluate(() => { const t = window.__odin.scenes.top; return t.mode === 'choice'; })); i++) await press('z', 500);
+await shot('05-kabinka-vybor');
+await dbg('Пятиклассник в кабинке');
+await page.waitForTimeout(500);
+await shot('06-pyatiklassnik');
+res.kid = await page.evaluate(() => window.__odin.scenes.top.npcs.some((n) => n.def.kid5));
+await dbg('Баскетбол в спортзале');
+await page.waitForTimeout(1800);
+await shot('07-basketbol');
+res.bb = await page.evaluate(() => window.__odin.scenes.top.npcs.filter((n) => n.def.bb).length);
+await dbg('Пауэрбанк: просим у Дениса');
+await page.waitForTimeout(800);
+await shot('08-powerbank');
+res.power = await page.evaluate(() => window.__odin.scenes.stack.map((s) => s.id).join('>'));
+await dbg('Вопросы про уроки (М-7): Черняк');
+await page.waitForTimeout(800);
+await shot('09-voprosy-m7');
+res.ask = await page.evaluate(() => window.__odin.scenes.stack.map((s) => s.id).join('>'));
+await browser.close();
+console.log(JSON.stringify({ res, errors }));
+if (errors.length) process.exit(1);

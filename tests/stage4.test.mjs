@@ -16,7 +16,7 @@ test('«Кто больше парит»: белый список — никог
   for (const id of Object.keys(TEACHERS)) assert.equal(canVapeBattle(id), false, id);
   for (const id of Object.keys(STAFF)) assert.equal(canVapeBattle(id), false, id);
   for (const id of Object.keys(CHARACTERS)) assert.equal(canVapeBattle(id), VAPE_WHITELIST.includes(id), id);
-  assert.deepEqual([...VAPE_WHITELIST].sort(), ['bochko', 'buy', 'chernyak', 'denis', 'levonchuk', 'matych', 'shurpo']);
+  assert.deepEqual([...VAPE_WHITELIST].sort(), ['bochko', 'buy', 'chernyak', 'denis', 'levonchuk', 'matych', 'shurpo', 'svyat', 'vitalik']); // ИС-7 (V2-5)
   // безымянные ученики 9–11 классов — можно; без описания или взрослый — нельзя
   const rng = new Rng('vape-wl');
   for (let i = 0; i < 20; i++) assert.equal(canVapeBattle(makeUnnamed(rng, 'wl')), true);

@@ -83,7 +83,7 @@ export const BALANCE = {
   food: {
     smazhenka: { name: 'Смаженка', price: 120, hunger: -25, stress: 0 },
     topChoco: { name: '«Топ с шоколадом»', price: 180, hunger: -20, stress: -5 },
-    lunch: { name: 'Комплексный обед', price: 350, hunger: -50, stress: 0, lunchOnly: true },
+    lunch: { name: 'Комплексный обед (блюдо дня)', price: 350, hunger: -50, stress: 0, lunchOnly: true },
     tea: { name: 'Чай', price: 40, hunger: -5, stress: -3 },
     // Л-12 (V2-3)
     carbonara: { name: 'Карбонарка', price: 200, hunger: -35, stress: -3 },
@@ -220,6 +220,7 @@ export const BALANCE = {
       shurpo: { resist: 1.0, attack: [9, 14] },
       bochko: { resist: 0.85, attack: [8, 13] },
       default: { resist: 1.0, attack: [9, 15] },
+      kid5: { resist: 1.5, attack: [4, 8] }, // пятиклассник: слабее обычных соперников
     },
   },
 
@@ -290,9 +291,9 @@ export const BALANCE = {
 
   // «Кто больше съест»: ритм-игра, серия попаданий = съеденная смаженка.
   eat: {
-    duration: 40, entry: 360, notesPerSmazhenka: 6, stomachMax: 10, window: 0.13, beat: 0.42,
-    skill: { default: 7, denis: 7.2, shurpo: 7.4, igor: 7.2, guza: 7.3, matych: 7, buy: 6.8, chernyak: 7, levonchuk: 7,
-      bochko: 6.8, smile: 7, vadim: 7.2, vitalik: 6.8, zakha: 7, anosov: 6.8 },
+    duration: 45, entry: 0, notesPerSmazhenka: 5, stomachMax: 10, window: 0.24, beat: 0.8, beatFast: 0.55, // V2-5: проще и медленнее, вход бесплатный (Л-13)
+    skill: { default: 5.4, denis: 5.6, shurpo: 5.8, igor: 5.6, guza: 5.7, matych: 5.5, buy: 5.5, chernyak: 5.4, levonchuk: 5.4,
+      bochko: 5.2, smile: 5.4, vadim: 5.6, vitalik: 5.2, zakha: 5.4, anosov: 5.2 },
   },
 
   // «Кто забайтит Матыча и Буя»: Рома и друг против двоих.
@@ -304,6 +305,14 @@ export const BALANCE = {
     pushEvery: [6, 10], pushWindow: 0.9, loseStress: 10,
     friends: { igor: [30, 50], denis: [26, 44], chernyak: [28, 48], shurpo: [22, 38], default: [26, 44] },
   },
+
+  // V2-5: перемены
+  kid5: { chance: 0.15 },                         // Л-10: пятиклассник в кабинке мужского туалета
+  basketball: { chance: 0.25, throwEvery: 2.6, hitChance: 0.4 },   // М-3: баскетбол в спортзале
+  powerbank: { chance: 0.25, min: 67, max: 98 },  // М-1
+  ask: { chance: 0.4, testChance: 0.55 },         // М-7: вопросы ученикам других классов
+  diarrhea: { chance: 0.33, seconds: 30, noticedChance: 0.35, aura: { sock: -3, notebook: -4, none: -8 }, noticedAura: -6, stress: 5 }, // М-2
+  dishes: ['рис и котлета', 'макароны и рыба', 'гречка с гуляшом', 'пюре и сосиска', 'плов с курицей'], // Л-14: блюдо дня (Пн–Пт)
 
   // Классный час (У-2): совместный байт учительницы
   classhour: { rounds: 5, friendBoil: [3, 7], romaBoil: [5, 10, 18], kickChance: 0.25, winAura: 10, loseAura: -2, kickAura: -5 },
