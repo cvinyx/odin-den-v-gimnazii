@@ -1,10 +1,10 @@
-// «Душ» (раздел 14, п. 8): душевые бассейна после матча. Держишь Z — стоишь под душем; температура
+// «Душ» (раздел 14, п. 8; ИС-12 — до и после плавания): душевые бассейна. Держишь Z — стоишь под душем; температура
 // скачет — стрелками ↑↓ держи её в комфортной зоне; кто-то толкает — нажми X вовремя.
 // Цель — достоять дольше друзей. Проигрыш: учитель вежливо поторапливает всех, стресс +10.
 import { registerMinigame } from './registry.js';
 import { FakeInput, Particles, Popups, hungerMul, vrand } from './kit.js';
 import { BALANCE } from '../../data/balance.js';
-import { getPerson, sheetOf } from '../gen/people.js';
+import { getPerson, swimSheetOf } from '../gen/people.js';
 import { frameRect } from '../gen/sprites.js';
 import { GAME_H } from '../engine/renderer.js';
 import { audio } from '../engine/audio.js';
@@ -32,7 +32,8 @@ export class ShowerLogic {
     this.t += dt;
     for (const f of this.friends) if (!f.out && this.t >= f.time) { f.out = true; this.events.push({ type: 'friend_out', id: f.id }); }
     const held = input.held('confirm');
-    if (!this.started) { if (held) this.started = true; else return; }
+    // V2-4 (ИС-12): Z, зажатая ещё в меню «Начать», не считается — иначе отпускание сразу заканчивало игру
+    if (!this.started) { if (!held) this.armed = true; else if (this.armed) this.started = true; return; }
     if (!held) return this.stop('left');
     this.romaTime = this.t;
     // температура
@@ -67,6 +68,7 @@ export function showerBot(L, rng) {
   return (dt) => {
     const inp = new FakeInput();
     if (L.started && L.friends.every((f) => f.out)) return inp; // все вышли — можно и самому
+    if (!L.armed) return inp; // сначала отпустить Z
     inp.hold('confirm');
     // температура: «средний игрок» реагирует с запаздыванием
     const mid = (L.zone[0] + L.zone[1]) / 2;
@@ -121,7 +123,7 @@ class ShowerGame {
       const x = 80 + i * 120;
       r.rect(x + 8, 32, 14, 6, '#9aa3ad');
       if (p.out) return;
-      const sh = sheetOf(p.id); const f = frameRect('down', 0);
+      const sh = swimSheetOf(p.id); const f = frameRect('down', 0); // в плавках и шапочке (У-3)
       const dx = p.id === 'roma' && L.push > 0 ? Math.round(Math.sin(this.time * 60) * 3) : 0;
       r.sprite(sh, f.sx, f.sy, f.sw, f.sh, x + dx, 60, 2);
     });
@@ -146,6 +148,6 @@ registerMinigame('shower', {
   title: 'Душ',
   music: 'minigame',
   keys: ['Держи Z — стоишь под душем', '↑↓ — держи температуру в зелёной зоне', 'Толкают — успей нажать X', 'Достой дольше друзей'],
-  describe: () => 'После «Эль-Класико». Горячей воды мало.',
+  describe: () => 'Душ у бассейна. Горячей воды мало.',
   create: (ctx) => new ShowerGame(ctx),
 });

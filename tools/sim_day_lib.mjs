@@ -8,7 +8,7 @@ import path from 'node:path';
 import { parseDialog } from '../src/ui/dialog_script.js';
 import { DialogRunner } from '../src/game/dialog_runner.js';
 import { createState, changeStat, applyScriptEffect, scriptStatValue, VAPE_FRIENDS } from '../src/game/state.js';
-import { puff, sitQuiet, addSuspicion, checkBreakdown, directorCall, directorEndsDay, staminaPenalty } from '../src/game/actions.js';
+import { puff, sitQuiet, addSuspicion, checkBreakdown, directorCall, directorEndsDay, staminaPenalty, trySeatSteal } from '../src/game/actions.js';
 import { startLesson, endLessonRules, finishLesson, startBreak, eventRng, lessonInfo, lastLesson, lessonGraded, startDay, endDayEarly, setDay, weekAverage } from '../src/game/day.js';
 import { rollBet, payWin, resolveLoss } from '../src/game/bets.js';
 import { pickEnding, avgGrade } from '../src/game/endings.js';
@@ -21,6 +21,8 @@ import { canVapeBattle, vapeReady } from '../src/minigames/vape_battle.js';
 import { CheatLogic, makeBot } from '../src/minigames/cheat_logic.js';
 import { BaitLogic, CATS } from '../src/minigames/bait_logic.js';
 import { MatchLogic } from '../src/football/match.js';
+import { SwimLogic, swimBot } from '../src/minigames/swim_logic.js';
+import { ClasshourLogic } from '../src/minigames/classhour_logic.js';
 import { buildRoster, seatTile, tileToFeet, TEACHER_TILE } from '../src/world/classroom.js';
 import { runGame } from './balance_minigames_lib.mjs';
 import { Rng } from '../src/engine/rng.js';
@@ -109,7 +111,7 @@ export class SimDay {
       case 'quiet': sitQuiet(st); break;
       case 'wash': if (!st.flags['washed' + st.lesson]) { changeStat(st, 'stress', -3); st.flags['washed' + st.lesson] = true; } break;
       case 'seat_steal': {
-        const ok = eventRng(st, 'seat' + st.lesson).chance(BALANCE.seating.stealChance);
+        const ok = trySeatSteal(st);
         st.seat = ok ? 'steal_ok' : 'steal_fail'; st.flags.seat_ok = ok; if (ok) st.flags.satWithDenis = true;
         st.lessonMul *= ok ? BALANCE.seating.stealSuccessSuspicion : BALANCE.seating.stealFailSuspicion;
         break;
@@ -159,11 +161,52 @@ export class SimDay {
     const st = this.st;
     const rng = eventRng(st, 'mg:' + id + ':' + (st.flags.mgCount = (st.flags.mgCount || 0) + 1));
     if (id === 'cheat') return this.playCheat(rng, params);
+    if (id === 'test') return this.playTest(rng, params);
+    if (id === 'swim') return this.playSwim(rng, params);
+    if (id === 'classhour') return this.playClasshour(rng);
     if (id === 'bait') return this.playBait(rng, opp, params);
     if (id === 'football') return this.playFootball(rng);
     const r = runGame(id === 'vape' ? 'vape' : id, rng.int(1, 1e9), { opp, state: st, params });
     this.mgSec += r.sec;
     return r.out;
+  }
+
+  // Тест (М-4): у соседа, если он есть, иначе сам; недосписанное — сам (точность по стилю).
+  playTest(rng, params) {
+    const st = this.st, T = BALANCE.test;
+    const roster = buildRoster(st, st.lesson, {});
+    const r = roster.roma;
+    const neighbor = r && roster.seats.some((x) => x.c === r.c && x.d === r.d && x.side !== r.side);
+    const self = { cautious: 0.65, average: 0.55, chaotic: 0.45 }[this.style];
+    let correct = 0, copied = 0;
+    if (neighbor || st.stats.battery > 0) {
+      const res = this.playCheat(rng, { ...params, duration: T.cheatSeconds });
+      if (res.result === 'director') return res;
+      copied = Math.min(10, res.grade - 1);
+      for (let k = 0; k < copied; k++) if (this.rng.chance(neighbor ? T.neighborAccuracy : T.phoneAccuracy)) correct++;
+    }
+    for (let k = copied; k < 10; k++) { this.mgSec += 8; if (this.rng.chance(self)) correct++; }
+    const min = lessonInfo(st.lesson).exact ? 1 : 2;
+    return { result: correct >= 6 ? 'win' : 'lose', deltas: {}, grade: Math.max(min, correct) };
+  }
+
+  playSwim(rng, params) {
+    const st = this.st;
+    if (params.romaBench) { this.mgSec += BALANCE.swim.benchSeconds; return { result: 'draw', deltas: { stress: -2 } }; }
+    const L = new SwimLogic(rng, { swimmers: params.swimmers, staminaMax: 1 - staminaPenalty(st) });
+    const bot = swimBot(L, this.rng);
+    while (!L.finished) L.update(1 / 30, bot(1 / 30));
+    this.mgSec += L.t;
+    return { result: L.wins() ? 'win' : 'lose', deltas: L.deltas() };
+  }
+
+  playClasshour(rng) {
+    const L = new ClasshourLogic(rng, {});
+    const hard = { cautious: 0.1, average: 0.3, chaotic: 0.6 }[this.style];
+    while (!L.finished) { L.friendTurn(); L.friendTurn(); L.romaTurn(this.rng.chance(hard) ? 3 : this.rng.chance(0.5) ? 2 : 1); }
+    this.mgSec += 50;
+    const K = BALANCE.classhour;
+    return { result: L.result, deltas: { aura: L.result === 'win' ? K.winAura : L.kicked ? K.kickAura : K.loseAura } };
   }
 
   playCheat(rng, params) {
@@ -276,15 +319,17 @@ export class SimDay {
     for (const s of steps) { if (checkDir() || this.over) break; s(); afterDialog(); }
     if (!directorHere && !this.over && !checkDir()) {
       const params = { lesson: n, ...(c.params || {}) };
-      if (game === 'cheat_quiz') { game = 'cheat'; params.quiz = true; }
+      if (game === 'test_quiz') { game = 'test'; params.quiz = true; }
+      if (game === 'swim') Object.assign(params, this.swimSetup(st));
       let opp = null;
       if (game === 'bait') { opp = st.seat === 'steal_ok' ? 'igor' : 'denis'; Object.assign(params, { opp, inLesson: true, sulk: opp === 'igor' }); }
-      const res = game.endsWith('_stub') ? (this.runDialog(file, game), { result: 'draw' }) : this.minigame(game, { opp, params });
+      if (c.pre && !params.romaBench) this.minigame(c.pre, { params: { lesson: n } });
+      const res = this.minigame(game, { opp, params });
       let g = res.grade ?? BALANCE.lessonGrades.byResult[res.result] ?? 5;
       if (st.seat === 'front') g += BALANCE.seating.frontGradeBonus;
       grade = Math.max(1, Math.min(10, g));
       if (res.extra && res.extra.wrongLike) { st.flags.wrongLike = true; this.say += 4; }
-      if (!checkDir() && c.extra) this.minigame(c.extra, { params: { lesson: n } });
+      if (!checkDir() && c.extra && !params.romaBench) this.minigame(c.extra, { params: { lesson: n } });
       if (!directorHere) this.runDialog(file, !graded || grade >= 6 ? 'after_good' : 'after_bad');
     }
     if (this.over) { finishLesson(st, n, grade ?? BALANCE.director.grade); return; }
@@ -370,6 +415,13 @@ export class SimDay {
         else if (k === 'toilet') this.minigame('toilet', { opp, bet: rollBet(st, opp), params: { opp } });
       }
     }
+  }
+
+  swimSetup(st) {
+    const rng = eventRng(st, `swimforgot${st.day}`);
+    const all = ['roma', 'igor', 'denis', 'guza', 'matych', 'buy'];
+    const forgot = all.filter(() => rng.chance(BALANCE.swim.forgotChance));
+    return { swimmers: all.filter((id) => id !== 'roma' && !forgot.includes(id)), romaBench: forgot.includes('roma') };
   }
 
   // ---------- Один день ----------

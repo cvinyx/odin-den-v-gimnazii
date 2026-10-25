@@ -275,6 +275,43 @@ export function registerDebugEntries() {
     });
   }
 
+  // ---------- V2-4: тесты, списывание, плавание, классный час ----------
+  const lessonGame = (id, params, setup) => (game) => {
+    freshDay(game);
+    const st = game.state;
+    Object.assign(st, { phase: 'lesson', lesson: params.lesson || 1 });
+    if (setup) setup(st);
+    game.scenes.push(new MinigameScene(id, { params }));
+  };
+  registerDebug('Уроки V2-4', 'Тест: выбор (сидит с Игорем)', lessonGame('test', { lesson: 1 }, (st) => { st.seat = 'igor'; }));
+  registerDebug('Уроки V2-4', 'Тест: сидит один (только сам / телефон)', lessonGame('test', { lesson: 2 }, (st) => { st.seat = 'front'; st.stats.battery = 60; }));
+  registerDebug('Уроки V2-4', 'Тест: один и телефон сел', lessonGame('test', { lesson: 2 }, (st) => { st.seat = 'front'; st.stats.battery = 0; }));
+  registerDebug('Уроки V2-4', 'Списывание с телефона, учитель идёт по рядам', lessonGame('cheat', { lesson: 2, phone: true, walk: 'now' }, (st) => { st.seat = 'front'; }));
+  registerDebug('Уроки V2-4', 'Урок английского (класс вдвое меньше)', (game) => {
+    prepareDay(game, 0);
+    game.scenes.reset(new LessonScene(1), { fade: true });
+  });
+  registerDebug('Уроки V2-4', 'Плавание (мини-игра)', lessonGame('swim', { lesson: 3, swimmers: ['igor', 'denis', 'guza', 'matych'], bench: ['buy'] }));
+  registerDebug('Уроки V2-4', 'Плавание: Рома забыл форму', lessonGame('swim', { lesson: 3, romaBench: true, swimmers: ['igor', 'denis', 'guza', 'matych', 'buy'] }));
+  registerDebug('Уроки V2-4', 'Душ у бассейна', lessonGame('shower', { lesson: 3, friends: ['igor', 'denis'] }));
+  registerDebug('Уроки V2-4', 'Плавание: четверг, урок целиком', (game) => {
+    game.newDay(generateSeedCode());
+    startDay(game.state, 4);
+    const n = todaySchedule().findIndex((l) => l.subjectId === 'pe_swim') + 1;
+    prepareDay(game, n - 1);
+    Object.assign(game.state, { phase: 'break', lesson: n - 1 });
+    game.scenes.reset(new LessonScene(n), { fade: true });
+  });
+  registerDebug('Уроки V2-4', 'Классный час (мини-игра)', lessonGame('classhour', { lesson: 6 }));
+  registerDebug('Уроки V2-4', 'Классный час: пятница, урок целиком', (game) => {
+    game.newDay(generateSeedCode());
+    startDay(game.state, 5);
+    const n = lastLesson();
+    prepareDay(game, n - 1);
+    Object.assign(game.state, { phase: 'break', lesson: n - 1 });
+    game.scenes.reset(new LessonScene(n), { fade: true });
+  });
+
   registerDebug('Сценки', 'Сообщение отца', (game) => {
     const l = labelLines('dad', 'msg_3')[0];
     game.scenes.push(new PhonePopupScene({ from: 'батя', text: l ? l.text : '', amount: 300 }));

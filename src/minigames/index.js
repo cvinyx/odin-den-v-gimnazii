@@ -11,4 +11,8 @@ import './vape_battle.js';
 import './eat.js';
 import './bait_mb.js';
 import './shower.js';
+// V2-4: тест (М-4), плавание (У-3), классный час (У-2)
+import './test.js';
+import './swim.js';
+import './classhour.js';
 import '../football/match_game.js';

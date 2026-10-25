@@ -2,6 +2,7 @@
 // Чистые функции над состоянием — их используют и сцены, и тесты/бот.
 import { BALANCE } from '../../data/balance.js';
 import { changeStat } from './state.js';
+import { eventRng } from './day.js';
 
 const B = BALANCE;
 
@@ -62,4 +63,9 @@ export function directorCall(state) {
 // 3-й вызов за день заканчивает только этот день (Р-4).
 export function directorEndsDay(state) {
   return state.directorCalls >= B.director.endingOnCall;
+}
+
+// Отбить место у Игоря (ИС-4): 50 %, по коду дня, дню и уроку.
+export function trySeatSteal(state) {
+  return eventRng(state, `seat${state.day}:${state.lesson}`).chance(B.seating.stealChance);
 }

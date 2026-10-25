@@ -17,12 +17,13 @@ import { parseDialog } from '../src/ui/dialog_script.js';
 import { readDialog, dialogNames } from './helpers.mjs';
 import { runCheat } from '../tools/balance_cheat_lib.mjs';
 
-test('рассадка 20 %: одинаковый код дня — одинаковый результат', () => {
+// V2-4 (ИС-4): шанс отбить место — 50 % (тест обновлён под новое правило)
+test('рассадка 50 %: одинаковый код дня — одинаковый результат', () => {
   const roll = (seed, n) => eventRng(createState(seed), 'seat' + n).chance(BALANCE.seating.stealChance);
   for (const seed of ['ABCDEF', 'K7PQ2Z', 'XXXXXX']) for (let n = 1; n <= 7; n++) assert.equal(roll(seed, n), roll(seed, n));
   let ok = 0, total = 0;
   for (let i = 0; i < 3000; i++) { total++; if (roll('S' + i, 2)) ok++; }
-  assert.ok(Math.abs(ok / total - 0.2) < 0.03, 'доля успехов ' + ok / total);
+  assert.ok(Math.abs(ok / total - 0.5) < 0.03, 'доля успехов ' + ok / total);
 });
 
 test('рассадка класса детерминирована, Игорь и Денис на последней парте среднего ряда', () => {

@@ -7,7 +7,7 @@ import { audio } from '../engine/audio.js';
 import { storeGet, storeSet, KEYS, autosave } from '../engine/save.js';
 import { generateSeedCode } from '../engine/rng.js';
 import { createState, applyScriptEffect, scriptStatValue, changeStat, VAPE_FRIENDS } from './state.js';
-import { puff, sitQuiet, addSuspicion, checkBreakdown } from './actions.js';
+import { puff, sitQuiet, addSuspicion, checkBreakdown, trySeatSteal } from './actions.js';
 import { eventRng, setDay } from './day.js';
 import { BALANCE } from '../../data/balance.js';
 import { Hud } from '../ui/hud.js';
@@ -166,7 +166,7 @@ export class Game {
         if (!st.flags['washed' + st.lesson]) { changeStat(st, 'stress', -3); st.flags['washed' + st.lesson] = true; }
         break;
       case 'seat_steal': {
-        const ok = eventRng(st, 'seat' + st.lesson).chance(BALANCE.seating.stealChance);
+        const ok = trySeatSteal(st);
         st.seat = ok ? 'steal_ok' : 'steal_fail';
         st.flags.seat_ok = ok;
         if (ok) st.flags.satWithDenis = true;

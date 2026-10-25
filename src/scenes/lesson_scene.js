@@ -38,6 +38,7 @@ export class LessonScene {
     this.cfg = LESSON_FILES[this.file];
     this.graded = lessonGraded(st, this.n);
     if (!this.opts.resumed) startLesson(st, this.n);
+    if (this.cfg.view === 'pool') this.setupSwim(st);
     this.before = { ...st.stats };
     game.condCtx = {}; // условия мини-игр перемены на уроке не действуют
     this.view = this.cfg.view === 'pe' ? peView() : this.cfg.view === 'pool' ? poolView() : new ClassroomView(st, this.info);
@@ -58,9 +59,10 @@ export class LessonScene {
       { p: 0.02, run: () => this.dialog('intro') },
       ...(c.seat ? [{ p: 0.06, run: () => this.dialog(c.seat, () => this.view.rebuild && this.view.rebuild(this.game.state)) }] : []),
       ...c.events.map((e, i) => ({ p: 0.12 + i * 0.12, run: () => this.dialog(e) })),
+      ...(c.pre && !this.swim?.romaBench ? [{ p: 0.4, run: () => this.extraGame(c.pre) }] : []),
       { p: 0.5, run: () => this.dialog(before) },
       { p: 0.5, run: () => this.mainGame() },
-      ...(c.extra ? [{ p: 0.88, run: () => this.extraGame() }] : []),
+      ...(c.extra && !this.swim?.romaBench ? [{ p: 0.88, run: () => this.extraGame(c.extra) }] : []),
       { p: 0.92, run: () => this.dialog(this.grade == null || this.grade >= 6 ? 'after_good' : 'after_bad') },
       { p: 0.95, name: 'result', run: () => this.showResult() },
       { p: 0.98, run: () => this.dadMessage() },
@@ -131,9 +133,9 @@ export class LessonScene {
     const st = this.game.state;
     const c = this.cfg;
     let id = this.info.minigame;
-    if (id.endsWith('_stub')) return this.stubGame(id);
     const params = { lesson: this.n, view: this.view, ...(c.params || {}) };
-    if (id === 'cheat_quiz') { id = 'cheat'; params.quiz = true; }
+    if (id === 'test_quiz') { id = 'test'; params.quiz = true; }
+    if (id === 'swim') Object.assign(params, this.swim);
     let opp = null;
     if (id === 'bait') {
       // байт-дуэль с одноклассником: обычно Денис; если Рома отбил место — дующийся Игорь
@@ -143,7 +145,7 @@ export class LessonScene {
     this.game.scenes.push(new MinigameScene(id, {
       params, opp,
       onUpdate: (inst) => {
-        const L = inst.logic;
+        const L = inst.logic || inst.L;
         if (L && L.duration) this.setProgress(0.5 + 0.35 * Math.min(1, L.t / L.duration));
       },
       onDone: (res) => {
@@ -157,13 +159,20 @@ export class LessonScene {
     }));
   }
 
-  // Временная заглушка (плавание, классный час — этап V2-4): короткий диалог-выбор, оценки нет.
-  stubGame(id) {
-    this.game.scenes.push(new DialogScene(this.file, id, { onEnd: () => { this.game.takeActions(); this.next(); } }));
+  // Душ до и после плавания (ИС-12): с двумя одноклассниками, которые в воде.
+  extraGame(id) {
+    const friends = id === 'shower' && this.swim ? this.swim.swimmers.slice(0, 2) : undefined;
+    this.game.scenes.push(new MinigameScene(id, { params: { lesson: this.n, friends }, onDone: () => this.next() }));
   }
 
-  extraGame() {
-    this.game.scenes.push(new MinigameScene(this.cfg.extra, { params: { lesson: this.n }, onDone: () => this.next() }));
+  // Плавание (У-3): только Рома, Игорь, Денис, Гуза, Матыч, Буй; у каждого 10 % забыть форму — на лавку.
+  setupSwim(st) {
+    const rng = eventRng(st, `swimforgot${st.day}`);
+    const all = ['roma', 'igor', 'denis', 'guza', 'matych', 'buy'];
+    const forgot = all.filter(() => rng.chance(BALANCE.swim.forgotChance));
+    this.swim = { swimmers: all.filter((id) => id !== 'roma' && !forgot.includes(id)), bench: forgot.filter((id) => id !== 'roma'), romaBench: forgot.includes('roma') };
+    if (this.swim.romaBench) st.flags.romaBench = true;
+    if (this.view && this.view.setSwim) this.view.setSwim(this.swim);
   }
 
   checkDirector() {
@@ -247,7 +256,7 @@ function peView() {
   return v;
 }
 
-// Бассейн: класс у бортика, учитель со свистком.
+// Раздевалка бассейна / бассейн: класс у бортика, учитель со свистком (только парни 11 «И», У-3).
 function poolView() {
   const ids = ['igor', 'denis', 'roma', 'matych', 'buy', 'guza'];
   const cast = ids.map((id, i) => ({ id, x: 6 + i * 2, y: 3, dir: 'down' }));

@@ -120,7 +120,7 @@ export const BALANCE = {
 
   // Рассадка (раздел 11).
   seating: {
-    stealChance: 0.20,
+    stealChance: 0.5,           // ИС-4
     stealSuccessSuspicion: 0.7,
     stealSuccessCheatSpeed: 1.3,
     stealFailSuspicion: 1.4,
@@ -234,6 +234,22 @@ export const BALANCE = {
     quizTimes: [14, 30, 46],    // секунды, когда учитель обществоведения задаёт вопрос
     quizWrong: 6,               // неверный ответ: подозрение растёт
     spotBonus: 3,               // разовый скачок подозрения, когда учитель «заметил» подсматривание
+    calmAfter: 10,              // ИС-3: столько секунд без «попался» — и подозрение начинает падать
+    calmRate: 2,                // на столько в секунду
+    walkChance: 0.1,            // М-8: шанс за урок, что учитель пройдёт по рядам
+    walkSeconds: 9,             // сколько длится проход (туда и обратно)
+  },
+
+  // Тест на уроке (М-4, ИС-1): 10 вопросов, решать самому / у соседа / с телефона
+  test: {
+    questions: 10,
+    questionSeconds: 20,        // на один вопрос, если решаешь сам
+    cheatSeconds: 40,           // сколько длится списывание (потом недосписанное — решать самому)
+    neighborAccuracy: 0.8,      // доля верных ответов, списанных у соседа
+    phoneAccuracy: 0.9,         // с телефона точнее…
+    phoneSuspicionMul: 1.5,     // …но учитель замечает телефон сильнее
+    phoneBatteryPerAnswer: -1,
+    botRight: 0.6,              // бот, решающий сам, отвечает верно с таким шансом
   },
 
   // Оценка за урок, если главная мини-игра сама её не ставит (байт-дуэль на русском).
@@ -287,6 +303,21 @@ export const BALANCE = {
     maxTime: 60, comfort: [0.36, 0.64], drift: 0.28, jumpEvery: [2.2, 4], jump: 0.3, adjust: 0.75, discomfort: 0.3,
     pushEvery: [6, 10], pushWindow: 0.9, loseStress: 10,
     friends: { igor: [30, 50], denis: [26, 44], chernyak: [28, 48], shurpo: [22, 38], default: [26, 44] },
+  },
+
+  // Классный час (У-2): совместный байт учительницы
+  classhour: { rounds: 5, friendBoil: [3, 7], romaBoil: [5, 10, 18], kickChance: 0.25, winAura: 10, loseAura: -2, kickAura: -5 },
+
+  // Плавание (У-3): урок 4–5 минут, заплывы на две дорожки, физрук уходит и возвращается по кругу
+  swim: {
+    duration: 260, commandSeconds: 3, awaySeconds: [14, 20], heatMaxSeconds: 25, distance: 200,
+    strokePower: 4, drag: 1.2, strokeCost: 0.02, staminaRegen: 0.15,
+    hungerStamina: 0.3,        // при голоде выше порога запас выносливости меньше на эту долю
+    forgotChance: 0.1,         // шанс забыть форму (у каждого) — урок на лавке
+    npcSpeed: { igor: [17, 21], denis: [13, 17], guza: [14, 18], matych: [15, 19], buy: [15, 19], default: [14, 18] },
+    winAura: 3, overtakeAura: 1, splashAura: 1, dunkAura: 2, funCap: 8, caughtStress: 10, hunger: 10,
+    earlyReturnChance: 0.2,    // притопил друга — физрук может вернуться раньше и застать
+    benchSeconds: 60,          // урок на лавке (Рома забыл форму)
   },
 
   // Кто может предложить игру сам (инициатива NPC): шанс при разговоре.

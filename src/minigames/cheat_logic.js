@@ -2,6 +2,8 @@
 // Учитель поворачивается по таймеру и случайно; за 0,4 с до поворота — заметный признак.
 // Держишь Z — подсматриваешь, 1,5 с = один ответ (макс. 10). Конус на Роме во время подсматривания —
 // подозрение +30/с. 60 с. Оценка = 1 + ответы.
+// V2-4: ИС-2 — Z, зажатая ещё до начала (из меню), не считается, пока её не отпустят (requireRelease);
+// ИС-3 — если Рому не ловят 10 с подряд, подозрение падает; М-8 — учитель иногда идёт по рядам (walk).
 import { BALANCE } from '../../data/balance.js';
 
 const DEG = Math.PI / 180;
@@ -38,7 +40,10 @@ export class CheatLogic {
     this.suspicion = p.startSuspicion || 0;
     this.suspicionStart = this.suspicion;
     this.caught = 0; // секунд под взглядом во время подсматривания
-    this.angle = angleTo(p.teacherPos, p.roma);
+    this.tpos = { ...p.teacherPos };
+    this.armed = !p.requireRelease;
+    this.calmT = 0;
+    this.angle = angleTo(this.tpos, p.roma);
     this.mode = 'look';
     this.timer = this.rng.float(this.cfg.lookTime[0], this.cfg.lookTime[1]);
     this.target = this.angle;
@@ -55,23 +60,47 @@ export class CheatLogic {
 
   pickTarget() {
     const p = this.p;
-    if (this.rng.chance(this.cfg.pRoma)) return angleTo(p.teacherPos, p.roma) + this.rng.float(-8, 8);
+    if (this.rng.chance(this.cfg.pRoma)) return angleTo(this.tpos, p.roma) + this.rng.float(-8, 8);
     const t = this.rng.pick(p.targets);
-    return angleTo(p.teacherPos, t) + this.rng.float(-6, 6);
+    return angleTo(this.tpos, t) + this.rng.float(-6, 6);
   }
 
   // Видит ли учитель Рому прямо сейчас.
   get sees() {
     const p = this.p;
-    const d = Math.hypot(p.roma.x - p.teacherPos.x, p.roma.y - p.teacherPos.y);
-    return d <= this.cfg.coneLen && angleDiff(this.angle, angleTo(p.teacherPos, p.roma)) <= this.cfg.coneHalf;
+    const d = Math.hypot(p.roma.x - this.tpos.x, p.roma.y - this.tpos.y);
+    return d <= this.cfg.coneLen && angleDiff(this.angle, angleTo(this.tpos, p.roma)) <= this.cfg.coneHalf;
+  }
+
+  // М-8: учитель идёт по ряду туда и обратно; смотрит туда, куда идёт.
+  get walking() {
+    const w = this.p.walk;
+    return !!w && this.t >= w.start && this.t < w.start + w.dur;
+  }
+
+  updateWalk() {
+    const w = this.p.walk;
+    if (!w) return;
+    if (!this.walking) {
+      if (this.wasWalking) { this.tpos = { ...this.p.teacherPos }; this.wasWalking = false; this.mode = 'look'; this.timer = 0.5; }
+      return;
+    }
+    this.wasWalking = true;
+    const k = (this.t - w.start) / w.dur; // 0..1: вниз до конца ряда и обратно
+    const leg = k < 0.5 ? k * 2 : (1 - k) * 2;
+    const a = w.path[0], b = w.path[1];
+    this.tpos = { x: a.x + (b.x - a.x) * leg, y: a.y + (b.y - a.y) * leg };
+    this.angle = k < 0.5 ? 90 + Math.sin(this.t * 2) * 50 : -90 + Math.sin(this.t * 2) * 50;
+    this.mode = 'walk';
   }
 
   update(dt, peek) {
     if (this.finished) return;
     this.t += dt;
     const c = this.cfg;
-    if (this.mode === 'look') {
+    if (!this.armed) { if (!peek) this.armed = true; else peek = false; }
+    this.updateWalk();
+    if (this.mode === 'walk') { /* направление задаёт updateWalk */ } else if (this.mode === 'look') {
       this.timer -= dt;
       if (this.rng.chance(c.randomTurn * dt)) this.timer = 0;
       if (this.timer <= 0) { this.target = this.pickTarget(); this.mode = 'warn'; this.timer = c.warn; this.spotted = false; }
@@ -94,9 +123,15 @@ export class CheatLogic {
         this.spotted = true;
         this.suspicion = Math.min(100, this.suspicion + (bump + c.suspPerSec * dt) * (this.p.mul || 1));
         this.caught += dt;
+        this.calmT = 0;
       }
     } else {
       this.progress = Math.max(0, this.progress - c.decay * dt);
+    }
+    // ИС-3: не попадался calmAfter секунд подряд — подозрение потихоньку падает
+    if (!(this.peeking && this.sees)) {
+      this.calmT += dt;
+      if (this.calmT >= BALANCE.cheat.calmAfter) this.suspicion = Math.max(0, this.suspicion - BALANCE.cheat.calmRate * dt);
     }
     if (this.suspicion >= 100) { this.finished = true; this.result = 'director'; }
     else if (this.t >= this.duration || this.answers >= c.maxAnswers) { this.finished = true; this.result = 'done'; }

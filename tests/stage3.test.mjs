@@ -87,7 +87,7 @@ test('завуч видит конусом по направлению взгл�
 });
 
 test('уроки: у каждого есть файл диалогов со всеми метками и кабинет на карте', () => {
-  const GAMES = ['cheat', 'phone_blocks', 'bait', 'phone_brawl', 'football', 'phone_feed', 'cheat_quiz', 'swim_stub', 'classhour_stub'];
+  const GAMES = ['test', 'phone_blocks', 'bait', 'phone_brawl', 'football', 'phone_feed', 'test_quiz', 'swim', 'classhour']; // V2-4
   for (const l of WEEK_DAYS.flat()) {
     const c = LESSON_FILES[l.file];
     assert.ok(c, 'нет файла урока ' + l.file);
@@ -95,7 +95,6 @@ test('уроки: у каждого есть файл диалогов со вс
     assert.deepEqual(d.errors, [], l.file);
     for (const lab of ['intro', 'before_game', 'after_good', 'after_bad', ...c.events, ...(c.seat ? [c.seat] : [])]) assert.ok(d.labels[lab], `${l.file}: нет ${lab}`);
     assert.ok(GAMES.includes(l.minigame), 'мини-игра урока ' + l.subject);
-    if (l.minigame.endsWith('_stub')) assert.ok(d.labels[l.minigame], `${l.file}: нет ${l.minigame}`);
     if (l.building) {
       assert.ok(MAPS[ROOM_MAPS[l.room]], 'нет карты кабинета ' + l.room);
       const corridor = MAPS[`c${l.building}_f${l.floor}`];

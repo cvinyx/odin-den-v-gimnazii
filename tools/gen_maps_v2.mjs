@@ -183,6 +183,7 @@ function cabinet(no, kind) {
   else if (no === '331') { g.str(1, 13, 'KK'); g.set(27, 12, 'P'); g.set(2, 12, 'P'); }
   else if (no === '224') { g.str(1, 13, 'UU'); g.str(26, 13, 'UU'); }
   else if (no === '321') { g.str(1, 13, 'KK'); }
+  else if (no === '232') { g.fill(1, 10, 28, 12, '.'); g.str(1, 13, 'KK'); g.str(24, 11, 'PKK'); } // ИС-9: на английском 3 ряда по 3 парты
   else g.str(1, 13, 'KK');
   const title = CLASSES[no] ? `Каб. ${no} · ${CLASSES[no]}` : `Каб. ${no} · ${SUBJECT_ROOMS[no]}`;
   add({
