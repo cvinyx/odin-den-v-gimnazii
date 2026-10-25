@@ -131,7 +131,7 @@ class BaitGame {
     const d = L.deltas();
     const p = getPerson(this.opp);
     const extra = {};
-    if (r === 'win' && this.opp === 'igor') extra.berserk = true;
+    if (r === 'win' && this.opp === 'igor') extra.rage = true;
     return {
       result: r, deltas: d, money: 0, extra,
       summary: `Закипание: Рома ${Math.round(L.roma)} — ${p.short} ${Math.round(L.opp)}`,
@@ -142,9 +142,9 @@ class BaitGame {
     const L = this.logic;
     r.rect(0, 0, 480, GAME_H, '#1b1426');
     for (let y = 0; y < GAME_H; y += 6) r.rect(0, y, 480, 1, '#21192e');
-    const berserk = this.opp === 'igor' && L.opp >= 100;
+    const rage = this.opp === 'igor' && L.opp >= 100;
     this.drawSide(r, 'roma', 40, this.shown.roma, false);
-    this.drawSide(r, this.opp, 330, this.shown.opp, berserk);
+    this.drawSide(r, this.opp, 330, this.shown.opp, rage);
     r.text('БАЙТ-ДУЭЛЬ', 240, 4, { align: 'center', color: '#ffe14d', scale: 2, shadow: '#000' });
     r.text(`Раунд ${Math.min(L.round, L.rounds)} / ${L.rounds}`, 240, 26, { align: 'center', color: '#c8c8d8' });
     r.text('VS', 240, 48, { align: 'center', color: '#ff5a5a', scale: 2 });
@@ -157,12 +157,12 @@ class BaitGame {
     this.game.hud.draw(r, this.ctx.state);
   }
 
-  drawSide(r, id, x, boil, berserk) {
+  drawSide(r, id, x, boil, rage) {
     const emo = boil >= 75 ? 'angry' : boil >= 40 ? 'surprised' : 'happy';
     const pt = portraitOf(id, emo);
     let ox = 0;
     if (boil >= 75) ox = Math.round(Math.sin(this.time * 50) * 1.5);
-    if (berserk) {
+    if (rage) {
       const a = 0.5 + Math.sin(this.time * 12) * 0.3;
       r.alpha(a, () => r.rect(x - 6, 20, 120, 76, '#ff2020'));
     }

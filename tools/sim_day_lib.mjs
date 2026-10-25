@@ -1,4 +1,4 @@
-// Быстрый симулятор целого дня в node (без браузера и графики) — для баланса этапа 6.
+// Быстрый симулятор недели в node (без браузера и графики) — для баланса (этап 6, неделя — V2-2).
 // Использует настоящие данные и правила: файлы диалогов (выборы и их эффекты), расписание, уроки,
 // правила статусов, ставки и долги, мини-игры с «средним» ботом (логика тех же классов, что в игре),
 // футбол (MatchLogic, Ромой играет ИИ), концовки. Стиль игрока: cautious / average / chaotic.
@@ -8,11 +8,11 @@ import path from 'node:path';
 import { parseDialog } from '../src/ui/dialog_script.js';
 import { DialogRunner } from '../src/game/dialog_runner.js';
 import { createState, changeStat, applyScriptEffect, scriptStatValue, VAPE_FRIENDS } from '../src/game/state.js';
-import { puff, sitQuiet, addSuspicion, checkBreakdown, directorCall, isDirectorEnding, staminaPenalty } from '../src/game/actions.js';
-import { startLesson, endLessonRules, finishLesson, startBreak, eventRng, lessonInfo, LAST_LESSON } from '../src/game/day.js';
+import { puff, sitQuiet, addSuspicion, checkBreakdown, directorCall, directorEndsDay, staminaPenalty } from '../src/game/actions.js';
+import { startLesson, endLessonRules, finishLesson, startBreak, eventRng, lessonInfo, lastLesson, lessonGraded, startDay, endDayEarly, setDay, weekAverage } from '../src/game/day.js';
 import { rollBet, payWin, resolveLoss } from '../src/game/bets.js';
 import { pickEnding, avgGrade } from '../src/game/endings.js';
-import { LESSONS } from '../data/lessons.js';
+import { LESSON_FILES } from '../data/lessons.js';
 import { NPC_SCHEDULE } from '../data/npc_schedule.js';
 import { TEACHERS } from '../data/teachers.js';
 import { BALANCE } from '../data/balance.js';
@@ -51,7 +51,8 @@ export class SimDay {
     this.opp = null;
     this.patrolNear = false;
     this.say = 0; this.choices = 0; this.mgSec = 0; this.games = {};
-    this.over = false;
+    this.over = false; // день окончен раньше (3-й вызов к директору)
+    setDay(1);
   }
 
   // ---------- Диалоги ----------
@@ -208,13 +209,13 @@ export class SimDay {
       L.endRound();
     }
     this.mgSec += L.rounds * 12;
-    if (L.result === 'win' && opp === 'igor') st.flags.igorBerserk = true;
+    if (L.result === 'win' && opp === 'igor') st.flags.igorRage = true;
     return { result: L.result, deltas: L.deltas() };
   }
 
   playFootball(rng) {
     const st = this.st;
-    const M = new MatchLogic(rng, { aiRoma: true, hungry: st.stats.hunger > BALANCE.hunger.slowThreshold, staminaMax: 1 - staminaPenalty(st), berserkStart: !!st.flags.igorBerserk });
+    const M = new MatchLogic(rng, { aiRoma: true, hungry: st.stats.hunger > BALANCE.hunger.slowThreshold, staminaMax: 1 - staminaPenalty(st), rageStart: !!st.flags.igorRage });
     for (let f = 0; f < 60 * 400 && M.state !== 'end'; f++) {
       M.update(1 / 60, null);
       for (const e of M.events) if (e.type === 'halftime') {
@@ -239,16 +240,19 @@ export class SimDay {
   director() {
     directorCall(this.st);
     this.say += 4;
-    if (isDirectorEnding(this.st)) { this.over = true; this.ending = 'director'; }
+    if (directorEndsDay(this.st)) this.over = true;
   }
 
   // ---------- Урок (как LessonScene) ----------
   lesson(n) {
-    const st = this.st, c = LESSONS[n];
+    const st = this.st, info = lessonInfo(n), file = info.file, c = LESSON_FILES[file];
+    let game = info.minigame;
+    const graded = lessonGraded(st, n);
     startLesson(st, n);
     this.condCtx = {};
     let grade = null, directorHere = false;
-    const steps = [() => this.runDialog(c.file, 'intro'), ...(c.seat ? [() => this.runDialog(c.file, c.seat)] : []), ...c.events.map((e) => () => this.runDialog(c.file, e)), () => this.runDialog(c.file, 'before_game')];
+    const before = dialog(file).labels['before_' + game] ? 'before_' + game : 'before_game';
+    const steps = [() => this.runDialog(file, 'intro'), ...(c.seat ? [() => this.runDialog(file, c.seat)] : []), ...c.events.map((e) => () => this.runDialog(file, e)), () => this.runDialog(file, before)];
     const checkDir = () => {
       if (directorHere || st.stats.suspicion < BALANCE.suspicion.directorAt) return false;
       directorHere = true; grade = BALANCE.director.grade; this.director();
@@ -257,8 +261,8 @@ export class SimDay {
     const afterDialog = () => {
       const acts = this.pending; this.pending = [];
       if (acts.find((a) => a.name === 'phone') && c.view !== 'pe') {
-        const PB = { 2: 'phone_blocks', 4: 'phone_brawl', 6: 'phone_feed' };
-        const id = PB[n] || eventRng(st, 'phonegame' + n).pick(Object.values(PB));
+        const PB = ['phone_blocks', 'phone_brawl', 'phone_feed'];
+        const id = PB.includes(game) ? game : eventRng(st, `phonegame${st.day}:${n}`).pick(PB);
         const r = this.minigame(id, { params: { lesson: n, short: true } });
         if (r.extra && r.extra.wrongLike) { st.flags.wrongLike = true; this.say += 4; }
       }
@@ -272,20 +276,21 @@ export class SimDay {
     for (const s of steps) { if (checkDir() || this.over) break; s(); afterDialog(); }
     if (!directorHere && !this.over && !checkDir()) {
       const params = { lesson: n, ...(c.params || {}) };
+      if (game === 'cheat_quiz') { game = 'cheat'; params.quiz = true; }
       let opp = null;
-      if (c.minigame === 'bait') { opp = st.seat === 'steal_ok' ? 'igor' : 'denis'; Object.assign(params, { opp, inLesson: true, sulk: opp === 'igor' }); }
-      const res = this.minigame(c.minigame, { opp, params });
+      if (game === 'bait') { opp = st.seat === 'steal_ok' ? 'igor' : 'denis'; Object.assign(params, { opp, inLesson: true, sulk: opp === 'igor' }); }
+      const res = game.endsWith('_stub') ? (this.runDialog(file, game), { result: 'draw' }) : this.minigame(game, { opp, params });
       let g = res.grade ?? BALANCE.lessonGrades.byResult[res.result] ?? 5;
       if (st.seat === 'front') g += BALANCE.seating.frontGradeBonus;
       grade = Math.max(1, Math.min(10, g));
       if (res.extra && res.extra.wrongLike) { st.flags.wrongLike = true; this.say += 4; }
       if (!checkDir() && c.extra) this.minigame(c.extra, { params: { lesson: n } });
-      if (!directorHere) this.runDialog(c.file, grade >= 6 ? 'after_good' : 'after_bad');
+      if (!directorHere) this.runDialog(file, !graded || grade >= 6 ? 'after_good' : 'after_bad');
     }
-    if (this.over) return;
+    if (this.over) { finishLesson(st, n, grade ?? BALANCE.director.grade); return; }
     // отец
-    if (grade >= BALANCE.dad.gradeThreshold && st.stats.battery > 0) {
-      const rub = eventRng(st, 'dad' + n).int(BALANCE.dad.transferMin / 100, BALANCE.dad.transferMax / 100);
+    if (graded && grade >= BALANCE.dad.gradeThreshold && st.stats.battery > 0) {
+      const rub = eventRng(st, `dad${st.day}:${n}`).int(BALANCE.dad.transferMin / 100, BALANCE.dad.transferMax / 100);
       changeStat(st, 'money', rub * 100); this.say += 1;
     }
     endLessonRules(st);
@@ -331,7 +336,7 @@ export class SimDay {
 
   miniCtx(id, loc, n) {
     const st = this.st;
-    const intoilet = /toilet/.test(loc) ? 1 : 0, incanteen = loc === 'canteen' ? 1 : 0;
+    const intoilet = /_wc$/.test(loc) ? 1 : 0, incanteen = loc === 'canteen' ? 1 : 0;
     const bigbreak = incanteen && isBigBreak(st) ? 1 : 0;
     const vapebattle = canVapeBattle(id) ? 1 : 0;
     const near = (w) => NPC_SCHEDULE[w][n] === loc;
@@ -367,24 +372,49 @@ export class SimDay {
     }
   }
 
-  // ---------- Весь день ----------
-  run() {
+  // ---------- Один день ----------
+  runOneDay() {
     const st = this.st;
-    st.phase = 'intro';
-    this.runDialog('intro', 'wake');
-    this.runDialog('intro', 'levonchuk', 'levonchuk');
-    this.runDialog('intro', 'bus');
+    if (st.day === 1) {
+      st.phase = 'intro';
+      this.runDialog('intro', 'wake');
+      this.runDialog('intro', 'levonchuk', 'levonchuk');
+      this.runDialog('intro', 'bus');
+    } else {
+      const morning = dialog('morning').order.filter((l) => l.startsWith(`d${st.day}_`));
+      this.runDialog('morning', eventRng(st, 'morningscene' + st.day).pick(morning));
+    }
     st.phase = 'late';
-    for (let n = 1; n <= LAST_LESSON && !this.over; n++) {
+    const total = lastLesson();
+    this.over = false;
+    for (let n = 1; n <= total && !this.over; n++) {
       this.lesson(n);
       if (this.over) break;
-      if (n < LAST_LESSON) this.breakTime(n);
+      if (n < total) this.breakTime(n);
     }
-    const ending = this.ending || pickEnding(st);
-    // время живого игрока: чтение реплик, выборы, мини-игры, переходы и перемены
-    const minutes = (this.say * 2.4 + this.choices * 4 + this.mgSec * 1.15 + 13 * 35 + 6 * 75 + 7 * 25 + 60) / 60;
-    return { ending, st, minutes, games: this.games, avg: avgGrade(st) };
+    if (this.over) endDayEarly(st, 'director');
+    // дорога домой: разговор с Левончуком (без повторов за неделю)
+    st.phase = 'home';
+    const all = dialog('bus_home').order.filter((l) => /^home_\d+$/.test(l));
+    const fresh = all.filter((l) => !st.week.busSeen.includes(l));
+    const label = eventRng(st, 'bushome' + st.day).pick(fresh.length ? fresh : all);
+    st.week.busSeen.push(label);
+    this.runDialog('bus_home', label, 'levonchuk');
+  }
+
+  // ---------- Вся неделя ----------
+  run(days = 5) {
+    const st = this.st;
+    this.dayAvgs = [];
+    for (let d = 1; d <= days; d++) {
+      if (d > 1) startDay(st, d);
+      this.runOneDay();
+    }
+    const ending = pickEnding(st);
+    // время живого игрока за день: чтение реплик, выборы, мини-игры, переходы и перемены
+    const minutes = (this.say * 2.4 + this.choices * 4 + this.mgSec * 1.15 + days * (13 * 35 + 6 * 75 + 7 * 25 + 60)) / 60 / days;
+    return { ending, st, minutes, games: this.games, avg: weekAverage(st), avgGrade: avgGrade(st) };
   }
 }
 
-export function simDay(seed, style) { return new SimDay(seed, style).run(); }
+export function simDay(seed, style, days = 5) { return new SimDay(seed, style).run(days); }

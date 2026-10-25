@@ -97,7 +97,8 @@ export function phoneLessonGrade(rng, S) {
 // ---------- Отрисовка корпуса телефона (используется и сообщениями отца) ----------
 export const PHONE = { x: 168, y: 4, w: 144, h: 226, sx: 8, sy: 18, sw: 128, sh: 196 };
 
-export function drawPhoneFrame(r, x, y, battery, time = 0) {
+// hhmm — время на телефоне, то же, что в HUD (ИС-11): строка 'ЧЧ:ММ'.
+export function drawPhoneFrame(r, x, y, battery, hhmm = '09:00') {
   const P = PHONE;
   r.rect(x, y, P.w, P.h, '#16161a');
   r.frame(x, y, P.w, P.h, '#3a3a44', 2);
@@ -105,8 +106,7 @@ export function drawPhoneFrame(r, x, y, battery, time = 0) {
   r.rect(x + 52, y + 5, 40, 6, '#000');
   // статус-бар
   r.rect(x + P.sx, y + P.sy - 12, P.sw, 11, '#000');
-  const hh = 9 + Math.floor(time / 60) % 3, mm = (46 + Math.floor(time)) % 60;
-  r.text(`${hh}:${String(mm).padStart(2, '0')}`, x + P.sx + 3, y + P.sy - 11, { color: '#ffffff' });
+  r.text(String(hhmm || '09:00'), x + P.sx + 3, y + P.sy - 11, { color: '#ffffff' });
   const low = battery < 20;
   r.frame(x + P.sx + P.sw - 26, y + P.sy - 10, 18, 8, '#ffffff');
   r.rect(x + P.sx + P.sw - 24, y + P.sy - 8, Math.max(1, Math.round(14 * battery / 100)), 4, low ? '#ff4a4a' : '#5ad65a');
@@ -137,9 +137,9 @@ export class PhoneGame {
 
   start(params) {
     const st = this.ctx.state;
-    const l = lessonInfo(params.lesson || st.lesson || 2);
-    const t = TEACHERS[(l && l.teacher) || 'tatiana'];
-    this.teacherId = t ? (l.teacher) : 'tatiana';
+    const l = lessonInfo(params.lesson || st.lesson || 2) || lessonInfo(1);
+    const t = TEACHERS[(l && l.teacher) || 'math'];
+    this.teacherId = t ? (l.teacher) : 'math';
     this.short = !!params.short;
     const duration = params.short ? (this.opts.shortDuration || PB.shortDuration) : this.opts.duration;
     this.dead = st.stats.battery <= 0;
@@ -217,7 +217,7 @@ export class PhoneGame {
     const P = PHONE;
     const hidY = S && S.hidden ? 120 : 0;
     const x = P.x, y = P.y + hidY;
-    drawPhoneFrame(r, x, y, this.ctx.state.stats.battery, this.time);
+    drawPhoneFrame(r, x, y, this.ctx.state.stats.battery, this.ctx.state.clock);
     if (!this.dead) {
       r.clip(x + P.sx, y + P.sy, P.sw, P.sh, () => {
         r.ctx.save();

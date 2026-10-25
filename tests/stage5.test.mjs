@@ -41,11 +41,11 @@ test('2-й тайм: Коля вместо Вадима, Гуза вместо �
   assert.equal(D.lineupErrors.length, 0);
 });
 
-test('перерыв влияет на 2-й тайм: «Галатасарай» — берсерк Игоря, «Барса» — Денис сильнее', () => {
+test('перерыв влияет на 2-й тайм: «Галатасарай» — ярость Игоря, «Барса» — Денис сильнее', () => {
   const M = new MatchLogic(new Rng('t4'), { aiRoma: true, diarrhea: false });
   play(M, (m) => m.state === 'halftime');
   M.secondHalf('igor');
-  assert.ok(M.players.find((q) => q.id === 'igor').berserk > 0);
+  assert.ok(M.players.find((q) => q.id === 'igor').rage > 0);
   const N = new MatchLogic(new Rng('t5'), { aiRoma: true, diarrhea: false });
   play(N, (m) => m.state === 'halftime');
   N.secondHalf('barca');
@@ -80,7 +80,7 @@ test('итог матча для Ромы: победа/ничья/пораже�
 
 test('диарея перед самым перерывом: замена вратаря успевает, состав не ломается (40 матчей)', () => {
   for (let i = 1; i <= 40; i++) {
-    const M = new MatchLogic(new Rng('d' + i), { aiRoma: true, diarrhea: true, berserkStart: i % 2 === 0 });
+    const M = new MatchLogic(new Rng('d' + i), { aiRoma: true, diarrhea: true, rageStart: i % 2 === 0 });
     M.diarrheaAt = 80 + i * 0.25; // как раз под конец 1-го тайма
     for (let f = 0; f < 60 * 400 && M.state !== 'end'; f++) {
       M.update(1 / 60, null);

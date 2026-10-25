@@ -1,9 +1,9 @@
 // «Эль-Класико»: перерыв (спор Дениса и Шурпо, выбор Ромы влияет на 2-й тайм), реплики судьи
-// во всплывающих облачках (ref_<id> — подбодрить игрока, ref_foul, ref_yellow, ref_berserk),
+// во всплывающих облачках (ref_<id> — подбодрить игрока, ref_foul, ref_yellow, ref_rage),
 // облачки после гола (goal_<id>), диарея Смайла и замены.
 
 === halftime
-@viktor [norm] Перерыв! Две минуты. Воды попейте.
+@ivan [norm] Перерыв! Две минуты. Воды попейте.
 @denis [happy] Видели? Это игра в стиле «Барсы». Пас, пас, пас... Как Лео.
 @shurpo [angry] Какая «Барса»? «Реал» — пятнадцать Лиг чемпионов. Пятнадцать, Денис!
 @denis [angry] Зато у нас Месси. А у вас кто? Судьи?
@@ -30,7 +30,7 @@
 @igor [angry] {shake}ЧЁ?!{/shake} Какой «Галатасарай»? Ромчик, ты труп. После матча.
 @igor [angry] А сейчас я им всем покажу. {shake}ВСЕМ!{/shake}
 # sfx igorLaugh
-@narrator Игорь краснеет до самого лба. Кажется, это берсерк.
+@narrator Игорь краснеет до самого лба. Кажется, это ярость.
 
 === ht_none
 # flag ht_none
@@ -40,39 +40,39 @@
 
 // ---------- Судья (нейтрально, без насмешек) ----------
 === ref_shurpo
-@viktor [norm] Шурпо, быстрее!
-@viktor [norm] Шурпо, шевелимся!
+@ivan [norm] Шурпо, быстрее!
+@ivan [norm] Шурпо, шевелимся!
 === ref_bochko
-@viktor [norm] Бочко, соберись!
-@viktor [norm] Коля, смотри на мяч!
+@ivan [norm] Бочко, соберись!
+@ivan [norm] Коля, смотри на мяч!
 === ref_matych
-@viktor [norm] Матыч, не спим!
-@viktor [norm] Матыч, открывайся под пас!
+@ivan [norm] Матыч, не спим!
+@ivan [norm] Матыч, открывайся под пас!
 === ref_zakha
-@viktor [norm] Заха, назад, назад!
+@ivan [norm] Заха, назад, назад!
 === ref_guza
-@viktor [norm] Гуза, держи позицию!
+@ivan [norm] Гуза, держи позицию!
 === ref_vadim
-@viktor [norm] Вадим, пас!
+@ivan [norm] Вадим, пас!
 === ref_vitalik
-@viktor [norm] Виталик, не жадничай!
+@ivan [norm] Виталик, не жадничай!
 === ref_denis
-@viktor [norm] Поповский, играем!
+@ivan [norm] Поповский, играем!
 === ref_igor
-@viktor [norm] Ступяк, аккуратнее!
+@ivan [norm] Ступяк, аккуратнее!
 === ref_chernyak
-@viktor [norm] Черняк, хорошо!
+@ivan [norm] Черняк, хорошо!
 === ref_roma
-@viktor [norm] Ковган, вперёд!
-@viktor [norm] Ковган, не стой!
+@ivan [norm] Ковган, вперёд!
+@ivan [norm] Ковган, не стой!
 === ref_foul
-@viktor [norm] Фол! Штрафной.
-@viktor [norm] Сзади нельзя! Штрафной.
+@ivan [norm] Фол! Штрафной.
+@ivan [norm] Сзади нельзя! Штрафной.
 === ref_yellow
-@viktor [norm] Жёлтая карточка.
-@viktor [norm] Предупреждение. Жёлтая.
-=== ref_berserk
-@viktor [norm] Ступяк, спокойнее!
+@ivan [norm] Жёлтая карточка.
+@ivan [norm] Предупреждение. Жёлтая.
+=== ref_rage
+@ivan [norm] Ступяк, спокойнее!
 
 // ---------- Облачка после гола ----------
 === goal_igor
@@ -104,11 +104,11 @@
 @smile [surprised] Ой. Ой-ой-ой.
 @narrator Смайл хватается за живот и с позором убегает с поля.
 === keeper_in_bochko
-@viktor [norm] Замена! Бочко — в ворота.
+@ivan [norm] Замена! Бочко — в ворота.
 @bochko [surprised] Я?! В ворота?! Я же мяч боюсь!
 === keeper_in_zakha
-@viktor [norm] Замена! Заха — в ворота.
+@ivan [norm] Замена! Заха — в ворота.
 === sub
-@viktor [norm] Замены во втором тайме!
-=== berserk
+@ivan [norm] Замены во втором тайме!
+=== rage
 @igor [angry] {shake}РРРА!{/shake}

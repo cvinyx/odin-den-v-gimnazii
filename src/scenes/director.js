@@ -1,6 +1,6 @@
 // Вызов к директору (раздел 7): сценка у кабинета директора — директор только голосом из-за двери.
-// 1-й и 2-й раз: стресс +20 (оценку 2 ставит урок). 3-й раз — концовка «К директору!».
-import { directorCall, isDirectorEnding } from '../game/actions.js';
+// 1-й и 2-й раз: стресс +20 (оценку 2 ставит урок). 3-й раз за день — день окончен (Р-4), домой.
+import { directorCall, directorEndsDay } from '../game/actions.js';
 import { DialogScene } from './dialog_scene.js';
 import { portraitOf } from '../gen/people.js';
 import { audio } from '../engine/audio.js';
@@ -13,13 +13,13 @@ export class DirectorScene {
     this.k = directorCall(st);
     game.playMusic('director');
     audio.play('door');
-    const label = isDirectorEnding(st) ? 'call_3' : 'call_' + this.k;
+    const label = directorEndsDay(st) ? 'call_3' : 'call_' + this.k;
     game.scenes.push(new DialogScene('director', label, { onEnd: () => this.after() }));
   }
   after() {
     const game = this.game;
-    if (isDirectorEnding(game.state)) {
-      import('./ending.js').then(({ EndingScene }) => game.scenes.reset(new EndingScene('director'), { fade: true }));
+    if (directorEndsDay(game.state)) {
+      import('./day_flow.js').then(({ DayOverScene }) => game.scenes.reset(new DayOverScene('director'), { fade: true }));
       return;
     }
     game.scenes.remove(this);

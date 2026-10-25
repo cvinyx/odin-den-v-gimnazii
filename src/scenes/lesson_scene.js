@@ -1,11 +1,12 @@
 // Шаблон урока (раздел 5): вход → выбор места → 2–3 события → главная мини-игра → итог урока → звонок.
 // Все действия урока (телефон, вейп, байт, сидеть тихо) — через выборы в событиях.
 // Подозрение 100 → вызов к директору: остаток урока пропущен, оценка 2.
-import { LESSONS, LINEUPS } from '../../data/lessons.js';
+// Неделя (V2-2): урок берётся из расписания текущего дня, диалоги — из файла предмета,
+// мини-игра — из расписания (SUBJECTS[*].games). *_stub — временные заглушки (диалог вместо игры).
+import { LESSON_FILES, LINEUPS } from '../../data/lessons.js';
 import { MapView } from '../world/map_view.js';
-import { LAST_LESSON } from '../game/day.js';
 import { BALANCE } from '../../data/balance.js';
-import { lessonInfo, lessonClock, startLesson, finishLesson, endLessonRules, startBreak, eventRng } from '../game/day.js';
+import { lessonInfo, lessonClock, startLesson, finishLesson, endLessonRules, startBreak, eventRng, lastLesson, lessonGraded } from '../game/day.js';
 import { ClassroomView } from '../world/classroom_view.js';
 import { DialogScene } from './dialog_scene.js';
 import { MinigameScene } from './minigame_scene.js';
@@ -16,11 +17,9 @@ import { PhonePopupScene } from './phone_popup.js';
 import { PauseScene } from './pause.js';
 import { SchoolMapScene } from './school_map.js';
 import { changeStat } from '../game/state.js';
-import { labelLines } from '../game/dialogs.js';
-import { pickEnding } from '../game/endings.js';
+import { labelLines, getDialog } from '../game/dialogs.js';
 
-// Какая телефонная игра «по умолчанию» на уроке (на остальных — случайная из трёх).
-const PHONE_BY_LESSON = { 2: 'phone_blocks', 4: 'phone_brawl', 6: 'phone_feed' };
+const PHONE_GAMES = ['phone_blocks', 'phone_brawl', 'phone_feed'];
 
 export class LessonScene {
   constructor(n, opts = {}) {
@@ -35,11 +34,13 @@ export class LessonScene {
     this.game = game;
     const st = game.state;
     this.info = lessonInfo(this.n);
-    this.cfg = LESSONS[this.n];
+    this.file = this.info.file;
+    this.cfg = LESSON_FILES[this.file];
+    this.graded = lessonGraded(st, this.n);
     if (!this.opts.resumed) startLesson(st, this.n);
     this.before = { ...st.stats };
     game.condCtx = {}; // условия мини-игр перемены на уроке не действуют
-    this.view = this.cfg.view === 'pe' ? peView() : new ClassroomView(st, this.info);
+    this.view = this.cfg.view === 'pe' ? peView() : this.cfg.view === 'pool' ? poolView() : new ClassroomView(st, this.info);
     game.hud.hint = null;
     game.playMusic('lesson');
     game.autosave(); // автосохранение в начале урока (раздел 18)
@@ -50,14 +51,17 @@ export class LessonScene {
 
   buildSteps() {
     const c = this.cfg;
+    const labels = getDialog(this.file).labels;
+    const game = this.info.minigame;
+    const before = labels['before_' + game] ? 'before_' + game : 'before_game';
     const steps = [
       { p: 0.02, run: () => this.dialog('intro') },
       ...(c.seat ? [{ p: 0.06, run: () => this.dialog(c.seat, () => this.view.rebuild && this.view.rebuild(this.game.state)) }] : []),
       ...c.events.map((e, i) => ({ p: 0.12 + i * 0.12, run: () => this.dialog(e) })),
-      { p: 0.5, run: () => this.dialog('before_game') },
+      { p: 0.5, run: () => this.dialog(before) },
       { p: 0.5, run: () => this.mainGame() },
       ...(c.extra ? [{ p: 0.88, run: () => this.extraGame() }] : []),
-      { p: 0.92, run: () => this.dialog(this.grade >= 6 ? 'after_good' : 'after_bad') },
+      { p: 0.92, run: () => this.dialog(this.grade == null || this.grade >= 6 ? 'after_good' : 'after_bad') },
       { p: 0.95, name: 'result', run: () => this.showResult() },
       { p: 0.98, run: () => this.dadMessage() },
       { p: 1, run: () => this.bell() },
@@ -77,7 +81,7 @@ export class LessonScene {
   }
 
   dialog(label, after) {
-    this.game.scenes.push(new DialogScene(this.cfg.file, label, {
+    this.game.scenes.push(new DialogScene(this.file, label, {
       onEnd: () => { if (after) after(); this.afterDialog(); },
     }));
   }
@@ -89,7 +93,7 @@ export class LessonScene {
     if (phone && this.cfg.view !== 'pe') {
       // «залипнуть в телефон» — короткая (25 с) телефонная мини-игра урока
       const st = this.game.state;
-      const id = PHONE_BY_LESSON[this.n] || eventRng(st, 'phonegame' + this.n).pick(Object.values(PHONE_BY_LESSON));
+      const id = PHONE_GAMES.includes(this.info.minigame) ? this.info.minigame : eventRng(st, `phonegame${st.day}:${this.n}`).pick(PHONE_GAMES);
       this.game.scenes.push(new MinigameScene(id, {
         params: { lesson: this.n, short: true },
         onDone: (res) => this.afterPhone(res, () => this.next()),
@@ -119,28 +123,31 @@ export class LessonScene {
   }
 
   afterBait(res) {
-    if (res && res.extra && res.extra.berserk) this.game.state.flags.igorBerserk = true;
+    if (res && res.extra && res.extra.rage) this.game.state.flags.igorRage = true;
     this.next();
   }
 
   mainGame() {
     const st = this.game.state;
     const c = this.cfg;
+    let id = this.info.minigame;
+    if (id.endsWith('_stub')) return this.stubGame(id);
     const params = { lesson: this.n, view: this.view, ...(c.params || {}) };
+    if (id === 'cheat_quiz') { id = 'cheat'; params.quiz = true; }
     let opp = null;
-    if (c.minigame === 'bait') {
+    if (id === 'bait') {
       // байт-дуэль с одноклассником: обычно Денис; если Рома отбил место — дующийся Игорь
       opp = st.seat === 'steal_ok' ? 'igor' : 'denis';
       Object.assign(params, { opp, inLesson: true, sulk: opp === 'igor' });
     }
-    this.game.scenes.push(new MinigameScene(c.minigame, {
+    this.game.scenes.push(new MinigameScene(id, {
       params, opp,
       onUpdate: (inst) => {
         const L = inst.logic;
         if (L && L.duration) this.setProgress(0.5 + 0.35 * Math.min(1, L.t / L.duration));
       },
       onDone: (res) => {
-        if (res.extra && res.extra.berserk) st.flags.igorBerserk = true;
+        if (res.extra && res.extra.rage) st.flags.igorRage = true;
         let g = res.grade ?? BALANCE.lessonGrades.byResult[res.result] ?? 5;
         if (st.seat === 'front') g += BALANCE.seating.frontGradeBonus;
         this.grade = Math.max(1, Math.min(10, g));
@@ -148,6 +155,11 @@ export class LessonScene {
         this.afterPhone(res, () => this.next());
       },
     }));
+  }
+
+  // Временная заглушка (плавание, классный час — этап V2-4): короткий диалог-выбор, оценки нет.
+  stubGame(id) {
+    this.game.scenes.push(new DialogScene(this.file, id, { onEnd: () => { this.game.takeActions(); this.next(); } }));
   }
 
   extraGame() {
@@ -172,15 +184,15 @@ export class LessonScene {
   showResult() {
     const st = this.game.state;
     this.game.scenes.push(new LessonResultScene({
-      lesson: this.info, grade: this.grade, before: this.before, after: { ...st.stats },
+      lesson: this.info, grade: this.graded ? this.grade ?? 1 : null, before: this.before, after: { ...st.stats },
       director: this.directorDone, onDone: () => this.next(),
     }));
   }
 
   dadMessage() {
     const st = this.game.state;
-    if (this.grade < BALANCE.dad.gradeThreshold || st.stats.battery <= 0) return this.next();
-    const rng = eventRng(st, 'dad' + this.n);
+    if (!this.graded || this.grade < BALANCE.dad.gradeThreshold || st.stats.battery <= 0) return this.next();
+    const rng = eventRng(st, `dad${st.day}:${this.n}`);
     const rub = rng.int(BALANCE.dad.transferMin / 100, BALANCE.dad.transferMax / 100);
     const lines = labelLines('dad', 'msg_' + rub);
     const text = lines.length ? rng.pick(lines).text : '';
@@ -197,13 +209,11 @@ export class LessonScene {
     const st = game.state;
     endLessonRules(st);
     finishLesson(st, this.n, this.grade ?? 1);
-    if (this.n >= LAST_LESSON) {
-      // последний звонок — концовка дня (раздел 16)
-      import('./ending.js').then(({ EndingScene }) => game.scenes.reset(new EndingScene(pickEnding(st)), { fade: true }));
-      return;
-    }
+    // последний звонок дня — дорога домой (М-6), после пятницы — концовка недели
+    if (this.n >= lastLesson()) { import('./day_flow.js').then(({ goHome }) => goHome(game)); return; }
     startBreak(st, this.n);
-    const where = this.info.building === 0 ? ['locker_room', 'gym'] : [`k${this.info.building}_f${this.info.floor}`, 'door' + this.info.room];
+    const where = this.info.room === 'бассейн' ? ['pool', 'stairs']
+      : this.info.building === 0 ? ['locker_room', 'gym'] : [`c${this.info.building}_f${this.info.floor}`, 'door' + this.info.room];
     import('./world.js').then(({ WorldScene }) => {
       game.scenes.reset(new WorldScene(where[0], where[1], { autosave: true }), { fade: true });
     });
@@ -229,10 +239,18 @@ function peView() {
   const L = LINEUPS;
   const fiz = [L.fizmat.keeper, ...L.fizmat.field, ...L.fizmat.bench];
   const iny = [L.inyaz.keeper, ...L.inyaz.field, ...L.inyaz.bench];
-  // «Физмат» — левая половина раздевалки, «ИнЯз» — правая
-  fiz.forEach((id, i) => cast.push({ id, x: 2 + i, y: i % 2 ? 6 : 3, dir: 'right' }));
-  iny.forEach((id, i) => cast.push({ id, x: 11 + i, y: i % 2 ? 6 : 3, dir: 'left' }));
-  cast.push({ id: 'viktor', x: 9, y: 2, dir: 'down' });
+  // раздевалка (Л-25): «ИнЯз» — на лавке у одной стены, «Физмат» — у противоположной
+  iny.forEach((id, i) => cast.push({ id, x: 3 + i * 2, y: 3, dir: 'down' }));
+  fiz.forEach((id, i) => cast.push({ id, x: 2 + i * 2, y: 6, dir: 'up' }));
+  cast.push({ id: 'ivan', x: 13, y: 4, dir: 'left' });
   const v = new MapView('locker_room', cast.map((c) => ({ ...c, x: Math.round(c.x) })));
   return v;
+}
+
+// Бассейн: класс у бортика, учитель со свистком.
+function poolView() {
+  const ids = ['igor', 'denis', 'roma', 'matych', 'buy', 'guza'];
+  const cast = ids.map((id, i) => ({ id, x: 6 + i * 2, y: 3, dir: 'down' }));
+  cast.push({ id: 'ivan', x: 4, y: 13, dir: 'up' });
+  return new MapView('pool', cast);
 }

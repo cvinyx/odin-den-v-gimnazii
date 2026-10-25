@@ -16,7 +16,7 @@ class CheatGame {
 
   start(params) {
     const st = this.ctx.state;
-    const l = lessonInfo(params.lesson || st.lesson || 1);
+    const l = lessonInfo(params.lesson || st.lesson || 1) || lessonInfo(1);
     this.view = params.view || new ClassroomView(st, l);
     const t = TEACHERS[l.teacher];
     const geo = this.view.geometry();
@@ -44,7 +44,7 @@ class CheatGame {
     const q0 = this.questions.shift();
     if (!q0) return;
     const q = { ...q0, options: this.ctx.rng.shuffle([...q0.options]) }; // правильный ответ не всегда первый
-    this.quiz = { q, menu: new ChoiceMenu('Валентина Андреевна: ' + q.question, q.options.map((o) => ({ text: o.text }))) };
+    this.quiz = { q, menu: new ChoiceMenu('Нонна Аркадьевна: ' + q.question, q.options.map((o) => ({ text: o.text }))) };
     audio.play('menuMove');
   }
 

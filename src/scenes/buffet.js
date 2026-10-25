@@ -1,4 +1,4 @@
-// Буфет в столовой (раздел 7): меню с ценами. Комплексный обед — только на большой перемене.
+// Буфет (раздел 7; V2-3 — отдельная комната рядом со столовой, меню Л-12): меню с ценами. Комплексный обед — только на большой перемене.
 import { Menu } from '../ui/menu.js';
 import { BALANCE } from '../../data/balance.js';
 import { changeStat, formatMoney } from '../game/state.js';
@@ -34,7 +34,7 @@ export class BuffetScene {
       action: () => this.buy(key),
     }));
     items.push({ label: 'Уйти', action: () => game.scenes.pop() });
-    this.menu = new Menu(items, { lineH: 15 });
+    this.menu = new Menu(items, { lineH: 12 });
   }
   buy(key) {
     const res = buyFood(this.game.state, key);
@@ -49,12 +49,12 @@ export class BuffetScene {
   }
   draw(r) {
     r.alpha(0.6, () => r.rect(0, 0, 480, 234, '#000'));
-    r.box(60, 30, 360, 170);
+    r.box(60, 6, 360, 222);
     const pt = portraitOf('cook', 'happy');
-    if (pt) r.image(pt, 72, 42);
-    r.text('Буфет', 130, 44, { color: '#ffe14d', scale: 2 });
-    r.text('Деньги: ' + formatMoney(this.game.state.stats.money) + ' BYN', 130, 66, { color: '#6be36b' });
-    this.menu.draw(r, 100, 100, this.time);
+    if (pt) r.image(pt, 72, 16);
+    r.text('Буфет', 130, 18, { color: '#ffe14d', scale: 2 });
+    r.text('Деньги: ' + formatMoney(this.game.state.stats.money) + ' BYN', 130, 40, { color: '#6be36b' });
+    this.menu.draw(r, 100, 80, this.time);
     const i = this.menu.index;
     const key = Object.keys(BALANCE.food)[i];
     if (key) {
@@ -62,7 +62,7 @@ export class BuffetScene {
       const parts = [`голод ${f.hunger}`];
       if (f.stress) parts.push(`стресс ${f.stress}`);
       if (f.lunchOnly) parts.push('только на большой перемене');
-      r.text(parts.join(', '), 240, 184, { align: 'center', color: '#9a9aa8' });
+      r.text(parts.join(', '), 240, 212, { align: 'center', color: '#9a9aa8' });
     }
     this.game.hud.draw(r, this.game.state);
   }

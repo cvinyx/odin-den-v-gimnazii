@@ -2,6 +2,7 @@
 import { registerDebug } from './registry.js';
 import { FontTestScene } from '../scenes/font_test.js';
 import { GalleryScene } from '../scenes/gallery.js';
+import { CastSheetScene } from '../scenes/cast_sheet.js';
 import { TestRoomScene } from '../scenes/test_room.js';
 import { TitleScene } from '../scenes/title.js';
 import { DialogScene } from '../scenes/dialog_scene.js';
@@ -13,9 +14,10 @@ import { EndingScene } from '../scenes/ending.js';
 import { ENDINGS, ENDING_TITLES } from '../game/endings.js';
 import { SchoolMapScene } from '../scenes/school_map.js';
 import { BuffetScene } from '../scenes/buffet.js';
-import { SCHEDULE } from '../../data/schedule.js';
+import { DAYS } from '../../data/schedule.js';
 import { NPC_SCHEDULE } from '../../data/npc_schedule.js';
-import { startBreak } from '../game/day.js';
+import { startBreak, startDay, todaySchedule, lastLesson, lessonGraded, weekAverage } from '../game/day.js';
+import { MorningScene } from '../scenes/day_flow.js';
 import { generateSeedCode } from '../engine/rng.js';
 import { MAPS } from '../world/maps/index.js';
 import { rollBet } from '../game/bets.js';
@@ -52,43 +54,91 @@ function freshDay(game) {
   if (!game.state.seed || game.state.phase === 'free' || game.state.phase === 'end') game.newDay(generateSeedCode());
 }
 
-// Подготовить день: уроки 1..done уже прошли (оценка 5).
+// Подготовить день: уроки 1..done уже прошли (оценка 5, на уроках без оценки — прочерк).
 function prepareDay(game, done) {
   freshDay(game);
   const st = game.state;
   st.grades = [];
-  for (let i = 0; i < done; i++) st.grades[i] = 5;
-  st.late = done === 0;
+  for (let i = 0; i < done; i++) st.grades[i] = lessonGraded(st, i + 1) ? 5 : null;
+  st.week.grades[st.day - 1] = [...st.grades];
+  st.late = done === 0 && st.day === 1;
+}
+
+// Оценки со средним avg: все уроки дней до day и первые doneToday уроков дня day. Возвращает число оценок.
+function fillWeek(st, avg, day, doneToday) {
+  const slots = [];
+  for (let d = 1; d <= day; d++) {
+    const n = d < day ? lastLesson(d) : doneToday;
+    st.week.grades[d - 1] = [];
+    for (let i = 1; i <= n; i++) {
+      if (lessonGraded(st, i, d)) slots.push([d, i]);
+      st.week.grades[d - 1][i - 1] = null;
+    }
+  }
+  const target = Math.round(avg * slots.length);
+  const base = Math.floor(target / Math.max(1, slots.length));
+  const vals = slots.map((_, k) => base + (k < target - base * slots.length ? 1 : 0));
+  // парами ±1, чтобы оценки были разными, а сумма — прежней
+  for (let k = 0; k + 1 < vals.length; k += 2) if (vals[k] < 10 && vals[k + 1] > 1) { vals[k]++; vals[k + 1]--; }
+  slots.forEach(([d, i], k) => { st.week.grades[d - 1][i - 1] = vals[k]; });
+  st.grades = [...st.week.grades[day - 1]];
+  return slots.length;
 }
 
 export function registerDebugEntries() {
   registerDebug('Сцены', 'Шрифт', (game) => overTitle(game, new FontTestScene()));
   registerDebug('Сцены', 'Галерея', (game) => overTitle(game, new GalleryScene()));
+  registerDebug('Сцены', 'Лист персонажей', (game) => overTitle(game, new CastSheetScene()));
   registerDebug('Сцены', 'Тестовая комната', (game) => game.scenes.reset(new TestRoomScene(), { fade: true }));
   registerDebug('Сцены', 'Главное меню', (game) => game.scenes.reset(new TitleScene(), { fade: true }));
-  // Концовки: день «как будто прожит» с подходящими итогами (оценки, матч, аура…)
-  const ENDING_SETUP = {
-    director: { directorCalls: 3, aura: 40, match: -1 },
-    perfect: { directorCalls: 0, aura: 78, match: 1, grades: [7, 8, 7, 6, 9, 7, 8] },
-    legend: { directorCalls: 1, aura: 90, wins: 6, match: -1 },
-    drained: { breakdowns: 2, aura: 30, battery: 0, money: 40, match: 0 },
-    chaos: { directorCalls: 1, aura: 55, match: 0 },
-  };
+  // Концовки недели: пятница после последнего урока, средний балл — внутри границ концовки (Р-5)
+  const ENDING_AVG = { pride: 8.6, bntu: 7.0, habza: 5.0, dad: 3.0 };
   for (const k of ENDINGS) {
     registerDebug('Концовки', 'Концовка: ' + ENDING_TITLES[k], (game) => {
-      prepareDay(game, 7);
-      const st = game.state, c = ENDING_SETUP[k];
-      if (c.grades) st.grades = c.grades;
-      Object.assign(st, { directorCalls: c.directorCalls || 0, breakdowns: c.breakdowns || 0, wins: c.wins || 2, lesson: 7 });
-      st.stats.aura = c.aura;
-      if (c.battery != null) st.stats.battery = c.battery;
-      if (c.money != null) st.stats.money = c.money;
-      st.flags.matchResult = c.match; st.flags.matchScore = c.match > 0 ? '3:2' : c.match < 0 ? '1:4' : '2:2';
+      game.newDay(generateSeedCode());
+      const st = game.state;
+      startDay(st, 5);
+      fillWeek(st, ENDING_AVG[k], 5, lastLesson(5));
+      st.lesson = lastLesson(5);
+      st.week.matches[2] = { score: '3:2', result: 1 };
+      st.flags.matchResult = -1; st.flags.matchScore = '1:4';
+      st.week.directorCalls = 2;
       st.debts = [{ to: 'igor', amount: 150 }, { to: 'matych', amount: 80 }];
-      st.playTime = 2700;
+      st.playTime = 4 * 3600 + 120;
       game.scenes.reset(new EndingScene(k), { fade: true });
     });
   }
+  // Средний балл X: прошедшие уроки недели получают оценки со средним X. Если уроков ещё не было —
+  // заполняются понедельник–четверг и игра переходит к утру пятницы.
+  let avgX = 6;
+  registerDebug('Неделя', 'Поставить средний балл', (game) => {
+    freshDay(game);
+    const st = game.state;
+    let n = fillWeek(st, avgX, st.day, st.grades.length);
+    if (!n) {
+      startDay(st, 5);
+      n = fillWeek(st, avgX, 5, 0);
+      game.scenes.reset(new MorningScene(), { fade: true });
+    }
+    game.toast(`Средний за неделю: ${weekAverage(st).toFixed(2)} (${n} оценок)`);
+  }, { value: () => String(avgX), change: (d) => { avgX = Math.max(2, Math.min(10, avgX + d)); }, set: (v) => { avgX = Number(v); } });
+  let dayPick = 1;
+  registerDebug('Неделя', 'Начать с дня', (game) => {
+    game.newDay(generateSeedCode());
+    if (dayPick === 1) { game.scenes.reset(new IntroScene(), { fade: true }); return; }
+    const st = game.state;
+    startDay(st, dayPick);
+    fillWeek(st, 6, dayPick, 0);
+    game.autosave();
+    game.scenes.reset(new MorningScene(), { fade: true });
+  }, { value: () => DAYS[dayPick - 1], change: (d) => { dayPick = Math.max(1, Math.min(5, dayPick + d)); }, set: (v) => { dayPick = Number(v); } });
+  registerDebug('Неделя', 'Дорога домой (автобус)', (game) => {
+    freshDay(game);
+    const st = game.state;
+    prepareDay(game, lastLesson());
+    st.phase = 'break'; st.lesson = lastLesson();
+    import('../scenes/day_flow.js').then(({ goHome }) => goHome(game));
+  });
   registerDebug('Сцены', 'Схема школы', (game) => game.scenes.push(new SchoolMapScene()));
   registerDebug('Сцены', 'Буфет', (game) => game.scenes.push(new BuffetScene()));
 
@@ -98,15 +148,19 @@ export function registerDebugEntries() {
     Object.assign(game.state, { phase: 'late', lesson: 0, clock: '09:03', late: true });
     game.scenes.reset(new WorldScene('street', 'bus'), { fade: true });
   });
-  // Переход к любому уроку и перемене (прошлые оценки — 5).
-  for (const l of SCHEDULE) {
-    registerDebug('День', `Урок ${l.n} — ${l.subject}`, (game) => {
-      prepareDay(game, l.n - 1);
-      game.state.phase = 'late';
-      if (l.n > 1) { game.state.phase = 'break'; game.state.lesson = l.n - 1; }
-      game.scenes.reset(new LessonScene(l.n), { fade: true });
-    });
-  }
+  // Переход к любому уроку текущего дня (←→ — номер урока; прошлые оценки — 5).
+  let lessonPick = 1;
+  registerDebug('День', 'Урок', (game) => {
+    const n = Math.min(lessonPick, lastLesson());
+    prepareDay(game, n - 1);
+    game.state.phase = 'late';
+    if (n > 1) { game.state.phase = 'break'; game.state.lesson = n - 1; }
+    game.scenes.reset(new LessonScene(n), { fade: true });
+  }, {
+    value: () => { const l = todaySchedule()[Math.min(lessonPick, lastLesson()) - 1]; return `${l.n}. ${l.short}`; },
+    change: (d) => { lessonPick = Math.max(1, Math.min(7, lessonPick + d)); },
+    set: (v) => { lessonPick = Number(v); },
+  });
   for (let b = 1; b <= 6; b++) {
     registerDebug('День', `Перемена ${b}`, (game) => {
       prepareDay(game, b);
@@ -142,7 +196,7 @@ export function registerDebugEntries() {
     game.scenes.push(new MinigameScene('bait', { opp: 'igor', params: { opp: 'igor', inLesson: true } }));
   });
   // ---------- Этап 4: любая мини-игра с любым соперником ----------
-  const students = ['guza', 'igor', 'denis', 'chernyak', 'shurpo', 'levonchuk', 'bochko', 'matych', 'buy', 'smile', 'vadim', 'vitalik', 'zakha', 'anus', 'безымянный'];
+  const students = ['guza', 'igor', 'denis', 'chernyak', 'shurpo', 'levonchuk', 'bochko', 'matych', 'buy', 'smile', 'vadim', 'vitalik', 'zakha', 'anosov', 'безымянный'];
   const real = (o) => (o === 'безымянный' ? unnamedOpp() : o);
   const phone = (id, lesson, extra = {}) => (game) => {
     freshDay(game);
@@ -193,18 +247,39 @@ export function registerDebugEntries() {
   registerDebug('Эль-Класико', 'ИИ против ИИ', match({ aiRoma: true }));
   registerDebug('Эль-Класико', 'ИИ против ИИ ×4', match({ aiRoma: true, speed: 4 }));
   registerDebug('Эль-Класико', 'Диарея Смайла сразу', match({ diarrhea: true, diarrheaSoon: true }));
-  registerDebug('Эль-Класико', 'Берсерк Игоря', (game) => { match({})(game); game.state.flags.igorBerserk = true; });
-  registerDebug('Эль-Класико', 'Урок 5 целиком (раздевалка → матч → душ)', (game) => {
-    prepareDay(game, 4);
-    Object.assign(game.state, { phase: 'break', lesson: 4 });
-    game.scenes.reset(new LessonScene(5), { fade: true });
+  registerDebug('Эль-Класико', 'Ярость Игоря', (game) => { match({})(game); game.state.flags.igorRage = true; });
+  registerDebug('Эль-Класико', 'Физра вторника целиком (раздевалка → матч → душ)', (game) => {
+    game.newDay(generateSeedCode());
+    startDay(game.state, 2);
+    const n = todaySchedule().findIndex((l) => l.subjectId === 'pe_football') + 1;
+    prepareDay(game, n - 1);
+    Object.assign(game.state, { phase: 'break', lesson: n - 1 });
+    game.scenes.reset(new LessonScene(n), { fade: true });
   });
+
+  // V2-1: новые и переименованные персонажи в диалоге (на фоне их места на перемене)
+  for (const [label, id, file, lab, map, b] of [
+    ['Ваня Максимов', 'vanya', 'break1', 'vanya', 'c3_f2', 1],
+    ['Святослав Гулько', 'svyat', 'break1', 'svyat', 'c3_f2', 1],
+    ['Миша Аносов', 'anosov', 'break1', 'anosov', 'c2_f4', 1],
+    ['Иван Владимирович', 'ivan', 'lesson_pe', 'intro', 'locker_room', 4],
+    ['Василий', 'vasily', 'staff', 'vasily', 'c1_f1', 3],
+  ]) {
+    registerDebug('Персонажи', label + ' (диалог)', (game) => {
+      prepareDay(game, b);
+      startBreak(game.state, b);
+      game.scenes.transition(() => {
+        game.scenes.reset(new WorldScene(map, null));
+        game.scenes.push(new DialogScene(file, lab, { opp: id }));
+      });
+    });
+  }
 
   registerDebug('Сценки', 'Сообщение отца', (game) => {
     const l = labelLines('dad', 'msg_3')[0];
     game.scenes.push(new PhonePopupScene({ from: 'батя', text: l ? l.text : '', amount: 300 }));
   });
-  registerDebug('Сценки', 'Берсерк Игоря', (game) => { freshDay(game); game.scenes.push(new DialogScene('bait_igor', 'berserk')); });
+  registerDebug('Сценки', 'Ярость Игоря (сценка)', (game) => { freshDay(game); game.scenes.push(new DialogScene('bait_igor', 'rage')); });
   registerDebug('Сценки', 'Вызов к директору', (game) => { freshDay(game); game.scenes.push(new DirectorScene({})); });
   registerDebug('Мини-игры', 'Диалог с Игорем (тест)', (game) => game.scenes.transition(() => {
     game.scenes.reset(new TestRoomScene());

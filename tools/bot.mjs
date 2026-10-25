@@ -62,16 +62,16 @@ export async function runSlice({ seed = 'BXT234', shots = null, cheatStyle = 'ca
   await shot('ulitsa');
   // улица → рекреация
   await bot.useDoor(14, 3);
-  await bot.waitFor((s) => s.top === 'world' && s.map === 'rec_f1');
+  await bot.waitFor((s) => s.top === 'world' && s.map === 'c1_f1');
   await shot('rekreatsiya');
   await bot.walkTo(38, 16);
   await bot.page.keyboard.down('ArrowRight'); await bot.wait(300); await bot.page.keyboard.up('ArrowRight');
-  await bot.waitFor((s) => s.top === 'world' && s.map === 'k2_f1');
+  await bot.waitFor((s) => s.top === 'world' && s.map === 'c3_f1');
   await shot('korpus2-1etazh');
   // лестница на 4 этаж
   policy.floor = 4;
   await bot.useDoor(17, 1);
-  await bot.handle((t, s) => t === 'world' && s.map === 'k2_f4');
+  await bot.handle((t, s) => t === 'world' && s.map === 'c3_f4');
   await shot('korpus2-4etazh');
   // каб. 404 → урок 1
   await bot.useDoor(8, 8);
@@ -87,7 +87,7 @@ export async function runSlice({ seed = 'BXT234', shots = null, cheatStyle = 'ca
   await shot('spisyvanie');
   await bot.handle((t, s) => t === 'lesson_result' || t === 'director');
   await shot(await bot.top() === 'director' ? 'direktor' : 'itog-uroka');
-  await bot.handle((t, s) => t === 'world' && s.map === 'k2_f4');
+  await bot.handle((t, s) => t === 'world' && s.map === 'c3_f4');
   await shot('peremena-1');
   // перемена: Игорь — байт на деньги
   await bot.talkTo('igor');
@@ -104,10 +104,10 @@ export async function runSlice({ seed = 'BXT234', shots = null, cheatStyle = 'ca
   // в рекреацию к Матычу
   policy.floor = 1;
   await bot.useDoor(17, 1);
-  await bot.handle((t, s) => t === 'world' && s.map === 'k2_f1');
+  await bot.handle((t, s) => t === 'world' && s.map === 'c3_f1');
   await bot.walkTo(1, 10);
   await bot.page.keyboard.down('ArrowLeft'); await bot.wait(300); await bot.page.keyboard.up('ArrowLeft');
-  await bot.waitFor((s) => s.top === 'world' && s.map === 'rec_f1');
+  await bot.waitFor((s) => s.top === 'world' && s.map === 'c1_f1');
   await shot('rekreatsiya-peremena');
   await bot.talkTo('matych');
   await bot.handle((t, s) => t === 'minigame' && s.phase === 'play' && s.bmode === 'choose');

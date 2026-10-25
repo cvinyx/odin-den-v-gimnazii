@@ -51,7 +51,12 @@ test('правильная контрольная сумма, но неверн�
   const sum = crc32(body).toString(36).toUpperCase().padStart(7, '0');
   const res = decodeSaveCode(`ODG1-${body}-${sum}`);
   assert.equal(res.ok, false);
-  assert.match(res.error, /не подходит/);
+  // V2-2: код версии 1 (один день) — отдельное сообщение «Сохранение от старой версии»
+  assert.match(res.error, /Сохранение от старой версии/);
+  const body2 = Buffer.from('{"v":2,"s":"AAAAAA"}').toString('base64').replace(/=+$/, '');
+  const res2 = decodeSaveCode(`ODG1-${body2}-${crc32(body2).toString(36).toUpperCase().padStart(7, '0')}`);
+  assert.equal(res2.ok, false);
+  assert.match(res2.error, /не подходит/);
 });
 
 test('без localStorage игра не падает', () => {

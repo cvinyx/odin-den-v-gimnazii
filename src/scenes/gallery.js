@@ -13,12 +13,14 @@ export class GalleryScene {
   enter(game) {
     this.game = game;
     const rng = new Rng('gallery-unnamed');
-    this.unnamed = Array.from({ length: 12 }, () => makeUnnamed(rng, 'gal'));
+    this.unnamed = Array.from({ length: 20 }, () => makeUnnamed(rng, 'gal'));
+    this.kids = Array.from({ length: 12 }, () => makeUnnamed(rng, 'galkid', null, { kids: true }));
     this.groups = [
       { title: 'Ученики', ids: STUDENT_ORDER },
       { title: 'Учителя', ids: TEACHER_ORDER },
       { title: 'Персонал', ids: Object.keys(STAFF) },
-      { title: 'Безымянные (по сиду)', ids: this.unnamed },
+      { title: 'Безымянные (по сиду, ~70 % в форме)', ids: this.unnamed },
+      { title: 'Младшие классы', ids: this.kids },
     ];
   }
 
@@ -76,6 +78,8 @@ export class GalleryScene {
     const info = [p.cls || p.role || '', p.heightCm ? `${p.heightCm} см → ${heightPx(p.heightCm)} px` : 'только голос'].filter(Boolean).join(' · ');
     r.text(info, 14, py + 22, { color: '#9fd3ff' });
     if (p.about) r.text(p.about, 14, py + 33, { color: '#c8c8d8' });
+    if (p.nicknames) r.text('Клички: ' + p.nicknames.map((n) => n.name + (n.rare ? ' (редко)' : n.aboutOnly ? ' (только за глаза)' : '')).join(', '), 14, py + 44, { color: '#9a9aa8' });
+    else if (p.unnamed) r.text(p.uniform ? 'В школьной форме' : 'Не в форме', 14, py + 44, { color: '#9a9aa8' });
     if (sheet) {
       const frame = WALK_CYCLE[Math.floor(this.time * 6) % 4];
       DIRS.forEach((d, i) => {

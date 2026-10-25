@@ -1,8 +1,9 @@
-// Меню паузы (раздел 4): продолжить, статусы, скопировать код сохранения, выйти в меню.
+// Меню паузы (раздел 4): продолжить, статусы, расписание и дневник (Р-8), код сохранения, выйти в меню.
 import { Menu } from '../ui/menu.js';
 import { StatusPanel } from './status_panel.js';
 import { SaveCodeScene } from './save_code.js';
 import { SettingsScene } from './settings.js';
+import { ScheduleScene, DiaryScene } from './week_tabs.js';
 import { encodeSaveCode, copyToClipboard } from '../engine/save.js';
 
 export class PauseScene {
@@ -13,6 +14,8 @@ export class PauseScene {
     this.menu = new Menu([
       { label: 'Продолжить', action: () => game.scenes.pop() },
       { label: 'Статусы', action: () => game.scenes.push(new StatusPanel()) },
+      { label: 'Расписание', action: () => game.scenes.push(new ScheduleScene()) },
+      { label: 'Дневник', action: () => game.scenes.push(new DiaryScene()) },
       { label: 'Скопировать код сохранения', action: () => this.copyCode() },
       { label: 'Настройки', action: () => game.scenes.push(new SettingsScene()) },
       { label: 'Выйти в меню', action: () => this.quit() },

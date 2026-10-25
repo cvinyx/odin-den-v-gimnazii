@@ -16,7 +16,8 @@ export const STATS = ['battery', 'stress', 'aura', 'vape', 'juice', 'suspicion',
 // и столовая, рядом Матыч и Буй (и собеседник — друг), можно «Кто больше парит», можно хоть что-то,
 // собеседник сам бросает вызов; chalgame — какой (1 байт, 2 парилка, 3 туалет, 4 еда).
 export const COND_VALUES = ['lastgrade', 'debt', 'debts', 'wins', 'calls', 'match', 'vapefriend', 'puffs', 'breaknum',
-  'intoilet', 'incanteen', 'bigbreak', 'mbnear', 'vapebattle', 'playable', 'challenge', 'chalgame'];
+  'intoilet', 'incanteen', 'bigbreak', 'mbnear', 'vapebattle', 'playable', 'challenge', 'chalgame',
+  'dayavg', 'weekday', 'weekavg'];
 export const SFX_ALLOWED = ['igorLaugh', 'bell', 'whistle', 'kick', 'hit', 'shake', 'puff', 'coin', 'door', 'statUp', 'statDown'];
 const OPS = ['>=', '<=', '==', '!=', '>', '<'];
 // Игровые действия из диалогов: # action имя [аргумент]. Выполняет игра (src/game/actions.js).

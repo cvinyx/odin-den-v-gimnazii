@@ -2,8 +2,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createState, changeStat } from '../src/game/state.js';
-import { eventRng, startLesson, endLessonRules, finishLesson, startBreak, lessonClock, roomAction, hintText } from '../src/game/day.js';
-import { puff, addSuspicion, checkBreakdown, directorCall, isDirectorEnding, staminaPenalty } from '../src/game/actions.js';
+import { eventRng, startLesson, endLessonRules, finishLesson, startBreak, lessonClock, roomAction, hintText, setDay } from '../src/game/day.js';
+import { puff, addSuspicion, checkBreakdown, directorCall, directorEndsDay, staminaPenalty } from '../src/game/actions.js';
 import { rollBet, resolveLoss, totalDebt, creditorReminds } from '../src/game/bets.js';
 import { BALANCE } from '../data/balance.js';
 import { NPC_SCHEDULE } from '../data/npc_schedule.js';
@@ -59,8 +59,11 @@ test('начало урока: опоздание 15, перенос 25 %, за�
   startLesson(st, 2);
   assert.equal(st.stats.suspicion, 40);
   assert.equal(st.vapeSmell, false);
+  // V2-2: белорусский — 6-й урок в среду (расписание недели)
+  setDay(3);
   startLesson(st, 6);
-  assert.equal(st.lessonMul, 0.5); // Галина Степановна
+  assert.equal(st.lessonMul, 0.5); // Ядвига Францевна
+  setDay(1);
 });
 
 test('конец урока: батарея −1, голод +8, пустой вейп и мёртвый телефон — стресс', () => {
@@ -77,15 +80,16 @@ test('конец урока: батарея −1, голод +8, пустой в
 test('перемена: часы замирают на конце урока, вход в кабинет', () => {
   const st = createState('ABCDEF');
   st.phase = 'late';
-  assert.equal(roomAction(st, '404').type, 'lesson');
-  assert.equal(roomAction(st, '208').type, 'denied');
-  assert.match(hintText(st), /Английский, каб\. 404, корп\. 2, 4 эт\./);
+  // V2-2, V2-3: понедельник — английский (232), потом алгебра (343, класс 11 «И»)
+  assert.equal(roomAction(st, '232').type, 'lesson');
+  assert.equal(roomAction(st, '321').type, 'denied');
+  assert.match(hintText(st), /Английский, каб\. 232, корп\. 2, 3 эт\./);
   finishLesson(st, 1, 6);
   startBreak(st, 1);
   assert.equal(st.clock, '09:45');
-  assert.match(hintText(st), /Следующий: Математика, каб\. 305, корп\. 1, 3 эт\./);
-  assert.equal(roomAction(st, '305').type, 'lesson');
-  assert.equal(roomAction(st, '404').type, 'denied');
+  assert.match(hintText(st), /Следующий: Алгебра, каб\. 343, корп\. 3, 4 эт\./);
+  assert.equal(roomAction(st, '343').type, 'lesson');
+  assert.equal(roomAction(st, '232').type, 'denied');
 });
 
 test('вейп: 5 затяжек = 1 заправка, на уроке +25 подозрения (с множителем), без жижки нельзя', () => {
@@ -112,9 +116,9 @@ test('срыв на стрессе 100 и вызовы к директору', (
   assert.equal(st.breakdownPending, true);
   assert.equal(checkBreakdown(st), false);
   directorCall(st); directorCall(st);
-  assert.equal(isDirectorEnding(st), false);
+  assert.equal(directorEndsDay(st), false);
   directorCall(st);
-  assert.equal(isDirectorEnding(st), true);
+  assert.equal(directorEndsDay(st), true);
 });
 
 test('ставки и долги: три варианта при проигрыше', () => {
@@ -171,15 +175,15 @@ test('путь от улицы до каб. 404 существует (по ка�
   const seen = new Set(['street']);
   const q = ['street'];
   while (q.length) { const c = q.shift(); for (const n of edges[c]) if (!seen.has(n)) { seen.add(n); q.push(n); } }
-  for (const need of ['rec_f1', 'k2_f1', 'k2_f2', 'k2_f3', 'k2_f4', 'k2_f4_toilet']) assert.ok(seen.has(need), need);
-  assert.ok(MAPS.k2_f4.exits.some((e) => e.room === '404'));
+  for (const need of ['c1_f1', 'c3_f1', 'c3_f2', 'c3_f3', 'c3_f4', 'c3_f4_wc']) assert.ok(seen.has(need), need);
+  assert.ok(MAPS.c3_f4.exits.some((e) => e.to === 'cab_343')); // V2-3: класс 11 «И» — 343
 });
 
 test('перемена 1: NPC стоят там, где сказано в таблице раздела 11', () => {
   const b1 = (id) => NPC_SCHEDULE[id][1];
-  assert.equal(b1('denis'), 'k2_f4');
-  assert.equal(b1('igor'), 'k2_f4');
-  for (const id of ['matych', 'buy', 'guza']) assert.equal(b1(id), 'rec_f1');
+  assert.equal(b1('denis'), 'c3_f4');
+  assert.equal(b1('igor'), 'c3_f4');
+  for (const id of ['matych', 'buy', 'guza']) assert.equal(b1(id), 'c1_f1');
   // у всех именных, кто стоит на картах этапа 2, есть диалоги перемены 1
   const d = parseDialog(readDialog('break1'));
   for (const [id, row] of Object.entries(NPC_SCHEDULE)) if (MAPS[row[1]]) assert.ok(d.labels[id], 'нет диалога ' + id);

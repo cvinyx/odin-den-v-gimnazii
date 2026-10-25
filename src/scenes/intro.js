@@ -1,6 +1,7 @@
 // Вступление (раздел 13): пробуждение (текст на чёрном), остановка с Артёмом Левончуком,
 // поездка в автобусе, прибытие к гимназии в 09:03. Пропуск — удерживать X.
 import { DialogScene } from './dialog_scene.js';
+import { DejavuScene } from './dejavu.js';
 import { WorldScene } from './world.js';
 import { sheetOf } from '../gen/people.js';
 import { frameRect } from '../gen/sprites.js';
@@ -35,7 +36,11 @@ export class IntroScene {
     st.locationName = 'Дома';
     game.onSkipIntro = () => arriveAtSchool(game);
     game.playMusic('intro');
-    game.scenes.push(new DialogScene('intro', 'wake', { onEnd: () => goBusStop(game) }));
+    const wake = () => game.scenes.push(new DialogScene('intro', 'wake', { onEnd: () => goBusStop(game) }));
+    // перед понедельником — титр про дежавю (один раз за неделю)
+    if (this.noDejavu) return wake();
+    this.noDejavu = true;
+    game.scenes.push(new DejavuScene(() => { game.scenes.pop(); game.playMusic('intro'); wake(); }));
   }
   update(dt) { this.t += dt; }
   draw(r) {
@@ -80,7 +85,7 @@ export class BusScene {
     r.rect(bx, by + 60, 240, 6, '#b8862a');
     r.rect(bx + 228, by + 8, 12, 40, '#9fd0e8');
     for (let i = 0; i < 6; i++) r.rect(bx + 10 + i * 36, by + 10, 30, 30, '#9fd0e8');
-    r.text('26', bx + 210, by + 50, { color: '#202020', scale: 2 });
+    r.text(String(this.busNo || 26), bx + 210, by + 50, { color: '#202020', scale: 2 });
     // пассажиры в окнах
     const heads = [['roma', 2], ['levonchuk', 3]];
     for (const [id, w] of heads) {

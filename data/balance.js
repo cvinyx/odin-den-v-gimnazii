@@ -85,7 +85,17 @@ export const BALANCE = {
     topChoco: { name: '«Топ с шоколадом»', price: 180, hunger: -20, stress: -5 },
     lunch: { name: 'Комплексный обед', price: 350, hunger: -50, stress: 0, lunchOnly: true },
     tea: { name: 'Чай', price: 40, hunger: -5, stress: -3 },
+    // Л-12 (V2-3)
+    carbonara: { name: 'Карбонарка', price: 200, hunger: -35, stress: -3 },
+    shashlik: { name: 'Шашлычок', price: 200, hunger: -30, stress: -5 },
+    vitba: { name: 'Батончик «Витьба»', price: 90, hunger: -12, stress: -4 },
+    bun: { name: 'Булочка с повидлом', price: 120, hunger: -18, stress: -2 },
+    juice: { name: 'Сок 1 литр', price: 250, hunger: -8, stress: -6 },
   },
+
+  // V2-3: туалеты (Л-18) и турникеты Face-ID (ИС-6)
+  toilets: { wrongDoorAura: -5 },
+  faceId: { failChance: 0.15, failDelay: 1.5 },
 
   director: {
     stress: 20,
@@ -134,7 +144,7 @@ export const BALANCE = {
     halfSeconds: 90,
     halves: 2,
     diarrheaChance: 0.35,
-    berserk: { speed: 1.4, seconds: 20 },
+    rage: { speed: 1.4, seconds: 20 },
     win: { aura: 20, stress: -10 },
     draw: { aura: 0, stress: 0 },
     lose: { aura: -10, stress: 0 },
@@ -163,21 +173,24 @@ export const BALANCE = {
     stamina: { drain: 0.3, regen: 0.12 },     // доли шкалы в секунду
     ai: { decide: [0.14, 0.28], shootRange: 140, shootAlways: 38, shootChance: [0.02, 0.006], pressDist: 18, fumblePerSec: 0.06,
       shotError: 0.13, passError: 0.025, tackleDist: 11, tackleCd: 1.2, coverDist: 40, carelessTackle: 0.3 },
-    tackle: { base: 0.45, perSkill: 0.05, behindFoul: 0.85, stun: 0.6, berserkFoul: 0.3 },
+    tackle: { base: 0.45, perSkill: 0.05, behindFoul: 0.85, stun: 0.6, rageFoul: 0.3 },
     yellowChance: 0.4,
     keeper: { baseSpeed: 34, perReaction: 7, dive: 2, delay: 0.035, reach: 10, perReach: 1, save: 0.52, perSave: 0.07, fastPenalty: 0.0011, hold: 0.9 },
     diarrheaAt: [25, 150],                       // секунда матча, когда у Смайла начинается диарея
-    refLineEvery: [9, 16],                       // как часто Виктор Сергеевич что-то кричит
+    refLineEvery: [9, 16],                       // как часто Иван Владимирович что-то кричит
     // Перерыв: выбор Ромы в споре Дениса и Шурпо (метки в football.txt) — влияет на 2-й тайм.
     halftime: { barcaDenisSkill: 1, realShurpoSpeed: 2, realDenisSkill: -1, noneStress: -5 },
   },
 
-  // Концовки (раздел 16).
-  endings: {
-    perfect: { aura: 70, avgGrade: 6 },
-    baitLegend: { aura: 85, wins: 5 },
-    squeezed: { breakdowns: 2, money: 100 },
-  },
+  // Концовки недели по среднему баллу (ИС-5, Р-5): > 8,0 — «Гордость семьи»; 6,0–8,0 — «Поступаю в БНТУ»;
+  // 4,0–5,99 — «Дорога в хабзу»; < 4,0 — «Папочка зол».
+  endings: { pride: 8.0, bntu: 6.0, habza: 4.0 },
+
+  // Оценки (М-4, Р-6, Р-7): минимум у точных и гуманитарных, сколько уроков недели без оценки.
+  grades: { minExact: 1, minHumanities: 2, noGradePerWeek: [2, 3] },
+
+  // Утро нового дня (Р-2).
+  morning: { battery: [20, 70], vape: [20, 70], stress: 30, hunger: 40, time: '08:50' },
 
   // Действия на уроке через выборы («сидеть тихо»; телефон на уроке — короткая телефонная мини-игра).
   lessonActions: {
@@ -232,8 +245,8 @@ export const BALANCE = {
   // Телефон под партой: учитель у доски / признак поворота / смотрит; у физика — выходы из кабинета.
   phoneGames: {
     teacher: { board: [2.6, 5.0], warn: 0.4, watch: [1.2, 2.4] },
-    suddenTurnWarn: 0.3,          // Татьяна Михайловна оборачивается внезапно
-    outWindows: [[7, 17], [27, 16]], // Олег Николаевич выходит: [с какой секунды, на сколько]
+    suddenTurnWarn: 0.3,          // Жанна Петровна оборачивается внезапно
+    outWindows: [[7, 17], [27, 16]], // Станислав Чеславович выходит: [с какой секунды, на сколько]
     shortDuration: 30,            // «залипнуть в телефон» как доп. действие на уроке
     batteryCost: -8,
     auraMin: 3, auraMax: 8,
@@ -249,7 +262,7 @@ export const BALANCE = {
     rounds: 3, roundTime: 15, sliderSpeed: 1.35, green: [0.4, 0.6], pull: 0.09, miss: 0.03,
     oppEvery: [0.6, 1.0], oppPull: 0.071,
     strength: { default: 0.55, guza: 0.74, igor: 0.72, denis: 0.55, chernyak: 0.6, shurpo: 0.5, matych: 0.5, buy: 0.52,
-      levonchuk: 0.55, bochko: 0.5, smile: 0.55, vadim: 0.65, vitalik: 0.55, zakha: 0.55, anus: 0.5 },
+      levonchuk: 0.55, bochko: 0.5, smile: 0.55, vadim: 0.65, vitalik: 0.55, zakha: 0.55, anosov: 0.5 },
   },
 
   // «Кто больше парит»: держишь Z — шкала растёт; отпустил в зелёной зоне — большое облако.
@@ -263,7 +276,7 @@ export const BALANCE = {
   eat: {
     duration: 40, entry: 360, notesPerSmazhenka: 6, stomachMax: 10, window: 0.13, beat: 0.42,
     skill: { default: 7, denis: 7.2, shurpo: 7.4, igor: 7.2, guza: 7.3, matych: 7, buy: 6.8, chernyak: 7, levonchuk: 7,
-      bochko: 6.8, smile: 7, vadim: 7.2, vitalik: 6.8, zakha: 7, anus: 6.8 },
+      bochko: 6.8, smile: 7, vadim: 7.2, vitalik: 6.8, zakha: 7, anosov: 6.8 },
   },
 
   // «Кто забайтит Матыча и Буя»: Рома и друг против двоих.

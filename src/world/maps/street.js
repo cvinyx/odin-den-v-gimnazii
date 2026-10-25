@@ -1,37 +1,54 @@
-// Улица у входа в гимназию (раздел 12).
+// Улица у входа — карта версии 2 (этап V2-3), сгенерирована tools/gen_maps_v2.mjs.
 // Легенда тайлов — src/gen/tiles.js (TILE_DEFS). Координаты — в тайлах.
 export const STREET = {
-  id: 'street',
-  name: 'Улица у входа',
-  floor: 'a',
-  music: 'corridor',
-  rows: [
-    '##############################',
-    'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
-    'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
-    'FFFFFFFFFFFFFFEEFFFFFFFFFFFFFF',
-    'fgggppppppppppppppppppppppgggf',
-    'ftggppppppppppppppppppppppggtf',
-    'fgggppppppppppppppppppppppgggf',
-    'fgggbaaaaaaaaaaaaaaaaaaaabgggf',
-    'ftggaaaaaaaaaaaaaaaaaaaaaaggtf',
-    'fgggaaaaaaaaaaaaaaaaaaaaaagggf',
-    'fgggaaaaaaaaaaaaaaaaaaaaaagggf',
-    'ftggaaaaaaaaaaaaaaaaaaaaaaggtf',
-    'cccccccccccccccccccccccccccccc',
-    'rrrrrrrrrrrrrrrrrrrrrrrrrrrrrr',
-    'rrrrrrrrrrrrrrrrrrrrrrrrrrrrrr',
+  "id": "street",
+  "name": "Улица у входа",
+  "floor": "p",
+  "music": "corridor",
+  "rows": [
+    "##############################",
+    "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+    "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+    "FFFFFFFFFFFFFFEEFFFFFFFFFFFFFF",
+    "fggggpppp^^^^^^^^^^^^ppppggggf",
+    "fgtggpppp^^^^^^^^^^^^ppppggtgf",
+    "fggggpppp^^^^^^^^^^^^ppppggggf",
+    "fggggppppppppppppppppppppggggf",
+    "fggggppppppppppppppppppppggggf",
+    "fgtggppbppppppppppppppbppggtgf",
+    "fggggppppppppppppppppppppggggf",
+    "fggggppppppppppppppppppppggggf",
+    "fggggppppppppppppppppppppggggf",
+    "fgtggppppppppppppppppppppggtgf",
+    "fccccccccccccccccccccccccccccf"
   ],
-  spawns: {
-    bus: {x:15,y:11,dir:"up"},
-    door: {x:14,y:4,dir:"down"},
+  "spawns": {
+    "bus": {
+      "x": 15,
+      "y": 13,
+      "dir": "up"
+    },
+    "door": {
+      "x": 14,
+      "y": 7,
+      "dir": "down"
+    }
   },
-  exits: [
-    { x: 14, y: 3, to: "rec_f1", spawn: "entrance" },
-    { x: 15, y: 3, to: "rec_f1", spawn: "entrance" },
+  "exits": [
+    {
+      "x": 14,
+      "y": 3,
+      "to": "c1_f1",
+      "spawn": "entrance",
+      "label": "Вход"
+    },
+    {
+      "x": 15,
+      "y": 3,
+      "to": "c1_f1",
+      "spawn": "entrance"
+    }
   ],
-  objects: [
-  ],
-  npcs: [
-  ],
+  "objects": [],
+  "npcs": []
 };

@@ -8,8 +8,8 @@ export const GYM = {
   room: 'спортзал',
   rows: [
     '##############################',
-    '#AADAAAAAAAAAAAAAAAAAAAAAAAAA#',
-    '#jjjjjjjjjjjjjJjjjjjjjjjjjjjj#',
+    '#AAAAAAAAAAAAAAAAAAAAAAAAAAAA#',
+    'jjjjjjjjjjjjjjJjjjjjjjjjjjjjj#',
     '#jjjjjjjjjjjjjJjjjjjjjjjjjjjj#',
     '#jjjjjjjjjjjjjJjjjjjjjjjjjjjj#',
     '#jjjjjjjjjjjjjJjjjjjjjjjjjjjj#',
@@ -28,11 +28,11 @@ export const GYM = {
   ],
   spawns: {
     rec: {x:19,y:16,dir:"up"},
-    locker: {x:3,y:2,dir:"down"},
+    locker: {x:1,y:11,dir:"right"},
   },
   exits: [
-    { x: 19, y: 17, to: "rec_f1", spawn: "gym", label: "Выход" },
-    { x: 3, y: 1, to: "locker_room", spawn: "gym", label: "Раздевалка" },
+    { x: 19, y: 17, to: "c1_f1", spawn: "gym", label: "Выход" },
+    { x: 0, y: 11, to: "locker_room", spawn: "gym", edge: "left", label: "Раздевалка" },
   ],
   objects: [
   ],

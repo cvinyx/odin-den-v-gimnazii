@@ -37,7 +37,7 @@ export class FootballGame {
       aiRoma: !!params.aiRoma,
       hungry: st.stats.hunger > BALANCE.hunger.slowThreshold,
       staminaMax: 1 - staminaPenalty(st),
-      berserkStart: !!st.flags.igorBerserk,
+      rageStart: !!st.flags.igorRage,
       diarrhea: params.diarrhea ?? null,
     });
     if (params.diarrheaSoon && this.L.diarrheaAt != null) this.L.diarrheaAt = 3;
@@ -100,22 +100,22 @@ export class FootballGame {
           break;
         }
         case 'save': audio.play('hit'); this.popups.add(L.ball.x, L.ball.y - 12, 'Сейв!', '#9fd3ff'); break;
-        case 'foul': audio.play('whistle'); this.bubble('viktor', 'ref_foul'); this.popups.add(L.ball.x, L.ball.y - 14, 'Фол!', '#ff6a6a'); break;
-        case 'yellow': this.yellowFor = { id: e.id, t: this.time }; this.bubble('viktor', 'ref_yellow'); break;
+        case 'foul': audio.play('whistle'); this.bubble('ivan', 'ref_foul'); this.popups.add(L.ball.x, L.ball.y - 14, 'Фол!', '#ff6a6a'); break;
+        case 'yellow': this.yellowFor = { id: e.id, t: this.time }; this.bubble('ivan', 'ref_yellow'); break;
         case 'steal': audio.play('hit'); break;
         case 'diarrhea':
           audio.play('tummy'); this.game.r.shake(3, 0.5);
           this.bubble('smile', 'diarrhea');
           this.banner = { text: 'Смайл убегает с поля!', t: 0, color: '#c8a060' };
           break;
-        case 'keeper_in': this.bubble('viktor', 'keeper_in_' + e.id); audio.play('whistle'); break;
-        case 'berserk':
+        case 'keeper_in': this.bubble('ivan', 'keeper_in_' + e.id); audio.play('whistle'); break;
+        case 'rage':
           audio.play('igorLaugh'); this.game.r.shake(4, 0.5);
-          this.banner = { text: 'БЕРСЕРК ИГОРЯ!', t: 0, color: '#ff4a4a' };
-          this.bubble('igor', 'berserk');
+          this.banner = { text: 'ЯРОСТЬ ИГОРЯ!', t: 0, color: '#ff4a4a' };
+          this.bubble('igor', 'rage');
           break;
         case 'sub': this.popups.add(240, 40, `Замена: ${getPerson(e.in).short} вместо ${getPerson(e.out).short}`, '#ffffff'); break;
-        case 'ref': this.bubble('viktor', 'ref_' + e.id); break;
+        case 'ref': this.bubble('ivan', 'ref_' + e.id); break;
         case 'halftime': audio.play('whistle'); break;
         default:
       }
@@ -234,7 +234,7 @@ export class FootballGame {
     const x = Math.round(q.x), y = Math.round(q.y);
     // «манишка» под ногами — цвет команды
     r.alpha(0.8, () => { r.rect(x - 6, y - 1, 12, 3, TEAM_COLORS[q.team]); r.rect(x - 4, y - 2, 8, 5, TEAM_COLORS[q.team]); });
-    if (q.berserk > 0) r.alpha(0.35 + 0.25 * Math.sin(this.time * 20), () => r.rect(x - 8, y - 24, 16, 24, '#ff3030'));
+    if (q.rage > 0) r.alpha(0.35 + 0.25 * Math.sin(this.time * 20), () => r.rect(x - 8, y - 24, 16, 24, '#ff3030'));
     r.sprite(sh, f.sx, f.sy, f.sw, f.sh, x - f.sw / 2, y - f.sh + 1);
     // цвет команды над головой (у вратаря — зелёный ободок)
     r.rect(x - 2, y - f.sh - 3, 4, 3, TEAM_COLORS[q.team]);
@@ -250,7 +250,7 @@ export class FootballGame {
 
   drawRef(r) {
     const R = this.L.ref;
-    const sh = sheetOf('viktor');
+    const sh = sheetOf('ivan');
     const f = frameRect(R.dir, R.moving ? 1 + (Math.floor(R.anim * 6) % 2) : 0);
     r.sprite(sh, f.sx, f.sy, f.sw, f.sh, Math.round(R.x - f.sw / 2), Math.round(R.y - f.sh + 1));
   }
@@ -265,7 +265,7 @@ export class FootballGame {
   drawBubbles(r) {
     const L = this.L;
     for (const b of this.bubbles) {
-      const who = b.id === 'viktor' ? L.ref : L.players.find((q) => q.id === b.id && (!q.out || q.out === 'run'));
+      const who = b.id === 'ivan' ? L.ref : L.players.find((q) => q.id === b.id && (!q.out || q.out === 'run'));
       if (!who) continue;
       const w = r.measure(b.text) + 8;
       const x = Math.max(2, Math.min(478 - w, Math.round(who.x - w / 2)));

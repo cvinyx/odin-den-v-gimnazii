@@ -3,7 +3,7 @@ import { labelLines } from '../game/dialogs.js';
 import { sheetOf } from '../gen/people.js';
 import { frameRect } from '../gen/sprites.js';
 
-const PARADE = ['roma', 'denis', 'igor', 'chernyak', 'shurpo', 'levonchuk', 'bochko', 'smile', 'matych', 'buy', 'guza', 'vadim', 'vitalik', 'zakha', 'anus'];
+const PARADE = ['roma', 'denis', 'igor', 'chernyak', 'shurpo', 'levonchuk', 'bochko', 'smile', 'matych', 'buy', 'guza', 'vadim', 'vitalik', 'zakha', 'anosov'];
 
 export class CreditsScene {
   constructor() { this.id = 'credits'; this.opaque = true; this.t = 0; }

@@ -37,7 +37,7 @@ function headShape(p) {
 // ---------- Одежда ----------
 function shoulders(px, p, P) {
   const wide = p.build === 'full' ? 21 : p.build === 'athletic' ? 21 : p.build === 'thin' ? 17 : 19;
-  const base = p.top === 'shirt' || p.top === 'blouse' ? P.shirt : P.top;
+  const base = p.top === 'shirt' || p.top === 'blouse' ? P.shirt : p.top === 'tank' ? P.skin : P.top;
   for (let y = 37; y < 48; y++) {
     const k = Math.min(1, (y - 37) / 4);
     const half = Math.round(11 + (wide - 11) * k);
@@ -57,13 +57,45 @@ function shoulders(px, p, P) {
       if (p.tie) {
         px.rect(22, 38, 4, 2, p.tie);
         for (let y = 40; y < 48; y++) px.hline(22, 25, y, y % 3 ? p.tie : shade(p.tie, 0.8));
+        if (p.tieLogo) px.rect(23, 43, 2, 2, '#e8c34a');
       }
       break;
     }
+    case 'zip-hoodie': {
+      // чёрное худи на молнии, под ним белая рубашка (воротник)
+      for (let y = 37; y < 48; y++) {
+        const half = Math.max(1, 3 - Math.floor((y - 37) / 3));
+        px.hline(CX - half, CX + half - 1, y, P.shirt);
+      }
+      px.hline(neckL - 1, neckL + 2, 37, P.shirt); px.hline(neckR - 2, neckR + 1, 37, P.shirt);
+      px.vline(CX, 41, 47, '#a8a8b0'); px.set(CX, 43, '#d8d8de');
+      px.rect(CX - 12, 35, 6, 3, P.topD); px.rect(CX + 6, 35, 6, 3, P.topD);
+      px.vline(18, 40, 47, '#e6e6e6'); px.vline(29, 40, 47, '#e6e6e6');
+      break;
+    }
+    case 'tank':
+      // белая майка на открытых плечах
+      for (let y = 39; y < 48; y++) px.hline(CX - 9, CX + 8, y, P.top);
+      ellipseRows(px, CX, 38, 5, 3, P.skin, 38, 41);
+      px.vline(CX - 9, 37, 39, P.top); px.vline(CX + 8, 37, 39, P.top);
+      px.vline(CX - 8, 37, 39, P.top); px.vline(CX + 7, 37, 39, P.top);
+      break;
+    case 'vest':
+      // тёмно-синяя жилетка без рукавов поверх майки, плечи открыты
+      // открытые плечи — по краям силуэта плеч
+      for (let y = 37; y < 48; y++) {
+        const k = Math.min(1, (y - 37) / 4);
+        const half = Math.round(11 + (wide - 11) * k);
+        px.hline(CX - half, CX - half + 6, y, P.skin); px.hline(CX + half - 7, CX + half - 1, y, P.skin);
+      }
+      for (let y = 38; y < 48; y++) px.hline(CX - 4, CX + 3, y, P.shirt);
+      ellipseRows(px, CX, 37, 4, 2, P.skin, 37, 38);
+      px.vline(CX - 5, 38, 47, shade(P.top, 0.7)); px.vline(CX + 4, 38, 47, shade(P.top, 0.7));
+      break;
     case 'shirt':
     case 'blouse':
       for (let i = 0; i < 4; i++) { px.hline(neckL - 1 + i, neckL + 1, 37 + i, P.shirtD); px.hline(neckR - 1, neckR + 1 - i, 37 + i, P.shirtD); }
-      if (p.tie) { px.rect(22, 38, 4, 2, p.tie); for (let y = 40; y < 48; y++) px.hline(22, 25, y, p.tie); }
+      if (p.tie) { px.rect(22, 38, 4, 2, p.tie); for (let y = 40; y < 48; y++) px.hline(22, 25, y, p.tie); if (p.tieLogo) px.rect(23, 43, 2, 2, '#e8c34a'); }
       else for (const y of [41, 44, 47]) px.set(CX, y, P.shirtD);
       break;
     case 'sweater':
@@ -155,7 +187,13 @@ function hairBack(px, p, P) {
       px.rect(10, 21, 28, 10, H);
       break;
     case 'medium':
-      ellipseRows(px, CX, 21, 13.5, 11, H);
+    case 'tousled':
+    case 'wavy':
+      ellipseRows(px, CX, 21, 14.5, 12, H);
+      if (p.hairStyle === 'wavy') ellipseRows(px, CX, 28, 14, 6, H);
+      break;
+    case 'curly':
+      ellipseRows(px, CX, 21, 17, 15, curlC(P));
       break;
     default:
       break;
@@ -185,7 +223,7 @@ function hairFront(px, p, P) {
       px.hline(15, 33, 13, Lh);
       break;
     case 'buzz': {
-      const c = mix(H, P.skin, 0.4);
+      const c = mix(H, P.skin, 0.45); // тот же цвет «ёжика», что и на спрайте
       ellipseRows(px, CX, 19, hs.rx + 0.5, 11, c, 0, 13);
       for (let x = 14; x <= 34; x += 3) px.set(x, 11, shade(c, 0.85));
       break;
@@ -200,6 +238,52 @@ function hairFront(px, p, P) {
       for (const [x, y] of [[15, 12], [19, 9], [24, 8], [29, 9], [33, 12], [13, 17], [35, 17], [18, 14], [23, 13], [28, 14]]) ellipseRows(px, x, y, 4, 3.5, c);
       break;
     }
+    case 'tousled': {
+      // растрёпанная объёмная стрижка
+      cap(15, 3);
+      for (const [x, y] of [[12, 6], [17, 3], [23, 2], [29, 3], [34, 6], [37, 11], [10, 11]]) px.rect(x, y, 3, 4, H);
+      for (const [x, y] of [[16, 4], [28, 4], [36, 10]]) px.rect(x, y, 2, 2, D);
+      for (const [x, h] of [[14, 4], [17, 6], [21, 3], [25, 5], [29, 3], [32, 5]]) px.rect(x, 15, 3, h, x % 2 ? H : D);
+      px.rect(10, 15, 4, 13, H); px.rect(34, 15, 4, 13, H);
+      px.hline(18, 27, 8, Lh); px.hline(20, 25, 9, Lh);
+      break;
+    }
+    case 'wavy': {
+      // мягкие волны средней длины, пряди на лбу
+      cap(16, 2.5);
+      for (let i = 0; i < 5; i++) ellipseRows(px, 15 + i * 4.5, 16 + (i % 2), 3, 2.5, i % 2 ? H : D);
+      for (let y = 15; y < 30; y++) { const w = (Math.floor(y / 3) % 2); px.hline(10 - w, 13, y, H); px.hline(34, 37 + w, y, H); }
+      px.hline(16, 22, 9, Lh); px.hline(27, 31, 10, Lh);
+      break;
+    }
+    case 'bangs':
+      // короткая с прямой чёлкой
+      cap(17, 1.5);
+      px.hline(13, 34, 17, D);
+      px.rect(12, 17, 3, 5, H); px.rect(33, 17, 3, 5, H);
+      px.hline(17, 27, 9, Lh);
+      break;
+    case 'curly': {
+      // густые упругие кудри средней длины
+      const c = curlC(P);
+      ellipseRows(px, CX, 17, hs.rx + 4, 12, c, 0, 15);
+      for (const [x, y] of [[14, 15], [19, 16], [24, 15], [29, 16], [34, 15], [11, 20], [37, 20], [10, 26], [38, 26], [11, 31], [37, 31]]) ellipseRows(px, x, y, 3.5, 3, c);
+      break;
+    }
+    case 'fringe':
+      // короткие, пряди аккуратно спадают на лоб
+      cap(14);
+      px.rect(12, 14, 3, 7, H); px.rect(33, 14, 3, 7, H);
+      for (const [x, h] of [[16, 3], [19, 5], [22, 4], [25, 6], [28, 3], [31, 4]]) px.rect(x, 14, 2, h, x % 2 ? H : D);
+      px.hline(17, 26, 9, Lh);
+      break;
+    case 'stalin':
+      // густые, зачёсаны назад, объём надо лбом
+      cap(13, 1.5);
+      ellipseRows(px, CX, 9, 10, 5, H);
+      for (const y of [6, 8, 10, 12]) px.hline(16, 32, y, Lh);
+      px.rect(12, 13, 3, 6, H); px.rect(33, 13, 3, 6, H);
+      break;
     case 'medium-straight':
       cap(15);
       // чёлка, зачёсанная влево, с пробором справа
@@ -273,6 +357,7 @@ function hairFront(px, p, P) {
     default:
       cap(14);
   }
+  if (p.hairStreak) { px.hline(16, 22, 10, p.hairStreak); px.hline(26, 31, 12, p.hairStreak); px.vline(11, 18, 24, p.hairStreak); }
 }
 
 // ---------- Лицо ----------
@@ -294,11 +379,15 @@ function eyes(px, p, P, emo) {
       px.set(cx + 1, ey, '#ffffff');
       continue;
     }
-    px.rect(cx, ey, 4, emo === 'angry' ? 2 : 3, white);
+    const eh = emo === 'angry' || p.narrowEyes ? 2 : 3;
+    px.rect(cx, ey, 4, eh, white);
     let ix = cx + 1;
     if (emo === 'dumb') ix = side < 0 ? cx + 2 : cx; // глаза чуть в кучу
-    px.rect(ix, ey, 2, emo === 'angry' ? 2 : 3, P.eye);
+    px.rect(ix, ey, 2, eh, P.eye);
     px.set(ix, ey, shade(P.eye, 0.6));
+    // гетерохромия: левый глаз частично карий
+    if (p.hetero && side > 0) px.set(ix + 1, ey + eh - 1, p.hetero);
+    if (p.narrowEyes) { px.set(side < 0 ? cx : cx + 3, ey - 1, P.skinD); }
     if (emo === 'dumb') px.hline(cx - 1, cx + 4, ey, P.skinD); // тяжёлые веки
     if (p.female) { px.set(side < 0 ? cx - 1 : cx + 4, ey - 1, '#2a1d1d'); }
   }
@@ -405,13 +494,27 @@ function extras(px, p, P, emo) {
       if (inFace && !(y >= 30 && y <= 33 && x >= CX - 4 && x <= CX + 4)) px.set(x, y, (x + y) % 4 ? P.hair : shade(P.hair, 0.85));
     }
   }
-  if (p.mustache) px.rect(CX - 5, 29, 10, 2, P.hair);
+  if (p.mustache === 'stalin') {
+    // густые широкие усы
+    px.rect(CX - 7, 28, 14, 3, P.hair);
+    px.hline(CX - 8, CX - 6, 30, P.hair); px.hline(CX + 5, CX + 7, 30, P.hair);
+    px.hline(CX - 5, CX + 4, 28, shade(P.hair, 1.1));
+  } else if (p.mustache) px.rect(CX - 5, 29, 10, 2, P.hair);
   if (p.glasses === 'round') {
     ring(px, 20, 25, 4, '#111111', 1.6);
     ring(px, 30, 25, 4, '#111111', 1.6);
     px.hline(24, 25, 24, '#111111');
     px.hline(12, 15, 24, '#111111'); px.hline(34, 36, 24, '#111111');
     px.set(18, 22, '#ffffff'); px.set(28, 22, '#ffffff');
+  } else if (p.glasses === 'sun') {
+    // круглые солнцезащитные очки в тёмной оправе
+    ellipseRows(px, 20, 25, 4, 4, '#22222a');
+    ellipseRows(px, 30, 25, 4, 4, '#22222a');
+    ring(px, 20, 25, 4, '#0c0c0c', 1.4);
+    ring(px, 30, 25, 4, '#0c0c0c', 1.4);
+    px.hline(24, 25, 24, '#0c0c0c');
+    px.hline(12, 15, 24, '#0c0c0c'); px.hline(34, 36, 24, '#0c0c0c');
+    px.set(18, 23, '#6a6a7a'); px.set(28, 23, '#6a6a7a');
   } else if (p.glasses === 'thin') {
     const g = '#4a4a55';
     for (const x0 of [16, 27]) {

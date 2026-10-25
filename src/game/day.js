@@ -1,6 +1,6 @@
-// Система дня (раздел 5): расписание, состояния «урок N» / «перемена N», часы, подсказка «Следующий: …»,
-// правила статусов между уроками, автосохранение в начале урока и перемены.
-import { SCHEDULE, roomLabel } from '../../data/schedule.js';
+// Система дня (раздел 5) и недели (EDITS_V2, Р-1…Р-7): расписание дня, состояния «урок N» / «перемена N»,
+// часы, подсказка «Следующий: …», правила статусов между уроками, переход к следующему дню, оценки.
+import { daySchedule, roomLabel, WEEK, SUBJECTS } from '../../data/schedule.js';
 import { TEACHERS } from '../../data/teachers.js';
 import { BALANCE } from '../../data/balance.js';
 import { changeStat } from './state.js';
@@ -14,7 +14,34 @@ export function fromMinutes(min) {
   return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
 }
 
-export function lessonInfo(n) { return SCHEDULE[n - 1] || null; }
+// Текущий день недели (1–5). Его ставит игра при новой игре, загрузке и смене дня (setDay).
+let CURRENT_DAY = 1;
+const cache = new Map();
+export function setDay(day) { CURRENT_DAY = Math.max(1, Math.min(5, day || 1)); }
+export function currentDay() { return CURRENT_DAY; }
+export function todaySchedule(day = CURRENT_DAY) {
+  if (!cache.has(day)) cache.set(day, daySchedule(day));
+  return cache.get(day);
+}
+export function lessonInfo(n, day = CURRENT_DAY) { return todaySchedule(day)[n - 1] || null; }
+export function lastLesson(day = CURRENT_DAY) { return todaySchedule(day).length; }
+
+// Уроки недели без оценки (Р-7): 2–3 урока (не физкультура и не классный час), по коду недели.
+export function noGradeLessons(state) {
+  const rng = eventRng(state, 'nograde');
+  const all = [];
+  WEEK.I.forEach((list, d) => list.forEach((sid, i) => { if (SUBJECTS[sid].graded !== false) all.push(`${d + 1}:${i + 1}`); }));
+  const n = rng.int(BALANCE.grades.noGradePerWeek[0], BALANCE.grades.noGradePerWeek[1]);
+  return new Set(rng.shuffle(all).slice(0, n));
+}
+// Ставится ли оценка за урок n дня day.
+export function lessonGraded(state, n, day = state.day) {
+  const l = lessonInfo(n, day);
+  if (!l || !l.graded) return false;
+  return !noGradeLessons(state).has(`${day}:${n}`);
+}
+// Минимальная оценка (Р-6, М-4): точные — 1, гуманитарные — 2.
+export function minGrade(lesson) { return lesson && lesson.exact ? BALANCE.grades.minExact : BALANCE.grades.minHumanities; }
 
 // Время на уроке пропорционально прогрессу сцены p ∈ [0, 1].
 export function lessonClock(n, p) {
@@ -53,8 +80,9 @@ export function startLesson(state, n) {
   state.phase = 'lesson';
   state.lesson = n;
   state.clock = l.start;
-  state.location = l.building === 0 ? 'locker_room' : 'cab_' + l.room;
-  state.locationName = l.building === 0 ? 'Спортзал' : `Каб. ${l.room}`;
+  const pool = l.room === 'бассейн';
+  state.location = pool ? 'pool' : l.building === 0 ? 'locker_room' : 'cab_' + l.room;
+  state.locationName = pool ? 'Бассейн' : l.building === 0 ? 'Спортзал' : `Каб. ${l.room}`;
   state.seat = null;
   state.lessonMul = teacherMul(n);
   let susp = Math.round(state.suspicionPrev * BALANCE.suspicion.carryOver);
@@ -77,7 +105,11 @@ export function endLessonRules(state) {
 }
 
 export function finishLesson(state, n, grade) {
+  const l = lessonInfo(n, state.day);
+  if (!lessonGraded(state, n)) grade = null;
+  else grade = Math.max(minGrade(l), Math.min(10, grade ?? minGrade(l)));
   state.grades[n - 1] = grade;
+  state.week.grades[state.day - 1] = [...state.grades];
   state.late = false;
   state.suspicionPrev = state.stats.suspicion;
   state.stats.suspicion = 0;
@@ -103,7 +135,71 @@ export function roomAction(state, room) {
   return { type: 'denied', text: next ? `Сейчас не сюда. ${hintText(state) || ''}` : 'Заперто.' };
 }
 
-export const LAST_LESSON = 7;
+// Оценки недели: все выставленные (числа) и средний балл (Р-5).
+export function weekGrades(state) {
+  const out = [];
+  state.week.grades.forEach((g, d) => (d + 1 === state.day ? state.grades : g).forEach((x) => { if (typeof x === 'number') out.push(x); }));
+  return out;
+}
+export function weekAverage(state) {
+  const g = weekGrades(state);
+  return g.length ? g.reduce((a, b) => a + b, 0) / g.length : 0;
+}
+
+// День закончился раньше (3-й вызов к директору, «Это позор» — Р-4): за пропущенные уроки с оценкой —
+// минимальная оценка.
+export function endDayEarly(state, reason) {
+  state.week.dayEnds[state.day] = reason;
+  const total = lastLesson(state.day);
+  for (let n = 1; n <= total; n++) {
+    if (state.grades[n - 1] != null) continue;
+    if (n === state.lesson && state.phase === 'lesson') continue; // текущий урок закрывает сцена урока
+    state.grades[n - 1] = lessonGraded(state, n) ? minGrade(lessonInfo(n, state.day)) : null;
+  }
+  state.week.grades[state.day - 1] = [...state.grades];
+}
+
+// Новый день недели (Р-2): деньги, долги, аура, жижка, достижения и оценки переносятся;
+// батарея и заряд вейпа — случайно 20–70 %, стресс 30, голод 40, подозрение 0.
+export function startDay(state, day) {
+  const M = BALANCE.morning;
+  state.week.grades[state.day - 1] = [...state.grades];
+  if (state.flags.matchScore) state.week.matches[state.day] = { score: state.flags.matchScore, result: state.flags.matchResult };
+  state.week.directorCalls += state.directorCalls;
+  state.day = day;
+  setDay(day);
+  const rng = eventRng(state, 'morning' + day);
+  state.stats.battery = rng.int(M.battery[0], M.battery[1]);
+  state.stats.vapeCharge = rng.int(M.vape[0], M.vape[1]);
+  state.stats.stress = M.stress;
+  state.stats.hunger = M.hunger;
+  state.stats.suspicion = 0;
+  state.grades = [...(state.week.grades[day - 1] || [])];
+  state.directorCalls = 0;
+  state.breakdowns = 0;
+  state.puffsToday = 0;
+  state.puffsInRefill = 0;
+  state.flags = {};
+  state.met = {};
+  state.seat = null;
+  state.lessonMul = 1;
+  state.suspicionPrev = 0;
+  state.vapeSmell = false;
+  state.breakdownPending = false;
+  state.charging = null;
+  state.late = day === 1;
+  state.lesson = 0;
+  state.phase = 'late';
+  state.clock = M.time;
+}
 
 // Номер текущей перемены для таблицы NPC (раздел 11) или null.
 export function breakNumber(state) { return state.phase === 'break' ? state.lesson : null; }
+
+// Для итогов недели: оценки дня d (текущий день — из state.grades), матч дня d, вызовы к директору за неделю.
+export function dayGrades(state, d) { return (d === state.day ? state.grades : state.week.grades[d - 1]) || []; }
+export function dayMatch(state, d) {
+  if (d === state.day) return state.flags.matchScore ? { score: state.flags.matchScore, result: state.flags.matchResult } : null;
+  return state.week.matches[d] || null;
+}
+export function weekDirectorCalls(state) { return state.week.directorCalls + state.directorCalls; }
