@@ -59,6 +59,7 @@ export function directorCall(state) {
   return state.directorCalls;
 }
 
-export function isDirectorEnding(state) {
+// 3-й вызов за день заканчивает только этот день (Р-4).
+export function directorEndsDay(state) {
   return state.directorCalls >= B.director.endingOnCall;
 }

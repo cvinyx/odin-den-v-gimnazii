@@ -6,6 +6,7 @@ export const POOL = {
   floor: 'x',
   music: 'corridor',
   tint: '#80c0ff',
+  room: 'бассейн',
   rows: [
     '##############################',
     '#WSWWwWWWwWWWwWWWwWWWwWWWwWDW#',

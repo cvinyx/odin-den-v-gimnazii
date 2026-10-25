@@ -100,7 +100,7 @@ export class Bot {
         case 'buffet': case 'school_map': case 'status':
           if (s.id === 'buffet' || s.id === 'school_map' || s.id === 'status') { await this.press('Escape'); break; }
         // eslint-disable-next-line no-fallthrough
-        case 'lesson_result': case 'bell': case 'phone': case 'save_code':
+        case 'lesson_result': case 'bell': case 'phone': case 'save_code': case 'dejavu':
           await this.wait(450); await this.press('z'); break;
         default:
           await this.wait(80);

@@ -3,6 +3,7 @@ import { IntroScene } from '../scenes/intro.js';
 import { WorldScene } from '../scenes/world.js';
 import { LessonScene } from '../scenes/lesson_scene.js';
 import { TestRoomScene } from '../scenes/test_room.js';
+import { BusHomeScene } from '../scenes/day_flow.js';
 
 export function sceneForState(state) {
   switch (state.phase) {
@@ -11,6 +12,8 @@ export function sceneForState(state) {
     case 'late':
     case 'break': return new WorldScene(state.location, null, { restore: true });
     case 'free': return new TestRoomScene();
+    case 'home':
+    case 'day_over': return new BusHomeScene();
     default: return new IntroScene();
   }
 }

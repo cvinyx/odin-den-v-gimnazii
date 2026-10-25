@@ -8,7 +8,7 @@ import { storeGet, storeSet, KEYS, autosave } from '../engine/save.js';
 import { generateSeedCode } from '../engine/rng.js';
 import { createState, applyScriptEffect, scriptStatValue, changeStat, VAPE_FRIENDS } from './state.js';
 import { puff, sitQuiet, addSuspicion, checkBreakdown } from './actions.js';
-import { eventRng } from './day.js';
+import { eventRng, setDay } from './day.js';
 import { BALANCE } from '../../data/balance.js';
 import { Hud } from '../ui/hud.js';
 import { drawToast, drawAchievement } from '../ui/transitions.js';
@@ -115,11 +115,13 @@ export class Game {
   // ---------- Состояние дня ----------
   newDay(seed) {
     this.state = createState(seed);
+    setDay(this.state.day);
     this.hud.prev = null;
   }
 
   loadState(st) {
     this.state = st;
+    setDay(st.day);
     this.hud.prev = null;
   }
 

@@ -66,7 +66,7 @@ for (const [k, setup] of Object.entries(SETUP)) {
   const { ctx, page } = await newPage();
   await page.goto(url); await page.waitForTimeout(400);
   await page.evaluate((src) => {
-    window.__odinDebug('Урок 7 — Обществоведение');
+    window.__odinDebug('Урок', 6);
     const st = window.__odin.state;
     // eslint-disable-next-line no-new-func
     new Function('st', src)(st);
@@ -104,7 +104,7 @@ console.log('концовки ботом:', JSON.stringify(endings));
   const { ctx, page } = await newPage();
   await page.goto(url); await page.waitForTimeout(400);
   // начало урока — автосохранение (как в обычной игре)
-  await page.evaluate(() => window.__odinDebug('Урок 2 — Математика'));
+  await page.evaluate(() => window.__odinDebug('Урок', 2));
   await page.waitForTimeout(2500);
   const before = await page.evaluate(() => ({ lesson: window.__odin.state.lesson, phase: window.__odin.state.phase, money: window.__odin.state.stats.money, seed: window.__odin.state.seed }));
   // код сохранения (тот же, что в меню паузы «Скопировать код сохранения»)

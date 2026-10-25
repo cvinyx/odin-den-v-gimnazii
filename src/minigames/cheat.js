@@ -16,7 +16,7 @@ class CheatGame {
 
   start(params) {
     const st = this.ctx.state;
-    const l = lessonInfo(params.lesson || st.lesson || 1);
+    const l = lessonInfo(params.lesson || st.lesson || 1) || lessonInfo(1);
     this.view = params.view || new ClassroomView(st, l);
     const t = TEACHERS[l.teacher];
     const geo = this.view.geometry();

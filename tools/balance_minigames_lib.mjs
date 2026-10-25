@@ -23,7 +23,7 @@ export const GAMES = {
   phone_brawl_coop: { game: 'phone_brawl', lesson: 4, params: { coop: true } }, // рядом Денис — кооп
   phone_blocks_short: { game: 'phone_blocks', lesson: 1, params: { short: true } },
   phone_brawl_short: { game: 'phone_brawl', lesson: 3, params: { short: true } },
-  phone_feed_short: { game: 'phone_feed', lesson: 7, params: { short: true } },
+  phone_feed_short: { game: 'phone_feed', lesson: 6, params: { short: true } },
 };
 
 const fakeGame = { r: { shake() {} }, hud: { draw() {} } };

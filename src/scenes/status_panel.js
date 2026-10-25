@@ -1,7 +1,8 @@
-// Подробная панель по Tab: статусы со шкалами, деньги, долги, код дня, расписание.
+// Подробная панель по Tab: статусы со шкалами, деньги, долги, код недели, расписание дня.
 import { HUD_SLOTS, phaseLabel } from '../ui/hud.js';
 import { getIcon } from '../gen/icons.js';
-import { SCHEDULE, roomLabel } from '../../data/schedule.js';
+import { roomLabel, DAYS } from '../../data/schedule.js';
+import { todaySchedule } from '../game/day.js';
 import { formatMoney } from '../game/state.js';
 
 export class StatusPanel {
@@ -24,7 +25,7 @@ export class StatusPanel {
     r.alpha(0.7, () => r.rect(0, 0, 480, 270, '#000'));
     r.box(8, 8, 464, 254);
     r.text('Статусы', 18, 16, { color: '#ffe14d', scale: 2 });
-    r.text(`Код дня: ${st.seed}`, 462, 16, { color: '#9fd3ff', align: 'right' });
+    r.text(`Код недели: ${st.seed}`, 462, 16, { color: '#9fd3ff', align: 'right' });
     r.text(phaseLabel(st) + ' · ' + (st.locationName || ''), 462, 28, { color: '#9a9aa8', align: 'right' });
     let y = 44;
     for (const slot of HUD_SLOTS) {
@@ -46,15 +47,16 @@ export class StatusPanel {
 
     // расписание
     const x0 = 214;
-    r.text('Расписание', x0, 44, { color: '#ffe14d' });
-    SCHEDULE.forEach((l, i) => {
+    r.text(`Расписание · ${DAYS[st.day - 1]}`, x0, 44, { color: '#ffe14d' });
+    todaySchedule().forEach((l, i) => {
       const yy = 58 + i * 26;
       const cur = st.phase === 'lesson' && st.lesson === l.n;
-      const done = st.grades[l.n - 1] != null;
+      const done = l.n - 1 < st.grades.length;
+      const g = st.grades[l.n - 1];
       const color = cur ? '#ffe14d' : done ? '#7d7d90' : '#ffffff';
       r.text(`${l.n}. ${l.start}  ${l.subject}`, x0, yy, { color });
       r.text(roomLabel(l), x0 + 18, yy + 10, { color: '#9a9aa8' });
-      if (done) r.text('оценка ' + st.grades[l.n - 1], 462, yy, { color: '#6be36b', align: 'right' });
+      if (done) r.text(g == null ? 'без оценки' : 'оценка ' + g, 462, yy, { color: g == null ? '#9a9aa8' : '#6be36b', align: 'right' });
     });
     r.text('←→ схема школы · Tab / X — закрыть', 240, 250, { color: '#9a9aa8', align: 'center' });
   }

@@ -2,8 +2,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createState, changeStat } from '../src/game/state.js';
-import { eventRng, startLesson, endLessonRules, finishLesson, startBreak, lessonClock, roomAction, hintText } from '../src/game/day.js';
-import { puff, addSuspicion, checkBreakdown, directorCall, isDirectorEnding, staminaPenalty } from '../src/game/actions.js';
+import { eventRng, startLesson, endLessonRules, finishLesson, startBreak, lessonClock, roomAction, hintText, setDay } from '../src/game/day.js';
+import { puff, addSuspicion, checkBreakdown, directorCall, directorEndsDay, staminaPenalty } from '../src/game/actions.js';
 import { rollBet, resolveLoss, totalDebt, creditorReminds } from '../src/game/bets.js';
 import { BALANCE } from '../data/balance.js';
 import { NPC_SCHEDULE } from '../data/npc_schedule.js';
@@ -59,8 +59,11 @@ test('начало урока: опоздание 15, перенос 25 %, за�
   startLesson(st, 2);
   assert.equal(st.stats.suspicion, 40);
   assert.equal(st.vapeSmell, false);
+  // V2-2: белорусский — 6-й урок в среду (расписание недели)
+  setDay(3);
   startLesson(st, 6);
   assert.equal(st.lessonMul, 0.5); // Ядвига Францевна
+  setDay(1);
 });
 
 test('конец урока: батарея −1, голод +8, пустой вейп и мёртвый телефон — стресс', () => {
@@ -77,15 +80,16 @@ test('конец урока: батарея −1, голод +8, пустой в
 test('перемена: часы замирают на конце урока, вход в кабинет', () => {
   const st = createState('ABCDEF');
   st.phase = 'late';
-  assert.equal(roomAction(st, '404').type, 'lesson');
+  // V2-2: понедельник по расписанию недели — английский (305), потом алгебра (404)
+  assert.equal(roomAction(st, '305').type, 'lesson');
   assert.equal(roomAction(st, '208').type, 'denied');
-  assert.match(hintText(st), /Английский, каб\. 404, корп\. 2, 4 эт\./);
+  assert.match(hintText(st), /Английский, каб\. 305, корп\. 1, 3 эт\./);
   finishLesson(st, 1, 6);
   startBreak(st, 1);
   assert.equal(st.clock, '09:45');
-  assert.match(hintText(st), /Следующий: Математика, каб\. 305, корп\. 1, 3 эт\./);
-  assert.equal(roomAction(st, '305').type, 'lesson');
-  assert.equal(roomAction(st, '404').type, 'denied');
+  assert.match(hintText(st), /Следующий: Алгебра, каб\. 404, корп\. 2, 4 эт\./);
+  assert.equal(roomAction(st, '404').type, 'lesson');
+  assert.equal(roomAction(st, '305').type, 'denied');
 });
 
 test('вейп: 5 затяжек = 1 заправка, на уроке +25 подозрения (с множителем), без жижки нельзя', () => {
@@ -112,9 +116,9 @@ test('срыв на стрессе 100 и вызовы к директору', (
   assert.equal(st.breakdownPending, true);
   assert.equal(checkBreakdown(st), false);
   directorCall(st); directorCall(st);
-  assert.equal(isDirectorEnding(st), false);
+  assert.equal(directorEndsDay(st), false);
   directorCall(st);
-  assert.equal(isDirectorEnding(st), true);
+  assert.equal(directorEndsDay(st), true);
 });
 
 test('ставки и долги: три варианта при проигрыше', () => {

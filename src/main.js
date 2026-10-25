@@ -6,7 +6,7 @@ import { DebugMenuScene } from './debug/debug_menu.js';
 import { registerDebugEntries } from './debug/entries.js';
 import { debugGroups } from './debug/registry.js';
 import { MAPS, STAIRWELLS } from './world/maps/index.js';
-import { SCHEDULE } from '../data/schedule.js';
+import { todaySchedule } from './game/day.js';
 import './minigames/index.js';
 import { validateAllDialogs } from './game/dialogs.js';
 import { encodeSaveCode } from './engine/save.js';
@@ -38,5 +38,5 @@ window.__odinDebug = (label, arg) => {
 };
 // Код сохранения текущего дня — тот же, что в меню паузы (для проверок).
 window.__odinSaveCode = () => encodeSaveCode(game.state);
-// Данные карт и расписания для бота (поиск пути между локациями).
-window.__odinData = { MAPS, STAIRWELLS, SCHEDULE };
+// Данные карт и расписания для бота (поиск пути между локациями). SCHEDULE — уроки текущего дня недели.
+window.__odinData = { MAPS, STAIRWELLS, get SCHEDULE() { return todaySchedule(); } };

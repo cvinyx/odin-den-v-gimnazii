@@ -18,11 +18,14 @@ export const HUD_SLOTS = [
   { key: 'money', icon: 'money', label: 'Деньги', fmt: (s) => formatMoney(s.money), critical: (s) => s.money < B.money.critical, bar: null, color: '#5ac85a' },
 ];
 
+const DAY_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт'];
 export function phaseLabel(state) {
-  if (state.phase === 'lesson') return `Урок ${state.lesson} / ${state.clock}`;
-  if (state.phase === 'break') return `Перемена ${state.lesson} / ${state.clock}`;
-  if (state.phase === 'intro') return state.clock;
-  if (state.phase === 'late') return `Опаздываю! / ${state.clock}`;
+  const d = DAY_SHORT[(state.day || 1) - 1] + ' · ';
+  if (state.phase === 'lesson') return `${d}Урок ${state.lesson} / ${state.clock}`;
+  if (state.phase === 'break') return `${d}Перемена ${state.lesson} / ${state.clock}`;
+  if (state.phase === 'intro') return d + state.clock;
+  if (state.phase === 'late') return state.late ? `${d}Опаздываю! / ${state.clock}` : `${d}До урока / ${state.clock}`;
+  if (state.phase === 'home') return `${d}Домой / ${state.clock}`;
   return `Свободное время / ${state.clock}`;
 }
 

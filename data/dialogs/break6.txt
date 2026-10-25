@@ -59,7 +59,7 @@
 -> menu
 
 === smile
-@smile [happy] Ковган! Auf Wiedersehen, седьмой урок! Почти.
+@smile [happy] Ковган! Auf Wiedersehen, последний урок! Почти.
 -> menu
 
 === vadim

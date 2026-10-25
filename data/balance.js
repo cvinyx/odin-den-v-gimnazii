@@ -172,12 +172,15 @@ export const BALANCE = {
     halftime: { barcaDenisSkill: 1, realShurpoSpeed: 2, realDenisSkill: -1, noneStress: -5 },
   },
 
-  // Концовки (раздел 16).
-  endings: {
-    perfect: { aura: 70, avgGrade: 6 },
-    baitLegend: { aura: 85, wins: 5 },
-    squeezed: { breakdowns: 2, money: 100 },
-  },
+  // Концовки недели по среднему баллу (ИС-5, Р-5): > 8,0 — «Гордость семьи»; 6,0–8,0 — «Поступаю в БНТУ»;
+  // 4,0–5,99 — «Дорога в хабзу»; < 4,0 — «Папочка зол».
+  endings: { pride: 8.0, bntu: 6.0, habza: 4.0 },
+
+  // Оценки (М-4, Р-6, Р-7): минимум у точных и гуманитарных, сколько уроков недели без оценки.
+  grades: { minExact: 1, minHumanities: 2, noGradePerWeek: [2, 3] },
+
+  // Утро нового дня (Р-2).
+  morning: { battery: [20, 70], vape: [20, 70], stress: 30, hunger: 40, time: '08:50' },
 
   // Действия на уроке через выборы («сидеть тихо»; телефон на уроке — короткая телефонная мини-игра).
   lessonActions: {

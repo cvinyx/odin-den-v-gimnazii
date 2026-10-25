@@ -2,7 +2,8 @@
 import { BALANCE } from '../../data/balance.js';
 import { normalizeSeed, rngFromCode } from '../engine/rng.js';
 
-export const STATE_VERSION = 1;
+// Версия 2: неделя (Пн–Пт). Сохранения версии 1 не загружаются — «Сохранение от старой версии».
+export const STATE_VERSION = 2;
 
 export function createState(seedCode) {
   const s = BALANCE.start;
@@ -28,8 +29,10 @@ export function createState(seedCode) {
     locationName: 'Тестовая комната',
     clock: s.time,
     pos: { x: 0, y: 0, dir: 'down' },
-    grades: [],
-    directorCalls: 0,
+    day: 1,         // день недели: 1 — понедельник … 5 — пятница (Р-1)
+    grades: [],     // оценки сегодняшнего дня по номерам уроков (null — ещё нет или «без оценки»)
+    week: { grades: [[], [], [], [], []], matches: {}, dayEnds: {}, busSeen: [], morningSeen: [], directorCalls: 0, achievements: [] },
+    directorCalls: 0, // вызовы к директору сегодня (3-й заканчивает день, Р-4)
     breakdowns: 0,
     puffsToday: 0,
     wins: 0,
@@ -106,7 +109,7 @@ export function cloneState(state) {
 // Проверка формы состояния после загрузки. Возвращает текст ошибки или null.
 export function validateState(st) {
   if (!st || typeof st !== 'object') return 'нет данных';
-  if (st.v !== STATE_VERSION) return 'другая версия сохранения';
+  if (st.v !== STATE_VERSION) return 'Сохранение от старой версии игры — начни новую неделю';
   if (typeof st.seed !== 'string') return 'нет кода дня';
   if (!st.stats || typeof st.stats !== 'object') return 'нет статусов';
   for (const k of Object.keys(BALANCE.limits)) {
@@ -114,6 +117,7 @@ export function validateState(st) {
     if (typeof v !== 'number' || !Number.isFinite(v)) return 'испорчен статус ' + k;
   }
   if (!Array.isArray(st.grades) || !Array.isArray(st.debts)) return 'испорчены списки';
+  if (!st.week || !Array.isArray(st.week.grades) || !(st.day >= 1 && st.day <= 5)) return 'испорчена неделя';
   if (!st.flags || typeof st.flags !== 'object') return 'испорчены флаги';
   return null;
 }
@@ -154,6 +158,10 @@ export function scriptStatValue(state, name, opp = null) {
     case 'vapefriend': return VAPE_FRIENDS.includes(opp) ? 1 : 0;
     case 'puffs': return state.puffsToday;
     case 'breaknum': return state.phase === 'break' ? state.lesson : 0;
+    // средний балл за сегодня (нет оценок — нейтральные 6), день недели 1–5, средний за неделю
+    case 'dayavg': { const g = state.grades.filter((x) => typeof x === 'number'); return g.length ? g.reduce((a, b) => a + b, 0) / g.length : 6; }
+    case 'weekday': return state.day || 1;
+    case 'weekavg': { const g = (state.week ? state.week.grades : []).flat().filter((x) => typeof x === 'number'); return g.length ? g.reduce((a, b) => a + b, 0) / g.length : 6; }
     default: {
       const key = name === 'vape' ? 'vapeCharge' : resolveStat(name);
       return key ? statForScript(state, key) : 0;

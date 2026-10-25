@@ -18,7 +18,7 @@ export class NewGameScene {
   }
   enterCode() {
     this.game.scenes.push(new TextInputScene({
-      title: 'Код дня',
+      title: 'Код недели',
       hint: '6 символов: латинские буквы и цифры 2–9',
       maxLen: 6,
       filter: (c) => { const u = c.toUpperCase(); return SEED_ALPHABET.includes(u) ? u : null; },
@@ -41,7 +41,7 @@ export class NewGameScene {
   draw(r) {
     r.rect(0, 0, 480, 270, '#101024');
     r.text('Новая игра', 240, 30, { align: 'center', color: '#ffe14d', scale: 2 });
-    r.text('Код дня определяет все случайные события.', 240, 62, { align: 'center', color: '#c8c8d8' });
+    r.text('Код недели определяет все случайные события.', 240, 62, { align: 'center', color: '#c8c8d8' });
     r.text('Одинаковый код — одинаковый день. Поделись им с друзьями.', 240, 74, { align: 'center', color: '#c8c8d8' });
     r.box(160, 92, 160, 34);
     r.text(this.code, 240, 101, { align: 'center', color: '#ffffff', scale: 2 });

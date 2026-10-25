@@ -22,7 +22,7 @@ export class PhonePopupScene {
     const y = 20;
     // тот же iPhone 11 с трещиной, что и в телефонных мини-играх
     const st = this.game && this.game.state;
-    drawPhoneFrame(r, x, y, st ? st.stats.battery : 12, st ? st.playTime : 0);
+    drawPhoneFrame(r, x, y, st ? st.stats.battery : 12, st ? st.clock : '09:00');
     r.rect(x + PHONE.sx, y + PHONE.sy, PHONE.sw, PHONE.sh, '#2b4c7e');
     drawCrack(r, x, y);
     // уведомление

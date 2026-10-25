@@ -1,6 +1,6 @@
 // Главное меню (раздел 4): Продолжить, Новая игра, Ввести код сохранения, Настройки, Достижения.
 import { Menu } from '../ui/menu.js';
-import { loadAutosave, decodeSaveCode } from '../engine/save.js';
+import { loadAutosave, decodeSaveCode, oldAutosave } from '../engine/save.js';
 import { sheetOf } from '../gen/people.js';
 import { frameRect, WALK_CYCLE, FRAME_W, FRAME_H } from '../gen/sprites.js';
 import { NewGameScene } from './new_game.js';
@@ -28,7 +28,7 @@ export class TitleScene {
     const save = loadAutosave();
     const prev = this.menu ? this.menu.index : 0;
     this.menu = new Menu([
-      { label: 'Продолжить', disabled: !save, action: () => this.continueGame() },
+      { label: 'Продолжить', disabled: !save && !oldAutosave(), action: () => this.continueGame() },
       { label: 'Новая игра', action: () => game.scenes.push(new NewGameScene()) },
       { label: 'Ввести код сохранения', action: () => this.enterCode() },
       { label: 'Настройки', action: () => game.scenes.push(new SettingsScene()) },
@@ -41,7 +41,7 @@ export class TitleScene {
 
   continueGame() {
     const st = loadAutosave();
-    if (!st) { this.game.toast('Сохранения нет'); return; }
+    if (!st) { this.game.toast(oldAutosave() ? 'Сохранение от старой версии' : 'Сохранения нет'); return; }
     continueFrom(this.game, st);
   }
 

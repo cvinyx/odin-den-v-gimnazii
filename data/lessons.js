@@ -1,14 +1,26 @@
-// Уроки: файл диалогов, метки событий, главная мини-игра (раздел 6).
-// Метки в файле: intro, seat (seat_en на английском), события, before_game, after_good, after_bad.
-// minigame — id из реестра мини-игр (src/minigames/, футбол — src/football/); extra — игра после главной (душ).
-export const LESSONS = {
-  1: { file: 'lesson1', seat: 'seat_en', events: ['event1', 'event2', 'event3'], minigame: 'cheat', denis: false },
-  2: { file: 'lesson2', seat: 'seat', events: ['event1', 'event2'], minigame: 'phone_blocks' },
-  3: { file: 'lesson3', seat: 'seat', events: ['event1', 'event2'], minigame: 'bait' },
-  4: { file: 'lesson4', seat: 'seat', events: ['event1', 'event2', 'event3'], minigame: 'phone_brawl' },
-  5: { file: 'lesson5', seat: null, events: ['event1'], minigame: 'football', extra: 'shower', view: 'pe' },
-  6: { file: 'lesson6', seat: 'seat', events: ['event1', 'event2'], minigame: 'phone_feed' },
-  7: { file: 'lesson7', seat: 'seat', events: ['event1', 'event2'], minigame: 'cheat', params: { quiz: true } },
+// Уроки по предметам (EDITS_V2, V2-2): файл диалогов → метки событий. Метки в файле: intro, seat
+// (seat_en на английском), события, before_game (или before_<мини-игра>), after_good, after_bad.
+// Главная мини-игра — из расписания (data/schedule.js, SUBJECTS[*].games). extra — игра после главной.
+// *_stub — временные заглушки (плавание и классный час, этап V2-4): диалог-выбор вместо мини-игры.
+const STD = { seat: 'seat', events: ['event1', 'event2'] };
+export const LESSON_FILES = {
+  lesson_english: { seat: 'seat_en', events: ['event1', 'event2', 'event3'], denis: false },
+  lesson_math: STD,
+  lesson_russian: STD,
+  lesson_lit: STD,
+  lesson_belarusian: STD,
+  lesson_bellit: STD,
+  lesson_physics: { seat: 'seat', events: ['event1', 'event2', 'event3'] },
+  lesson_astronomy: STD,
+  lesson_chemistry: STD,
+  lesson_biology: STD,
+  lesson_informatics: STD,
+  lesson_history: STD,
+  lesson_geography: STD,
+  lesson_social: { ...STD, params: { quiz: true } },
+  lesson_pe: { seat: null, events: ['event1'], extra: 'shower', view: 'pe' },
+  lesson_swim: { seat: null, events: [], view: 'pool' },
+  lesson_classhour: { seat: null, events: [] },
 };
 
 // Составы на «Эль-Класико» (раздел 15) — для сцены в раздевалке.

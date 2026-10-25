@@ -1,5 +1,5 @@
 // Сохранение (раздел 18): localStorage в try/catch + код сохранения (компактный JSON → base64 + контрольная сумма).
-import { validateState, normalizeState } from '../game/state.js';
+import { validateState, normalizeState, STATE_VERSION } from '../game/state.js';
 
 const PREFIX = 'odin-den:';
 export const KEYS = {
@@ -52,6 +52,11 @@ export function loadAutosave() {
   return normalizeState(st);
 }
 export function hasAutosave() { return loadAutosave() !== null; }
+// Автосохранение есть, но от версии 1 (один день) — его нельзя продолжить.
+export function oldAutosave() {
+  const st = storeGet(KEYS.autosave);
+  return !!(st && typeof st === 'object' && st.v !== STATE_VERSION);
+}
 
 // ---------- Код сохранения ----------
 
@@ -133,6 +138,7 @@ export function decodeSaveCode(code) {
     try { data = JSON.parse(json); } catch (e) { return { ok: false, error: 'Код повреждён: неверные данные.' }; }
     const st = mapKeys(data, LONG);
     const err = validateState(st);
+    if (err && st.v !== STATE_VERSION) return { ok: false, error: 'Сохранение от старой версии игры (один день). Начни новую неделю.' };
     if (err) return { ok: false, error: 'Код не подходит: ' + err + '.' };
     return { ok: true, state: normalizeState(st) };
   } catch (e) {
