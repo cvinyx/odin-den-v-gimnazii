@@ -2,6 +2,7 @@
 import { registerDebug } from './registry.js';
 import { FontTestScene } from '../scenes/font_test.js';
 import { GalleryScene } from '../scenes/gallery.js';
+import { CastSheetScene } from '../scenes/cast_sheet.js';
 import { TestRoomScene } from '../scenes/test_room.js';
 import { TitleScene } from '../scenes/title.js';
 import { DialogScene } from '../scenes/dialog_scene.js';
@@ -64,6 +65,7 @@ function prepareDay(game, done) {
 export function registerDebugEntries() {
   registerDebug('Сцены', 'Шрифт', (game) => overTitle(game, new FontTestScene()));
   registerDebug('Сцены', 'Галерея', (game) => overTitle(game, new GalleryScene()));
+  registerDebug('Сцены', 'Лист персонажей', (game) => overTitle(game, new CastSheetScene()));
   registerDebug('Сцены', 'Тестовая комната', (game) => game.scenes.reset(new TestRoomScene(), { fade: true }));
   registerDebug('Сцены', 'Главное меню', (game) => game.scenes.reset(new TitleScene(), { fade: true }));
   // Концовки: день «как будто прожит» с подходящими итогами (оценки, матч, аура…)
@@ -142,7 +144,7 @@ export function registerDebugEntries() {
     game.scenes.push(new MinigameScene('bait', { opp: 'igor', params: { opp: 'igor', inLesson: true } }));
   });
   // ---------- Этап 4: любая мини-игра с любым соперником ----------
-  const students = ['guza', 'igor', 'denis', 'chernyak', 'shurpo', 'levonchuk', 'bochko', 'matych', 'buy', 'smile', 'vadim', 'vitalik', 'zakha', 'anus', 'безымянный'];
+  const students = ['guza', 'igor', 'denis', 'chernyak', 'shurpo', 'levonchuk', 'bochko', 'matych', 'buy', 'smile', 'vadim', 'vitalik', 'zakha', 'anosov', 'безымянный'];
   const real = (o) => (o === 'безымянный' ? unnamedOpp() : o);
   const phone = (id, lesson, extra = {}) => (game) => {
     freshDay(game);
@@ -193,18 +195,36 @@ export function registerDebugEntries() {
   registerDebug('Эль-Класико', 'ИИ против ИИ', match({ aiRoma: true }));
   registerDebug('Эль-Класико', 'ИИ против ИИ ×4', match({ aiRoma: true, speed: 4 }));
   registerDebug('Эль-Класико', 'Диарея Смайла сразу', match({ diarrhea: true, diarrheaSoon: true }));
-  registerDebug('Эль-Класико', 'Берсерк Игоря', (game) => { match({})(game); game.state.flags.igorBerserk = true; });
+  registerDebug('Эль-Класико', 'Ярость Игоря', (game) => { match({})(game); game.state.flags.igorRage = true; });
   registerDebug('Эль-Класико', 'Урок 5 целиком (раздевалка → матч → душ)', (game) => {
     prepareDay(game, 4);
     Object.assign(game.state, { phase: 'break', lesson: 4 });
     game.scenes.reset(new LessonScene(5), { fade: true });
   });
 
+  // V2-1: новые и переименованные персонажи в диалоге (на фоне их места на перемене)
+  for (const [label, id, file, lab, map, b] of [
+    ['Ваня Максимов', 'vanya', 'break1', 'vanya', 'k2_f2', 1],
+    ['Святослав Гулько', 'svyat', 'break1', 'svyat', 'k2_f2', 1],
+    ['Миша Аносов', 'anosov', 'break1', 'anosov', 'k1_f4', 1],
+    ['Иван Владимирович', 'ivan', 'lesson5', 'intro', 'locker_room', 4],
+    ['Василий', 'vasily', 'staff', 'vasily', 'rec_f1', 3],
+  ]) {
+    registerDebug('Персонажи', label + ' (диалог)', (game) => {
+      prepareDay(game, b);
+      startBreak(game.state, b);
+      game.scenes.transition(() => {
+        game.scenes.reset(new WorldScene(map, null));
+        game.scenes.push(new DialogScene(file, lab, { opp: id }));
+      });
+    });
+  }
+
   registerDebug('Сценки', 'Сообщение отца', (game) => {
     const l = labelLines('dad', 'msg_3')[0];
     game.scenes.push(new PhonePopupScene({ from: 'батя', text: l ? l.text : '', amount: 300 }));
   });
-  registerDebug('Сценки', 'Берсерк Игоря', (game) => { freshDay(game); game.scenes.push(new DialogScene('bait_igor', 'berserk')); });
+  registerDebug('Сценки', 'Ярость Игоря (сценка)', (game) => { freshDay(game); game.scenes.push(new DialogScene('bait_igor', 'rage')); });
   registerDebug('Сценки', 'Вызов к директору', (game) => { freshDay(game); game.scenes.push(new DirectorScene({})); });
   registerDebug('Мини-игры', 'Диалог с Игорем (тест)', (game) => game.scenes.transition(() => {
     game.scenes.reset(new TestRoomScene());

@@ -138,8 +138,8 @@ export class PhoneGame {
   start(params) {
     const st = this.ctx.state;
     const l = lessonInfo(params.lesson || st.lesson || 2);
-    const t = TEACHERS[(l && l.teacher) || 'tatiana'];
-    this.teacherId = t ? (l.teacher) : 'tatiana';
+    const t = TEACHERS[(l && l.teacher) || 'math'];
+    this.teacherId = t ? (l.teacher) : 'math';
     this.short = !!params.short;
     const duration = params.short ? (this.opts.shortDuration || PB.shortDuration) : this.opts.duration;
     this.dead = st.stats.battery <= 0;

@@ -60,7 +60,7 @@ test('начало урока: опоздание 15, перенос 25 %, за�
   assert.equal(st.stats.suspicion, 40);
   assert.equal(st.vapeSmell, false);
   startLesson(st, 6);
-  assert.equal(st.lessonMul, 0.5); // Галина Степановна
+  assert.equal(st.lessonMul, 0.5); // Ядвига Францевна
 });
 
 test('конец урока: батарея −1, голод +8, пустой вейп и мёртвый телефон — стресс', () => {

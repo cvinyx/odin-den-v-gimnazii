@@ -208,13 +208,13 @@ export class SimDay {
       L.endRound();
     }
     this.mgSec += L.rounds * 12;
-    if (L.result === 'win' && opp === 'igor') st.flags.igorBerserk = true;
+    if (L.result === 'win' && opp === 'igor') st.flags.igorRage = true;
     return { result: L.result, deltas: L.deltas() };
   }
 
   playFootball(rng) {
     const st = this.st;
-    const M = new MatchLogic(rng, { aiRoma: true, hungry: st.stats.hunger > BALANCE.hunger.slowThreshold, staminaMax: 1 - staminaPenalty(st), berserkStart: !!st.flags.igorBerserk });
+    const M = new MatchLogic(rng, { aiRoma: true, hungry: st.stats.hunger > BALANCE.hunger.slowThreshold, staminaMax: 1 - staminaPenalty(st), rageStart: !!st.flags.igorRage });
     for (let f = 0; f < 60 * 400 && M.state !== 'end'; f++) {
       M.update(1 / 60, null);
       for (const e of M.events) if (e.type === 'halftime') {

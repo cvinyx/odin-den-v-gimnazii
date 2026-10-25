@@ -42,8 +42,8 @@
 # sfx igorLaugh
 @igor [happy] {shake}ХА-ХА-ХА-ХА!{/shake}
 @narrator На первом этаже задребезжали окна.
--> igor_menu {if !flag igorBerserk}
--> igor_after_berserk
+-> igor_menu {if !flag igorRage}
+-> igor_after_rage
 
 === igor_menu
 ? Что сказать?
@@ -67,7 +67,7 @@
 === igor_bye
 @igor [happy] Давай! Я пока сводки досмотрю.
 
-=== igor_after_berserk
+=== igor_after_rage
 @igor [angry] {shake}Ты. Меня. Забайтил.{/shake}
 @igor [norm] ...Ладно. Уважаю. Но на физре я тебе это припомню.
 
@@ -200,13 +200,25 @@
 @zakha [happy] Я умею стоять. Это половина вратаря.
 -> menu
 
-=== anus
-@anus [norm] Чипсы будешь? Рубль пачка.
+=== anosov
+@anosov [norm] Чипсы будешь? Рубль пачка.
 @roma [surprised] Ты чипсами торгуешь?
-@anus [happy] Буй торгует воздухом. А у меня хотя бы чипсы.
+@anosov [happy] Буй торгует воздухом. А у меня хотя бы чипсы.
 -> menu
 
 // ---- Общее меню разговора (одинаковое во всех файлах перемен) ----
+=== vanya
+@vanya [norm] О, Рома. У вас сегодня тоже семь уроков? У нас на втором этаже весь день сквозняк.
+@roma [norm] У нас Игорь. Он хуже сквозняка.
+@vanya [happy] Справедливо.
+-> menu
+
+=== svyat
+@svyat [happy] Ромчик, вейп есть? Мой сел ещё на первом уроке.
+@roma [dumb] Светик, ты им что, завтракаешь?
+@svyat [angry] Не называй меня Светик при людях.
+-> menu
+
 === menu
 // вызов от собеседника (инициатива NPC, шанс BALANCE.challengeChance) — один раз за разговор
 -> menu_challenge {if challenge>0}

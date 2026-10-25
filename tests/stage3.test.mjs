@@ -24,7 +24,8 @@ const TABLE = {
   'levonchuk': ['k1_f4', 'rec_f2', 'canteen', 'k1_f4', 'rec_f1', 'rec_f1'],
   'bochko': ['k1_f4', 'rec_f2', 'canteen', 'k1_f4', 'locker_room', 'rec_f1'],
   'matych,buy,guza': ['rec_f1', 'k2_f4', 'canteen', 'k2_f4_toilet', 'locker_room', 'rec_f1'],
-  'smile,vadim,vitalik,zakha,anus': ['k1_f4', 'k1_f4_toilet', 'canteen', 'rec_f1', 'locker_room', 'k1_f4'],
+  'smile,vadim,vitalik,zakha,anosov': ['k1_f4', 'k1_f4_toilet', 'canteen', 'rec_f1', 'locker_room', 'k1_f4'],
+  'vanya,svyat': ['k2_f2', 'rec_f2', 'canteen', 'k2_f2', 'rec_f1', 'k2_f2'],
   'olga': [null, 'rec_f1', 'canteen', 'k2_f4', null, 'k1_f4'],
 };
 

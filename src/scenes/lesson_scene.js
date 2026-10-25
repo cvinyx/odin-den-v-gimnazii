@@ -119,7 +119,7 @@ export class LessonScene {
   }
 
   afterBait(res) {
-    if (res && res.extra && res.extra.berserk) this.game.state.flags.igorBerserk = true;
+    if (res && res.extra && res.extra.rage) this.game.state.flags.igorRage = true;
     this.next();
   }
 
@@ -140,7 +140,7 @@ export class LessonScene {
         if (L && L.duration) this.setProgress(0.5 + 0.35 * Math.min(1, L.t / L.duration));
       },
       onDone: (res) => {
-        if (res.extra && res.extra.berserk) st.flags.igorBerserk = true;
+        if (res.extra && res.extra.rage) st.flags.igorRage = true;
         let g = res.grade ?? BALANCE.lessonGrades.byResult[res.result] ?? 5;
         if (st.seat === 'front') g += BALANCE.seating.frontGradeBonus;
         this.grade = Math.max(1, Math.min(10, g));
@@ -232,7 +232,7 @@ function peView() {
   // «Физмат» — левая половина раздевалки, «ИнЯз» — правая
   fiz.forEach((id, i) => cast.push({ id, x: 2 + i, y: i % 2 ? 6 : 3, dir: 'right' }));
   iny.forEach((id, i) => cast.push({ id, x: 11 + i, y: i % 2 ? 6 : 3, dir: 'left' }));
-  cast.push({ id: 'viktor', x: 9, y: 2, dir: 'down' });
+  cast.push({ id: 'ivan', x: 9, y: 2, dir: 'down' });
   const v = new MapView('locker_room', cast.map((c) => ({ ...c, x: Math.round(c.x) })));
   return v;
 }

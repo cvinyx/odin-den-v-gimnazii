@@ -95,9 +95,9 @@ export class WorldScene {
     game.scenes.push(new MinigameScene('bait', {
       opp, bet, params: { opp },
       onDone: (res) => {
-        if (res && res.extra && res.extra.berserk) {
-          game.state.flags.igorBerserk = true;
-          game.scenes.push(new DialogScene('bait_igor', 'berserk'));
+        if (res && res.extra && res.extra.rage) {
+          game.state.flags.igorRage = true;
+          game.scenes.push(new DialogScene('bait_igor', 'rage'));
         }
       },
     }));
@@ -267,7 +267,7 @@ export class WorldScene {
       else if (n.def.named && hasLabel('npc_again', n.id)) { file = 'npc_again'; label = n.id; }
     }
     st.flags[flag] = true;
-    if (n.id === 'nikolai') st.flags.metNikolai = true;
+    if (n.id === 'vasily') st.flags.metVasily = true;
     game.condCtx = this.miniCtx(n);
     game.scenes.push(new DialogScene(file, label, { opp: n.id }));
     if (n.def.named && creditorReminds(st, n.id)) game.scenes.push(new DialogScene('bets', 'remind', { opp: n.id }));

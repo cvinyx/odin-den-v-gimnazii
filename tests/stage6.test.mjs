@@ -37,7 +37,7 @@ test('достижений не меньше 12, у всех имя и опис�
   assert.ok(ACHIEVEMENTS.length >= 12);
   const ids = new Set();
   for (const a of ACHIEVEMENTS) { assert.ok(a.name && a.desc && a.test, a.id); assert.ok(!ids.has(a.id)); ids.add(a.id); }
-  const st = day(); st.flags.metNikolai = true; st.flags.smileDiarrhea = true; st.flags.ending = 'chaos';
+  const st = day(); st.flags.metVasily = true; st.flags.smileDiarrhea = true; st.flags.ending = 'chaos';
   const got = checkAchievements(st, true).map((a) => a.id);
   for (const id of ['grandpa', 'diarrhea', 'end_chaos', 'clean']) assert.ok(got.includes(id), id);
   assert.deepEqual(checkAchievements(st, true), []); // второй раз — не повторяются

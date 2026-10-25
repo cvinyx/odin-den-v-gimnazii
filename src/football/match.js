@@ -1,5 +1,5 @@
 // Логика «Эль-Класико» без отрисовки (работает и в node-тестах): мяч, 5 на 5, ИИ полевых и вратарей,
-// судья, фолы, карточки, диарея Смайла, берсерк Игоря, перерыв и замены (раздел 15).
+// судья, фолы, карточки, диарея Смайла, ярость Игоря, перерыв и замены (раздел 15).
 // Рома управляется вводом (romaInput) или ИИ (aiRoma — режим «ИИ против ИИ»).
 import { BALANCE } from '../../data/balance.js';
 import { CHARACTERS } from '../../data/characters.js';
@@ -28,7 +28,7 @@ export class Player {
     this.tx = 0; this.ty = 0;          // куда бежит
     this.think = 0; this.cd = 0; this.stun = 0; this.noPick = 0;
     this.yellow = 0; this.goals = 0;
-    this.sprint = false; this.berserk = 0;
+    this.sprint = false; this.rage = 0;
     this.mod = { speed: 0, skill: 0 }; // перерыв
     this.anim = 0; this.moving = false;
     this.out = null;                   // 'run' — убегает с поля (диарея)
@@ -40,7 +40,7 @@ export class Player {
 }
 
 export class MatchLogic {
-  // p: { aiRoma, hungry (голод > 70), staminaMax (0.6–1), berserkStart (Игоря забайтили сегодня), diarrhea (true/false/null — по шансу) }
+  // p: { aiRoma, hungry (голод > 70), staminaMax (0.6–1), rageStart (Игоря забайтили сегодня), diarrhea (true/false/null — по шансу) }
   constructor(rng, p = {}) {
     this.rng = rng;
     this.p = p;
@@ -75,7 +75,7 @@ export class MatchLogic {
     this.stateT = 1.2;
     this.lineupErrors = [];
     this.kickoff('inyaz');
-    if (p.berserkStart) this.startBerserk();
+    if (p.rageStart) this.startRage();
   }
 
   get onField() { return this.players.filter((q) => !q.out); }
@@ -118,7 +118,7 @@ export class MatchLogic {
     if (this.diarrheaAt != null && !this.diarrheaDone && this.total >= this.diarrheaAt && this.ball.owner && !this.ball.owner.keeper) return this.startDiarrhea();
     for (const q of this.onField) {
       q.cd -= dt; q.stun = Math.max(0, q.stun - dt); q.noPick = Math.max(0, q.noPick - dt);
-      if (q.berserk > 0) { q.berserk -= dt; if (q.berserk <= 0) this.emit({ type: 'berserk_end' }); }
+      if (q.rage > 0) { q.rage -= dt; if (q.rage <= 0) this.emit({ type: 'rage_end' }); }
     }
     // решения и движение
     for (const q of this.onField) {
@@ -148,7 +148,7 @@ export class MatchLogic {
     const P = (id) => this.players.find((q) => q.id === id && !q.out);
     if (choice === 'barca' && P('denis')) P('denis').mod.skill += H.barcaDenisSkill;
     if (choice === 'real') { if (P('shurpo')) P('shurpo').mod.speed += H.realShurpoSpeed; if (P('denis')) P('denis').mod.skill += H.realDenisSkill; }
-    if (choice === 'igor') this.startBerserk();
+    if (choice === 'igor') this.startRage();
     this.substitute('fizmat', 'vadim', this.bench.fizmat.includes('bochko') ? 'bochko' : 'zakha');
     this.substitute('inyaz', 'matych', 'guza');
     this.half = 2; this.t = 0;
@@ -168,11 +168,11 @@ export class MatchLogic {
     this.emit({ type: 'sub', team, out: outId, in: inId });
   }
 
-  startBerserk() {
+  startRage() {
     const ig = this.players.find((q) => q.id === 'igor' && !q.out);
     if (!ig) return;
-    ig.berserk = B.berserk.seconds;
-    this.emit({ type: 'berserk' });
+    ig.rage = B.rage.seconds;
+    this.emit({ type: 'rage' });
   }
 
   // ---------- Диарея Смайла ----------
@@ -231,7 +231,7 @@ export class MatchLogic {
 
   speedOf(q) {
     let s = B.move.base + (q.stats.speed + q.mod.speed) * B.move.perSpeed;
-    if (q.berserk > 0) s *= B.berserk.speed;
+    if (q.rage > 0) s *= B.rage.speed;
     if (this.ball.owner === q && !q.keeper) s *= B.move.dribble; // с мячом медленнее
     if (q.team === 'inyaz' && this.p.hungry) s *= BALANCE.hunger.slowFactor;
     return s;
@@ -257,7 +257,7 @@ export class MatchLogic {
           this.emit({ type: 'fumble', id: q.id });
           return;
         }
-        const shootP = d < B.ai.shootAlways ? 1 : d < B.ai.shootRange ? B.ai.shootChance[0] + q.skill * B.ai.shootChance[1] + (q.berserk > 0 ? 0.1 : 0) : 0;
+        const shootP = d < B.ai.shootAlways ? 1 : d < B.ai.shootRange ? B.ai.shootChance[0] + q.skill * B.ai.shootChance[1] + (q.rage > 0 ? 0.1 : 0) : 0;
         if (shootP && this.rng.chance(shootP)) return this.shoot(q, this.rng.float(0.55, 1), [s, 0], true);
         if (pressed && this.rng.chance(0.45 + q.skill * 0.045)) { if (this.passBest(q, [s, 0], true)) return; }
         if (!pressed && this.rng.chance(0.07 + q.skill * 0.01)) { if (this.passBest(q, [s, 0], true, true)) return; }
@@ -285,11 +285,11 @@ export class MatchLogic {
         const dist = hyp(o.x - q.x, o.y - q.y);
         if (dist < B.ai.tackleDist && q.cd <= 0 && q.think <= 0) {
           q.think = this.rng.float(0.2, 0.45);
-          // сзади разумный ИИ не лезет (это фол) — кроме Игоря в берсерке и слабых «на авось»
+          // сзади разумный ИИ не лезет (это фол) — кроме Игоря в ярости и слабых «на авось»
           const [ux, uy] = norm(q.x - o.x, q.y - o.y);
           const behind = ux * o.dir[0] + uy * o.dir[1] < -0.45;
-          const careless = q.berserk > 0 || this.rng.chance(B.ai.carelessTackle * (10 - q.skill) / 10);
-          if ((!behind || careless) && this.rng.chance(0.35 + q.skill * 0.04 + (q.berserk > 0 ? 0.4 : 0))) this.tackle(q);
+          const careless = q.rage > 0 || this.rng.chance(B.ai.carelessTackle * (10 - q.skill) / 10);
+          if ((!behind || careless) && this.rng.chance(0.35 + q.skill * 0.04 + (q.rage > 0 ? 0.4 : 0))) this.tackle(q);
         }
       } else { q.tx = b.x + b.vx * 0.15; q.ty = b.y + b.vy * 0.15; }
       return;
@@ -447,7 +447,7 @@ export class MatchLogic {
     const err = (10.5 - q.skill) * B.ai.shotError / this.acc(q) * this.rng.float(-1, 1);
     a += err;
     let sp = PH.shotSpeed[0] + (PH.shotSpeed[1] - PH.shotSpeed[0]) * Math.max(0, Math.min(1, power));
-    if (q.berserk > 0) sp *= 1.15;
+    if (q.rage > 0) sp *= 1.15;
     this.kick(q, Math.cos(a) * sp, Math.sin(a) * sp);
     const b = this.ball;
     b.shotBy = q.keeper ? null : q; b.beatKeeper = false;
@@ -473,7 +473,7 @@ export class MatchLogic {
     // сзади: подкат со стороны спины владельца
     const [ux, uy] = norm(q.x - o.x, q.y - o.y);
     const behind = ux * o.dir[0] + uy * o.dir[1] < -0.45;
-    const foulP = behind ? T.behindFoul : q.berserk > 0 ? T.berserkFoul : 0.04;
+    const foulP = behind ? T.behindFoul : q.rage > 0 ? T.rageFoul : 0.04;
     if (this.rng.chance(foulP)) return this.foul(q, o);
     if (this.rng.chance(T.base + (q.skill - o.skill) * T.perSkill)) {
       b.owner = q; b.last = q.team; o.stun = T.stun * 0.6; o.noPick = 0.5;
@@ -484,7 +484,7 @@ export class MatchLogic {
   foul(q, victim) {
     this.stats.fouls++;
     this.emit({ type: 'foul', id: q.id, victim: victim.id });
-    if (this.rng.chance(B.yellowChance + (q.berserk > 0 ? 0.2 : 0))) { q.yellow++; this.stats.yellows++; this.emit({ type: 'yellow', id: q.id }); }
+    if (this.rng.chance(B.yellowChance + (q.rage > 0 ? 0.2 : 0))) { q.yellow++; this.stats.yellows++; this.emit({ type: 'yellow', id: q.id }); }
     // штрафной: мяч у пострадавшего, соперники отходят
     const b = this.ball;
     victim.stun = 0;
@@ -572,7 +572,7 @@ export class MatchLogic {
     }
     if (best && (sp < PH.trapSpeed || this.rng.chance(0.25))) {
       b.owner = best; b.last = best.team; b.shotBy = null; b.beatKeeper = false;
-      if (best.berserk > 0 && best.id === 'igor') this.emit({ type: 'igor_ball' });
+      if (best.rage > 0 && best.id === 'igor') this.emit({ type: 'igor_ball' });
     }
   }
 

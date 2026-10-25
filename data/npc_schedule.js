@@ -14,7 +14,10 @@ export const NPC_SCHEDULE = {
   vadim:     { 1: 'k1_f4', 2: 'k1_f4_toilet', 3: 'canteen', 4: 'rec_f1', 5: 'locker_room', 6: 'k1_f4' },
   vitalik:   { 1: 'k1_f4', 2: 'k1_f4_toilet', 3: 'canteen', 4: 'rec_f1', 5: 'locker_room', 6: 'k1_f4' },
   zakha:     { 1: 'k1_f4', 2: 'k1_f4_toilet', 3: 'canteen', 4: 'rec_f1', 5: 'locker_room', 6: 'k1_f4' },
-  anus:      { 1: 'k1_f4', 2: 'k1_f4_toilet', 3: 'canteen', 4: 'rec_f1', 5: 'locker_room', 6: 'k1_f4' },
+  anosov:    { 1: 'k1_f4', 2: 'k1_f4_toilet', 3: 'canteen', 4: 'rec_f1', 5: 'locker_room', 6: 'k1_f4' },
+  // 11 «У» (Н-1, Н-2): кабинет класса — 2-й этаж правого корпуса. Полная таблица мест — этап V2-5.
+  vanya:     { 1: 'k2_f2', 2: 'rec_f2', 3: 'canteen', 4: 'k2_f2', 5: 'rec_f1', 6: 'k2_f2' },
+  svyat:     { 1: 'k2_f2', 2: 'rec_f2', 3: 'canteen', 4: 'k2_f2', 5: 'rec_f1', 6: 'k2_f2' },
   // Завуч-патруль: null — её нет на этой перемене.
   olga:      { 1: null, 2: 'rec_f1', 3: 'canteen', 4: 'k2_f4', 5: null, 6: 'k1_f4' },
 };

@@ -25,7 +25,7 @@ const b = await runSlice({ seed: 'ZT4H9W' });
 runs.push(b); console.log('прогон 3', JSON.stringify(summary(b)));
 const c = await runSlice({ seed: 'R8NX3E', cheatStyle: 'greedy', shots: path.join(shots, 'zhadnyi') });
 runs.push(c); console.log('прогон 4 (жадно)', JSON.stringify(summary(c)));
-// Отдельные сценки через отладочное меню: сообщение отца, берсерк Игоря, директор, туалет, вейп.
+// Отдельные сценки через отладочное меню: сообщение отца, ярость Игоря, директор, туалет, вейп.
 const extraErrors = [];
 {
   const browser = await chromium.launch();
@@ -41,9 +41,9 @@ const extraErrors = [];
   await dbg('Сообщение отца', 600);
   await shot('extra-1-soobshchenie-otca');
   await bot.press('z');
-  await dbg('Берсерк Игоря', 300);
+  await dbg('Ярость Игоря (сценка)', 300);
   await bot.press('z'); await page.waitForTimeout(1500);
-  await shot('extra-2-berserk-igorya');
+  await shot('extra-2-yarost-igorya');
   await bot.handle((t) => t === 'world');
   await dbg('Вызов к директору', 1500);
   await shot('extra-3-direktor');

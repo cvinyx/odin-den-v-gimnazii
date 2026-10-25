@@ -14,7 +14,7 @@ function targetsFor(seed, seat) {
   return buildRoster(st, 1, { denis: false }).seats.map((s) => { const f = tileToFeet(seatTile(s.c, s.d, s.side)); return { x: f.x, y: f.y - 12 }; });
 }
 
-export const ELENA = { wide: true, ...TEACHERS.elena.params };
+export const ELENA = { wide: true, ...TEACHERS.english.params };
 export const SETUPS = {
   'Английский, рядом с Игорем': { seat: [1, 4, 1], seatName: 'igor', teacher: ELENA, mul: 1, start: 15 },
   'Английский, впереди (×1,4, +1)': { seat: [1, 0, 0], seatName: 'front', teacher: ELENA, mul: 1.4, start: 15, front: true },

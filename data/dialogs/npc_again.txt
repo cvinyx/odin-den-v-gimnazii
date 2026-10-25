@@ -38,11 +38,19 @@
 === zakha
 @zakha [norm] Я тут.
 -> menu
-=== anus
-@anus [norm] Чипсов нет.
+=== anosov
+@anosov [norm] Чипсов нет.
 -> menu
 
 // ---- Общее меню разговора (одинаковое во всех файлах перемен) ----
+=== vanya
+@vanya [norm] Ещё что-то? Я тут просто стою. Это моё хобби.
+-> menu
+
+=== svyat
+@svyat [norm] Вейп так и не зарядил. Жизнь боль.
+-> menu
+
 === menu
 // вызов от собеседника (инициатива NPC, шанс BALANCE.challengeChance) — один раз за разговор
 -> menu_challenge {if challenge>0}

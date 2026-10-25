@@ -9,8 +9,9 @@ export const DIRS = ['down', 'left', 'right', 'up'];
 export const FRAMES = 3;
 const OUTLINE = '#120e16';
 
+// Рост → высота спрайта: 160–190 см → 22–28 px; дети младших классов (120–150 см) — от 16 px.
 export function heightPx(cm = 175) {
-  return Math.max(22, Math.min(28, Math.round(22 + ((cm - 160) * 6) / 30)));
+  return Math.max(16, Math.min(28, Math.round(22 + ((cm - 160) * 6) / 30)));
 }
 
 export function layout(p) {
@@ -32,22 +33,41 @@ export function palette(p) {
   const shirt = p.shirtColor || '#eee';
   const pants = p.pantsColor || '#333';
   const sporty = p.pants === 'track' || p.top === 'tracksuit';
+  const shoe = p.shoeColor || (sporty ? '#e6e6ea' : '#1d1b20');
   return {
     skin, skinD: shade(skin, 0.8), skinL: shade(skin, 1.12),
     hair, hairD: shade(hair, 0.72), hairL: shade(hair, 1.25),
     top, topD: shade(top, 0.78), topL: shade(top, 1.18),
     shirt, shirtD: shade(shirt, 0.82),
     pants, pantsD: shade(pants, 0.75),
-    shoe: sporty ? '#e6e6ea' : '#1d1b20',
+    shoe,
     eye: shade(p.eyeColor || '#333', 0.8),
     mouth: '#9c4f45',
     lips: '#c8625c',
   };
 }
 
+// Главные цвета персонажа, как они реально рисуются (волосы «ёжиком» смешаны с кожей).
+// Нужны тесту ИС-18: спрайт и портрет безымянного NPC из одних параметров.
+export function keyColors(p) {
+  const P = palette(p);
+  const hair = p.hairStyle === 'buzz' ? mix(P.hair, P.skin, 0.45) : P.hair;
+  const top = p.top === 'shirt' || p.top === 'blouse' ? P.shirt : P.top;
+  return { hair, top, pants: p.top === 'dress' ? P.top : P.pants }; // у платья «низ» — само платье
+}
+
 function sleeveColor(p, P) {
   if (p.top === 'shirt' || p.top === 'blouse') return P.shirt;
+  if (p.top === 'tank' || p.top === 'vest') return P.skin; // руки открыты
   return P.top;
+}
+
+// Кроссовки: полоски (три белые — одна точка на спрайте) или цветные вставки.
+function shoeMark(px, p, x, y) { if (p.shoeStripe) px.set(x, y, p.shoeStripe); }
+// Галстук: школьный — с золотым пикселем-логотипом гимназии.
+function tieDraw(px, p, x0, y1, y2) {
+  px.vline(x0, y1, y2, p.tie); px.vline(x0 + 1, y1, y2, shade(p.tie, 0.8));
+  if (p.tieLogo) px.set(x0, y1 + 1, '#e8c34a');
 }
 
 // ---------- Вид спереди ----------
@@ -86,8 +106,11 @@ function legsFront(px, p, L, P, f) {
     px.rect(x, legTop, lw, b - legTop, P.pants);
     px.vline(side ? 8 : 7, legTop + 1, b - 1, P.pantsD);
     if (p.pants === 'track') px.vline(side ? x + lw - 1 : x, legTop, b - 1, '#e8e8e8');
+    if (p.pants === 'joggers') px.hline(x, x + lw - 1, b - 1, P.pantsD); // манжеты
     px.rect(x, b, lw, 1, P.shoe);
+    shoeMark(px, p, side ? x + lw - 1 : x, b);
   }
+  if (p.belt) { px.hline(8 - lw, 7 + lw, legTop, '#0b0b0d'); px.set(8, legTop, '#9a9aa4'); }
 }
 
 function torsoFront(px, p, L, P, back = false) {
@@ -116,19 +139,35 @@ function torsoFront(px, p, L, P, back = false) {
       for (let j = 1; j <= vH; j++) px.hline(7, 8, y0 + j, P.shirt);
       px.vline(6, y0 + 1, y0 + 2, P.topD);
       px.vline(9, y0 + 1, y0 + 2, P.topD);
-      if (p.tie) { px.vline(7, y0 + 1, y0 + vH, p.tie); px.vline(8, y0 + 1, y0 + vH, shade(p.tie, 0.8)); }
+      if (p.tie) tieDraw(px, p, 7, y0 + 1, y0 + vH);
       px.set(8, y0 + vH + 1, P.topL);
       break;
     case 'shirt':
     case 'blouse':
       px.set(6, y0, P.shirtD); px.set(9, y0, P.shirtD);
       px.vline(7, y0 + 1, y0 + h - 2, P.shirtD);
-      if (p.tie) { px.vline(7, y0 + 1, y0 + vH, p.tie); px.vline(8, y0 + 1, y0 + vH, shade(p.tie, 0.8)); }
+      if (p.tie) tieDraw(px, p, 7, y0 + 1, y0 + vH);
       if (p.top === 'shirt') { const bw = torsoRowWidth(p, L, h - 1); px.hline(8 - bw / 2, 7 + bw / 2, y0 + h - 1, '#2a2420'); }
       break;
     case 'sweater':
       px.hline(7, 8, y0, P.shirt);
       { const bw = torsoRowWidth(p, L, h - 1); px.hline(8 - bw / 2, 7 + bw / 2, y0 + h - 1, P.topD); }
+      break;
+    case 'zip-hoodie':
+      // худи на молнии поверх рубашки: белый воротник, светлая молния
+      px.hline(7, 8, y0, P.shirt); px.set(7, y0 + 1, P.shirt);
+      px.vline(8, y0 + 1, y0 + h - 1, '#a8a8b0');
+      px.hline(8 - torsoRowWidth(p, L, h - 1) / 2, 7 + torsoRowWidth(p, L, h - 1) / 2, y0 + h - 1, P.topD);
+      break;
+    case 'tank':
+      // белая майка: плечи открыты
+      px.set(8 - torsoRowWidth(p, L, 0) / 2, y0, P.skin); px.set(7 + torsoRowWidth(p, L, 0) / 2, y0, P.skin);
+      px.hline(7, 8, y0, P.skin);
+      break;
+    case 'vest':
+      // жилетка без рукавов поверх майки того же цвета, светлее посередине
+      px.vline(7, y0, y0 + h - 1, P.shirt); px.vline(8, y0, y0 + h - 1, P.shirt);
+      px.hline(7, 8, y0, P.skin);
       break;
     case 'hoodie':
       px.hline(5, 10, y0, P.topD);
@@ -195,6 +234,7 @@ function armsFront(px, p, L, P, f, back = false) {
       px.set(x + 1, y, isHand ? P.skinD : shade(c, 0.85));
     }
     if (p.top === 'tracksuit') px.vline(side ? x + 1 : x, top, top + len - 3, '#e8e8e8');
+    if (p.ring && side === 1 && !back) px.set(x, top + len - 1, '#e2b23a'); // массивное кольцо
     if (p.briefcase && side === 1 && !back) {
       const by = top + len;
       px.rect(x - 1, by, 4, 3, '#6b4423');
@@ -234,7 +274,7 @@ function faceFront(px, p, L, P) {
     mY = t + 7;
   }
   if (p.beard) px.rect(5, t + 6, 6, 2, P.hair);
-  if (p.mustache) { px.hline(6, 9, t + 6, P.hair); mY = t + 7; }
+  if (p.mustache) { px.hline(p.mustache === 'stalin' ? 5 : 6, p.mustache === 'stalin' ? 10 : 9, t + 6, P.hair); mY = t + 7; }
   if (p.bigLips) {
     px.hline(6, 9, mY, P.lips);
     px.hline(7, 8, mY + 1, shade(P.lips, 0.85));
@@ -252,6 +292,13 @@ function faceFront(px, p, L, P) {
   } else if (p.glasses === 'thin') {
     const g = '#5a5a66';
     px.set(5, e, g); px.set(7, e, g); px.set(8, e, g); px.set(10, e, g);
+  } else if (p.glasses === 'sun') {
+    // круглые солнцезащитные: тёмные стёкла
+    const g = '#141414', lens = '#2a2a33';
+    px.set(6, e - 1, g); px.set(9, e - 1, g);
+    px.set(5, e, g); px.set(7, e, g); px.set(8, e, g); px.set(10, e, g);
+    px.set(6, e, lens); px.set(9, e, lens);
+    px.set(6, e + 1, g); px.set(9, e + 1, g);
   }
 }
 
@@ -286,6 +333,44 @@ function hairFront(px, p, L, P) {
       for (let x = 5; x <= 10; x++) if (x % 2) s(x, t - 1, curl(P, x, t));
       for (let y = t; y <= t + 1; y++) for (let x = 3; x <= 12; x++) s(x, y, curl(P, x, y));
       s(3, t + 2); s(3, t + 3); s(12, t + 2); s(12, t + 3); s(4, t + 2); s(11, t + 2);
+      break;
+    case 'tousled':
+      // растрёпанная объёмная стрижка: пряди торчат в стороны и вверх
+      r(3, t, 10, 2);
+      for (const x of [4, 6, 9, 11]) s(x, t - 1, D);
+      s(7, t - 1); s(2, t + 1, D); s(13, t + 1, D);
+      s(4, t + 2); s(5, t + 2, D); s(7, t + 2); s(10, t + 2, D); s(11, t + 2);
+      px.vline(3, t + 2, t + 4, H); px.vline(12, t + 2, t + 4, H); s(2, t + 3, D); s(13, t + 3, D);
+      px.hline(6, 8, t, Lh);
+      break;
+    case 'wavy':
+      // средняя длина, мягкие волны, пряди падают на лоб
+      r(4, t, 8, 2); s(3, t + 1);
+      for (const x of [4, 5, 7, 10, 11]) s(x, t + 2, x % 2 ? H : D);
+      for (let y = t + 1; y <= t + 5; y++) { s(3, y, y % 2 ? H : D); s(12, y, y % 2 ? D : H); }
+      s(5, t, Lh); s(9, t, Lh);
+      break;
+    case 'bangs':
+      // короткая с прямой чёлкой
+      r(4, t, 8, 2); px.hline(4, 11, t + 2, H); px.hline(5, 10, t + 2, D); s(4, t + 3); s(11, t + 3);
+      px.hline(6, 9, t, Lh);
+      break;
+    case 'curly':
+      // густые упругие кудри средней длины
+      for (let x = 4; x <= 11; x++) s(x, t - 1, curl(P, x, t - 1));
+      for (let y = t; y <= t + 2; y++) for (let x = 3; x <= 12; x++) { if (y === t + 2 && x > 4 && x < 11 && x % 2) continue; s(x, y, curl(P, x, y)); }
+      for (let y = t + 3; y <= t + 5; y++) { s(2, y, curl(P, 2, y)); s(3, y, curl(P, 3, y)); s(12, y, curl(P, 12, y)); s(13, y, curl(P, 13, y)); }
+      break;
+    case 'fringe':
+      // короткие, пряди аккуратно спадают на лоб
+      r(4, t, 8, 2); s(4, t + 2); s(11, t + 2);
+      s(5, t + 2); s(6, t + 2, D); s(8, t + 2); s(9, t + 2, D); s(6, t + 3, D);
+      px.hline(6, 8, t, Lh);
+      break;
+    case 'stalin':
+      // густые, зачёсаны назад
+      px.hline(5, 10, t - 1, H); r(4, t, 8, 2); s(4, t + 2); s(11, t + 2);
+      px.hline(5, 10, t, Lh); px.hline(6, 9, t - 1, Lh);
       break;
     case 'medium-straight':
       r(4, t, 8, 1); r(3, t + 1, 10, 1); px.hline(3, 7, t + 2, H); px.hline(9, 12, t + 2, H);
@@ -360,6 +445,7 @@ function hairFront(px, p, L, P) {
     default:
       r(4, t, 8, 2);
   }
+  if (p.hairStreak) { s(6, t, p.hairStreak); s(9, t + 1, p.hairStreak); s(4, t + 1, p.hairStreak); }
 }
 
 // ---------- Вид сбоку (вправо; влево — зеркально) ----------
@@ -376,6 +462,7 @@ function legsSide(px, p, L, P, f) {
     px.rect(6, legTop, 4 + wide, legH - 1, pc);
     px.vline(6, legTop + uh, bottom - 1, pd);
     px.hline(6, 10 + wide, bottom, P.shoe);
+    shoeMark(px, p, 8, bottom);
   } else {
     px.rect(6, legTop, 4 + wide, uh, pc);
     const backLift = f === 2 ? 1 : 0;
@@ -384,7 +471,9 @@ function legsSide(px, p, L, P, f) {
     px.hline(4, 6, bottom - backLift, P.shoe);
     px.rect(9, legTop + uh, 2 + wide, bottom - legTop - uh - frontLift, pc);
     px.hline(9, 11 + wide, bottom - frontLift, P.shoe);
+    shoeMark(px, p, 10, bottom - frontLift);
   }
+  if (p.belt && !skirt) px.hline(6, 9 + wide, legTop, '#0b0b0d');
   if (p.pants === 'track') px.vline(7, legTop, legTop + uh - 1, '#e8e8e8');
   if (skirt) {
     const sk = Math.ceil(legH * 0.55);
@@ -410,12 +499,16 @@ function torsoSide(px, p, L, P, f) {
     px.vline(fx, y0 + 2, y0 + 3, '#d3202b');
   } else if (p.top === 'tracksuit') {
     px.vline(fx, y0, y0 + h - 1, '#e8e8e8');
-  } else if (p.top === 'hoodie') {
+  } else if (p.top === 'hoodie' || p.top === 'zip-hoodie') {
     px.rect(x0 - 1, y0, 2, 2, P.topD);
+    if (p.top === 'zip-hoodie') px.set(fx, y0, P.shirt);
+  } else if (p.top === 'vest') {
+    px.vline(fx, y0, y0 + h - 1, P.shirt);
   } else if (p.top === 'cardigan') {
     px.vline(fx, y0, y0 + h - 1, P.shirt);
   } else if ((p.top === 'shirt' || p.top === 'blouse') && p.tie) {
     px.vline(fx, y0 + 1, y0 + vH, p.tie);
+    if (p.tieLogo) px.set(fx, y0 + 2, '#e8c34a');
   }
   if (p.top === 'shirt') px.hline(x0, x0 + ts - 1, y0 + h - 1, '#2a2420');
   if (p.top === 'coat') {
@@ -464,7 +557,7 @@ function headSide(px, p, L, P) {
   let mY = t + 6;
   if (p.bigNose) mY = t + 7;
   if (p.beard) px.rect(8, t + 6, 4, 2, P.hair);
-  if (p.mustache) { px.hline(10, 11, t + 6, P.hair); mY = t + 7; }
+  if (p.mustache) { px.hline(p.mustache === 'stalin' ? 9 : 10, 12, t + 6, P.hair); mY = t + 7; }
   if (p.bigLips) { px.set(11, mY, P.lips); px.set(12, mY, P.lips); }
   else px.set(11, mY, p.female ? '#b85a5a' : P.mouth);
   if (p.wrinkles) px.set(9, t + 5, P.skinD);
@@ -478,6 +571,11 @@ function headSide(px, p, L, P) {
     px.hline(9, 11, e, '#5a5a66');
     px.set(10, e, P.eye);
     px.hline(7, 8, e, '#5a5a66');
+  } else if (p.glasses === 'sun') {
+    const g = '#141414';
+    px.set(10, e - 1, g); px.set(9, e, g); px.set(11, e, g); px.set(10, e + 1, g);
+    px.set(10, e, '#2a2a33');
+    px.hline(7, 8, e, g);
   }
 }
 
@@ -508,6 +606,26 @@ function hairSide(px, p, L, P) {
       for (let x = 3; x <= 12; x++) s(x, t + 1, curl(P, x, t + 1));
       for (let y = t + 2; y <= t + 5; y++) for (let x = 3; x <= 6; x++) s(x, y, curl(P, x, y));
       px.hline(11, 12, t + 2, H);
+      break;
+    case 'bangs': case 'fringe': case 'stalin':
+      cap(); r(4, t + 2, 3, 3); r(7, t + 2, 2, 2);
+      if (p.hairStyle === 'bangs') px.hline(10, 12, t + 2, H);
+      if (p.hairStyle === 'fringe') { s(11, t + 2); s(12, t + 3, D); }
+      if (p.hairStyle === 'stalin') { px.hline(5, 10, t - 1, H); px.hline(5, 10, t, Lh); } else px.hline(6, 8, t, Lh);
+      break;
+    case 'curly':
+      for (let x = 4; x <= 11; x++) s(x, t - 1, curl(P, x, t - 1));
+      for (let y = t; y <= t + 1; y++) for (let x = 3; x <= 12; x++) s(x, y, curl(P, x, y));
+      for (let y = t + 2; y <= t + 6; y++) for (let x = 2; x <= 6; x++) s(x, y, curl(P, x, y));
+      px.hline(10, 12, t + 2, H);
+      break;
+    case 'tousled':
+    case 'wavy':
+      px.hline(5, 10, t, H); px.hline(4, 12, t + 1, H); px.hline(10, 12, t + 2, H);
+      r(3, t + 2, 5, 4); r(8, t + 2, 1, 2);
+      if (p.hairStyle === 'tousled') { for (const x of [4, 7, 10]) s(x, t - 1, D); s(2, t + 3, D); s(12, t + 3, D); }
+      else { s(2, t + 4, D); s(3, t + 6, D); s(12, t + 3, D); }
+      px.hline(6, 8, t, Lh);
       break;
     case 'medium-straight':
     case 'medium':
@@ -572,8 +690,20 @@ function hairBack(px, p, L, P) {
   const r = (x, y, w, h, c = H) => px.rect(x, y, w, h, c);
   const s = (x, y, c = H) => px.set(x, y, c);
   switch (p.hairStyle) {
-    case 'short': case 'side-part': case 'slick':
+    case 'short': case 'side-part': case 'slick': case 'bangs': case 'fringe':
       r(4, t, 8, 6); px.hline(5, 10, t, Lh); px.hline(5, 10, t + 5, D);
+      break;
+    case 'stalin':
+      px.hline(5, 10, t - 1, H); r(4, t, 8, 6); for (let y = t; y <= t + 4; y += 2) px.hline(5, 10, y, Lh);
+      break;
+    case 'curly':
+      for (let x = 4; x <= 11; x++) s(x, t - 1, curl(P, x, t - 1));
+      for (let y = t; y <= t + 6; y++) for (let x = 2; x <= 13; x++) s(x, y, curl(P, x, y));
+      break;
+    case 'tousled': case 'wavy':
+      r(4, t, 8, 1); r(3, t + 1, 10, 6); px.hline(5, 10, t, Lh);
+      if (p.hairStyle === 'tousled') { for (const x of [4, 6, 9, 11]) s(x, t - 1, D); s(2, t + 3, D); s(13, t + 3, D); }
+      else for (let y = t + 2; y <= t + 6; y += 2) { s(2, y, D); s(13, y, D); }
       break;
     case 'buzz':
       r(4, t, 8, 6, mix(H, P.skin, 0.45));
