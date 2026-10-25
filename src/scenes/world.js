@@ -28,6 +28,7 @@ import { rollBet, creditorReminds } from '../game/bets.js';
 import { buyFood } from './buffet.js';
 import { rollPowerbank } from '../game/powerbank.js';
 import { nextText, countText, testText, gradeText } from '../game/ask.js';
+import { pickTalk } from '../game/talks.js';
 import { hasLabel, labelsOf, labelLines } from '../game/dialogs.js';
 
 const DIRV = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
@@ -328,16 +329,31 @@ export class WorldScene {
     st.met[n.id] = true;
     let file = n.talk.file;
     let label = n.talk.label;
-    const flag = `talked_${file}_${label}`;
-    if (st.flags[flag]) {
-      if (hasLabel(file, label + '_again')) label += '_again';
-      else if (n.def.named && hasLabel('npc_again', n.id)) { file = 'npc_again'; label = n.id; }
+    let newTalk = false;
+    if (n.def.named && n.talk.file !== 'staff' && hasLabel('talk_' + n.id, 't1')) {
+      // V2-6: пул разговоров на перемене — личные, реакции на события, групповые, футбольные споры
+      const pick = pickTalk(st, n.id, {
+        talk: labelsOf('talk_' + n.id).filter((l) => /^t\d+$/.test(l)),
+        hasSilent: hasLabel('talk_' + n.id, 'silent'),
+        react: labelsOf('react'), football: labelsOf('football_talk').filter((l) => /^ft\d+$/.test(l)),
+        group: labelsOf('group').filter((l) => /^g\d+$/.test(l)),
+      }, this.npcs.filter((m) => m.def.named).map((m) => m.id));
+      file = pick.file; label = pick.label; newTalk = true;
+    } else {
+      const flag = `talked_${file}_${label}`;
+      if (st.flags[flag]) {
+        if (hasLabel(file, label + '_again')) label += '_again';
+        else if (n.def.named && hasLabel('npc_again', n.id)) { file = 'npc_again'; label = n.id; }
+      }
+      st.flags[flag] = true;
     }
-    st.flags[flag] = true;
     if (n.id === 'vasily') st.flags.metVasily = true;
     game.condCtx = this.miniCtx(n);
-    const vars = { dish: BALANCE.dishes[(st.day || 1) - 1] };
-    game.scenes.push(new DialogScene(file, label, { opp: n.id, vars, onEnd: () => this.afterTalk(n) }));
+    const ans = askAnswers(st, n.id);
+    const vars = { dish: BALANCE.dishes[(st.day || 1) - 1], next: ans.next ? ans.next.subject : 'последний урок закончен', room: ans.next ? ans.next.room : '—' };
+    // после разговора — общее меню (сыграть, жижка, бывай), затем «Ещё что-то?»
+    const after = () => (newTalk ? game.scenes.push(new DialogScene('npc_again', 'menu', { opp: n.id, vars, onEnd: () => this.afterTalk(n) })) : this.afterTalk(n));
+    game.scenes.push(new DialogScene(file, label, { opp: n.id, vars, onEnd: after }));
     // подколы друзей после диарейного позора (М-2): раз на человека
     if (st.flags.diarrheaSeen && n.def.named && !st.flags['joked_' + n.id]) {
       st.flags['joked_' + n.id] = true;
