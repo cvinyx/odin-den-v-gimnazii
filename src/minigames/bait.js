@@ -15,11 +15,17 @@ export function baitFile(opp) {
   return hasLabel('bait_' + opp, 'roma_weak') ? 'bait_' + opp : 'bait_common';
 }
 
-function pickLine(rng, file, label, opp) {
+// ИС-10: в одной дуэли фраза не повторяется; за день повтор — только если пул исчерпан.
+// used = { duel: Set, day: Set } — тексты, уже прозвучавшие.
+export function pickLine(rng, file, label, opp, used = null) {
   let lines = labelLines(file, label);
-  if (!lines.length && file !== 'bait_common') lines = labelLines('bait_common', label);
+  if (file !== 'bait_common') lines = [...lines, ...(lines.length < 3 ? labelLines('bait_common', label) : [])];
   if (!lines.length) return { who: 'narrator', emo: 'norm', text: '...' };
-  const l = rng.pick(lines);
+  let pool = used ? lines.filter((l) => !used.day.has(l.text)) : lines;
+  if (!pool.length && used) pool = lines.filter((l) => !used.duel.has(l.text));
+  if (!pool.length) pool = lines;
+  const l = rng.pick(pool);
+  if (used) { used.day.add(l.text); used.duel.add(l.text); }
   return { who: l.who === 'opp' ? opp : l.who, emo: l.emo, text: l.text };
 }
 
@@ -35,9 +41,12 @@ class BaitGame {
   start(params) {
     const st = this.ctx.state;
     this.opp = this.ctx.opp || params.opp;
-    this.file = baitFile(this.opp);
+    // фразы за день (флаги дня сохраняются) и за дуэль
+    this.used = { duel: new Set(), day: new Set(st.flags.baitUsed || []) };
+    this.kid = !!params.kid; // пятиклассник в кабинке (Л-10): свои фразы, без ставки
+    this.file = this.kid ? 'bait_kid5' : baitFile(this.opp);
     this.logic = new BaitLogic(this.rng, {
-      opp: this.opp,
+      opp: this.opp, kid: this.kid,
       inLesson: !!params.inLesson,
       sulk: !!params.sulk,
       hungerSlow: st.stats.hunger > BALANCE.hunger.slowThreshold,
@@ -48,7 +57,7 @@ class BaitGame {
     this.queue = [];
     this.shown = { roma: 0, opp: 0 };
     this.flash = 0;
-    this.say(pickLine(this.rng, this.file, 'intro', this.opp));
+    this.say(pickLine(this.rng, this.file, 'intro', this.opp, this.used));
     this.next = () => this.offer();
   }
 
@@ -61,7 +70,7 @@ class BaitGame {
   }
 
   offer() {
-    this.options = CATS.map((c) => ({ cat: c, line: pickLine(this.rng, this.file, 'roma_' + c, this.opp) }));
+    this.options = CATS.map((c) => ({ cat: c, line: pickLine(this.rng, this.file, 'roma_' + c, this.opp, this.used) }));
     this.choice = new ChoiceMenu(`Раунд ${this.logic.round} из ${this.logic.rounds}. Чем ответить?`,
       this.options.map((o) => ({ text: `[${CAT_NAMES[o.cat]}] ${stripTags(o.line.text)}` })));
     this.mode = 'choose';
@@ -74,12 +83,12 @@ class BaitGame {
     const L = this.logic;
     const res = L.playRoma(o.cat);
     const steps = [{ line: o.line }];
-    if (res.outcome === 'big') steps.push({ line: pickLine(this.rng, this.file, 'opp_hit', this.opp), flash: true });
-    else if (res.outcome === 'backfire') steps.push({ line: pickLine(this.rng, this.file, 'opp_shrug', this.opp), self: true });
-    else steps.push({ line: pickLine(this.rng, this.file, res.dmg > 14 ? 'opp_hit' : 'opp_shrug', this.opp) });
+    if (res.outcome === 'big') steps.push({ line: pickLine(this.rng, this.file, 'opp_hit', this.opp, this.used), flash: true });
+    else if (res.outcome === 'backfire') steps.push({ line: pickLine(this.rng, this.file, 'opp_shrug', this.opp, this.used), self: true });
+    else steps.push({ line: pickLine(this.rng, this.file, res.dmg > 14 ? 'opp_hit' : 'opp_shrug', this.opp, this.used) });
     if (!L.finished) {
       L.playOpp();
-      steps.push({ line: pickLine(this.rng, this.file, 'opp_retort', this.opp), self: true });
+      steps.push({ line: pickLine(this.rng, this.file, 'opp_retort', this.opp, this.used), self: true });
       L.endRound();
     }
     this.queue = steps;
@@ -101,7 +110,7 @@ class BaitGame {
     this.finaleShown = true;
     const label = r === 'win' ? 'opp_boil' : r === 'lose' ? 'opp_win' : null;
     if (r === 'win' && this.opp === 'igor') { this.game.r.shake(5, 1.2); audio.play('igorLaugh'); }
-    if (label) { this.queue = [{ line: pickLine(this.rng, this.file, label, this.opp) }]; this.after = true; this.runQueue(); }
+    if (label) { this.queue = [{ line: pickLine(this.rng, this.file, label, this.opp, this.used) }]; this.after = true; this.runQueue(); }
     else this.done = true;
   }
 
@@ -126,6 +135,7 @@ class BaitGame {
   }
 
   end() {
+    this.ctx.state.flags.baitUsed = [...this.used.day].slice(-300);
     const L = this.logic;
     const r = L.result || 'draw';
     const d = L.deltas();

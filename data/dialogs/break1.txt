@@ -136,12 +136,11 @@
 @roma [surprised] Я просто мимо шёл.
 @guza [happy] А. Ну иди.
 ? Что делать?
-* «Гуза, сыграем в байт на деньги?» => guza_bait
+* «Гуза, а ты чего такой злой?» => guza_why
 * Тихо уйти. => guza_bye
 
-=== guza_bait
-@guza [angry] Байт? Со мной? {shake}Давай.{/shake}
-# action bait
+=== guza_why
+@guza [angry] Я не злой. Я просто такой. Ходи мимо.
 
 === guza_bye
 @guza [norm] ...
@@ -149,7 +148,7 @@
 === guza_again
 @guza [angry] {shake}Опять ты?{/shake}
 ? Что делать?
-* «Сыграем на деньги?» => guza_bait
+* «Гуза, ты как вообще?» => guza_why
 * Уйти. => guza_bye
 
 === chernyak

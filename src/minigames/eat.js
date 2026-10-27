@@ -10,7 +10,7 @@ import { GAME_H } from '../engine/renderer.js';
 import { audio } from '../engine/audio.js';
 
 const B = BALANCE.eat;
-const DIRS = ['left', 'down', 'up', 'right'];
+const DIRS = ['left', 'right']; // ИС-13: две стрелки вместо четырёх
 const ARROW = { left: '←', down: '↓', up: '↑', right: '→' };
 
 export class EatLogic {
@@ -22,7 +22,8 @@ export class EatLogic {
     this.t = 0;
     this.duration = B.duration;
     this.notes = [];
-    for (let at = 2; at < this.duration - 1; at += B.beat * (rng.chance(0.25) ? 0.5 : 1)) this.notes.push({ at, dir: rng.pick(DIRS), state: null });
+    // ИС-13: ритм плавно растёт — от beat к beatFast за игру, полудолей почти нет
+    for (let at = 2.5; at < this.duration - 1; at += B.beat + (B.beatFast - B.beat) * (at / this.duration)) this.notes.push({ at, dir: rng.pick(DIRS), state: null });
     this.hits = 0; this.misses = 0; this.series = 0;
     this.eaten = 0; this.stomach = 0;
     this.fast = (p.hunger ?? 50) < 30; // голод < 30 — желудок вдвое быстрее

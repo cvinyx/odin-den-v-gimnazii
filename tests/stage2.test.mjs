@@ -6,7 +6,7 @@ import { eventRng, startLesson, endLessonRules, finishLesson, startBreak, lesson
 import { puff, addSuspicion, checkBreakdown, directorCall, directorEndsDay, staminaPenalty } from '../src/game/actions.js';
 import { rollBet, resolveLoss, totalDebt, creditorReminds } from '../src/game/bets.js';
 import { BALANCE } from '../data/balance.js';
-import { NPC_SCHEDULE } from '../data/npc_schedule.js';
+import { placesFor } from '../data/npc_schedule.js';
 import { MAPS, STAIRWELLS } from '../src/world/maps/index.js';
 import { TILE_DEFS, isSolidChar } from '../src/gen/tiles.js';
 import { CheatLogic, makeBot } from '../src/minigames/cheat_logic.js';
@@ -17,12 +17,13 @@ import { parseDialog } from '../src/ui/dialog_script.js';
 import { readDialog, dialogNames } from './helpers.mjs';
 import { runCheat } from '../tools/balance_cheat_lib.mjs';
 
-test('рассадка 20 %: одинаковый код дня — одинаковый результат', () => {
+// V2-4 (ИС-4): шанс отбить место — 50 % (тест обновлён под новое правило)
+test('рассадка 50 %: одинаковый код дня — одинаковый результат', () => {
   const roll = (seed, n) => eventRng(createState(seed), 'seat' + n).chance(BALANCE.seating.stealChance);
   for (const seed of ['ABCDEF', 'K7PQ2Z', 'XXXXXX']) for (let n = 1; n <= 7; n++) assert.equal(roll(seed, n), roll(seed, n));
   let ok = 0, total = 0;
   for (let i = 0; i < 3000; i++) { total++; if (roll('S' + i, 2)) ok++; }
-  assert.ok(Math.abs(ok / total - 0.2) < 0.03, 'доля успехов ' + ok / total);
+  assert.ok(Math.abs(ok / total - 0.5) < 0.03, 'доля успехов ' + ok / total);
 });
 
 test('рассадка класса детерминирована, Игорь и Денис на последней парте среднего ряда', () => {
@@ -179,14 +180,9 @@ test('путь от улицы до каб. 404 существует (по ка�
   assert.ok(MAPS.c3_f4.exits.some((e) => e.to === 'cab_343')); // V2-3: класс 11 «И» — 343
 });
 
-test('перемена 1: NPC стоят там, где сказано в таблице раздела 11', () => {
-  const b1 = (id) => NPC_SCHEDULE[id][1];
-  assert.equal(b1('denis'), 'c3_f4');
-  assert.equal(b1('igor'), 'c3_f4');
-  for (const id of ['matych', 'buy', 'guza']) assert.equal(b1(id), 'c1_f1');
-  // у всех именных, кто стоит на картах этапа 2, есть диалоги перемены 1
+test('перемена 1: у всех именных, кто стоит на картах, есть диалоги перемены 1', () => {
   const d = parseDialog(readDialog('break1'));
-  for (const [id, row] of Object.entries(NPC_SCHEDULE)) if (MAPS[row[1]]) assert.ok(d.labels[id], 'нет диалога ' + id);
+  for (const [id, where] of Object.entries(placesFor('KQ7M2P', 1, 1))) if (where && MAPS[where] && id !== 'olga') assert.ok(d.labels[id], 'нет диалога ' + id);
 });
 
 test('файлы байт-дуэли: у каждого есть все метки', () => {

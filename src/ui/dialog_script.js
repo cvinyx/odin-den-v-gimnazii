@@ -17,11 +17,11 @@ export const STATS = ['battery', 'stress', 'aura', 'vape', 'juice', 'suspicion',
 // собеседник сам бросает вызов; chalgame — какой (1 байт, 2 парилка, 3 туалет, 4 еда).
 export const COND_VALUES = ['lastgrade', 'debt', 'debts', 'wins', 'calls', 'match', 'vapefriend', 'puffs', 'breaknum',
   'intoilet', 'incanteen', 'bigbreak', 'mbnear', 'vapebattle', 'playable', 'challenge', 'chalgame',
-  'dayavg', 'weekday', 'weekavg'];
+  'dayavg', 'weekday', 'weekavg', 'baitok', 'baitsolo', 'eatok', 'power', 'askok'];
 export const SFX_ALLOWED = ['igorLaugh', 'bell', 'whistle', 'kick', 'hit', 'shake', 'puff', 'coin', 'door', 'statUp', 'statDown'];
 const OPS = ['>=', '<=', '==', '!=', '>', '<'];
 // Игровые действия из диалогов: # action имя [аргумент]. Выполняет игра (src/game/actions.js).
-export const ACTIONS = ['phone', 'vape', 'quiet', 'bait', 'seat_steal', 'seat_front', 'seat_igor', 'bus', 'wash', 'leave', 'askjuice', 'buffet', 'charge_phone', 'charge_vape', 'charge_stop', 'play', 'challenge'];
+export const ACTIONS = ['phone', 'vape', 'quiet', 'bait', 'seat_steal', 'seat_front', 'seat_igor', 'bus', 'wash', 'leave', 'askjuice', 'buffet', 'charge_phone', 'charge_vape', 'charge_stop', 'play', 'challenge', 'gossip', 'lunch', 'kid_bait', 'dia_check'];
 
 export class DialogParseError extends Error {
   constructor(errors, file) {

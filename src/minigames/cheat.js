@@ -1,17 +1,20 @@
 // «Списывание»: вид сверху на класс, конус взгляда учителя, Z — подсматривать.
-// Используется на английском (урок 1) и обществоведении (урок 7, с вопросами учителя).
+// С V2-4 — часть «Теста» (src/minigames/test.js): списывать у соседа или с телефона (params.phone —
+// учитель замечает телефон сильнее); иногда учитель проходит по рядам (М-8).
 import { registerMinigame } from './registry.js';
 import { CheatLogic } from './cheat_logic.js';
 import { ClassroomView } from '../world/classroom_view.js';
-import { lessonInfo } from '../game/day.js';
+import { lessonInfo, eventRng } from '../game/day.js';
+import { tileToFeet } from '../world/classroom.js';
 import { TEACHERS } from '../../data/teachers.js';
 import { BALANCE } from '../../data/balance.js';
 import { GAME_H } from '../engine/renderer.js';
 import { audio } from '../engine/audio.js';
 import { ChoiceMenu } from '../ui/choice.js';
 import { getDialog } from '../game/dialogs.js';
+import { changeStat } from '../game/state.js';
 
-class CheatGame {
+export class CheatGame {
   constructor(ctx) { this.ctx = ctx; this.game = ctx.game; this.done = false; this.time = 0; }
 
   start(params) {
@@ -20,9 +23,16 @@ class CheatGame {
     this.view = params.view || new ClassroomView(st, l);
     const t = TEACHERS[l.teacher];
     const geo = this.view.geometry();
+    this.phone = !!params.phone;
+    // М-8: с шансом 10 % за урок учитель проходит по проходу между рядами и обратно
+    const walkRng = eventRng(st, `walk${st.day}:${st.lesson}`);
+    const walkOn = params.walk ?? walkRng.chance(BALANCE.cheat.walkChance);
+    const a = tileToFeet({ x: 11, y: 3, half: true }), b = tileToFeet({ x: 11, y: 12, half: true });
+    const walk = walkOn ? { start: params.walk === 'now' ? 1 : walkRng.float(6, 20), dur: BALANCE.cheat.walkSeconds, path: [{ x: a.x, y: a.y - 18 }, { x: b.x, y: b.y - 18 }] } : null;
     this.logic = new CheatLogic(this.ctx.rng, {
       teacher: { wide: t.params.coneWidth === 'wide', ...(params.teacher || {}) },
-      mul: st.lessonMul || 1,
+      mul: (st.lessonMul || 1) * (this.phone ? BALANCE.test.phoneSuspicionMul : 1),
+      requireRelease: true, walk, duration: params.duration,
       speedMul: st.seat === 'steal_ok' ? BALANCE.seating.stealSuccessCheatSpeed : 1,
       hungerSlow: st.stats.hunger > BALANCE.hunger.slowThreshold,
       startSuspicion: st.stats.suspicion,
@@ -70,14 +80,19 @@ class CheatGame {
     if (this.quizTimes.length && L.t >= this.quizTimes[0]) { this.quizTimes.shift(); this.askQuestion(); return; }
     const peek = this.botPeek ? this.botPeek(L, dt) : input.held('confirm');
     L.update(dt, peek);
+    // учитель идёт по классу — двигаем его фигурку
+    if (L.p.walk) { this.view.teacher.x = L.tpos.x; this.view.teacher.y = L.tpos.y + 18; if (L.walking) this.view.teacher.dir = L.angle > 0 ? 'down' : 'up'; }
     // подозрение видно в HUD в реальном времени
     this.ctx.state.stats.suspicion = Math.round(L.suspicion);
-    if (L.answers > this.lastAnswers) { this.lastAnswers = L.answers; audio.play('menuSelect'); }
+    if (L.answers > this.lastAnswers) {
+      this.lastAnswers = L.answers; audio.play('menuSelect');
+      if (this.phone) changeStat(this.ctx.state, 'battery', BALANCE.test.phoneBatteryPerAnswer);
+    }
     if (L.mode === 'warn' && this.lastMode !== 'warn') audio.play('menuMove');
     this.lastMode = L.mode;
     this.view.roma.dir = L.peeking ? (this.view.roster.roma && this.view.roster.roma.side === 0 ? 'right' : 'left') : 'up';
     const a = L.angle;
-    this.view.teacher.dir = a < 60 ? 'right' : a > 120 ? 'left' : 'down';
+    if (!L.walking) this.view.teacher.dir = a < 60 ? 'right' : a > 120 ? 'left' : 'down';
     if (L.finished) this.done = true;
   }
 
@@ -135,7 +150,9 @@ class CheatGame {
     r.text(`Ответы: ${L.answers}/10`, 6, 3, { color: '#6be36b' });
     const left = Math.max(0, Math.ceil(L.duration - L.t));
     r.text(`0:${String(left).padStart(2, '0')}`, 240, 3, { align: 'center', color: left <= 10 ? '#ff5a5a' : '#ffffff' });
-    r.text('Держи Z — списывать', 474, 3, { align: 'right', color: '#9a9aa8' });
+    r.text(this.phone ? 'Держи Z — списывать с телефона' : 'Держи Z — списывать', 474, 3, { align: 'right', color: '#9a9aa8' });
+    if (L.walking) r.text('Учитель идёт по рядам!', 240, 32, { align: 'center', color: '#ffb84a', shadow: '#000' });
+    if (this.phone && L.peeking) { const ro = this.view.roma; r.rect(220, 200, 40, 28, '#16161a'); r.rect(223, 203, 34, 22, '#9fd3ff'); r.text('гугл', 240, 210, { align: 'center', color: '#202028' }); void ro; }
     if (L.sees && L.peeking) r.text('ЗАМЕТИЛА!', 240, 18, { align: 'center', color: '#ff4a4a', scale: 2, shadow: '#000' });
     if (this.quizResult) r.text(this.quizResult.right ? 'Верно! Подозрение −15' : 'Неверно. Подозрение растёт', 240, 40, { align: 'center', color: this.quizResult.right ? '#6be36b' : '#ff6a6a', shadow: '#000' });
     if (this.quiz) this.quiz.menu.draw(r, 200);

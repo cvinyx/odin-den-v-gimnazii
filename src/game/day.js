@@ -1,6 +1,6 @@
 // Система дня (раздел 5) и недели (EDITS_V2, Р-1…Р-7): расписание дня, состояния «урок N» / «перемена N»,
 // часы, подсказка «Следующий: …», правила статусов между уроками, переход к следующему дню, оценки.
-import { daySchedule, roomLabel, WEEK, SUBJECTS } from '../../data/schedule.js';
+import { daySchedule, roomLabel } from '../../data/schedule.js';
 import { TEACHERS } from '../../data/teachers.js';
 import { BALANCE } from '../../data/balance.js';
 import { changeStat } from './state.js';
@@ -26,11 +26,12 @@ export function todaySchedule(day = CURRENT_DAY) {
 export function lessonInfo(n, day = CURRENT_DAY) { return todaySchedule(day)[n - 1] || null; }
 export function lastLesson(day = CURRENT_DAY) { return todaySchedule(day).length; }
 
-// Уроки недели без оценки (Р-7): 2–3 урока (не физкультура и не классный час), по коду недели.
+// Уроки недели без оценки (Р-7): 2–3 урока (не физкультура, не классный час и не тест), по коду недели.
 export function noGradeLessons(state) {
   const rng = eventRng(state, 'nograde');
   const all = [];
-  WEEK.I.forEach((list, d) => list.forEach((sid, i) => { if (SUBJECTS[sid].graded !== false) all.push(`${d + 1}:${i + 1}`); }));
+  // тест (М-4) всегда с оценкой — такие уроки в «без оценки» не попадают
+  for (let d = 1; d <= 5; d++) for (const l of daySchedule(d)) if (l.graded && !l.minigame.startsWith('test')) all.push(`${d}:${l.n}`);
   const n = rng.int(BALANCE.grades.noGradePerWeek[0], BALANCE.grades.noGradePerWeek[1]);
   return new Set(rng.shuffle(all).slice(0, n));
 }

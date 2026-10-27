@@ -19,7 +19,7 @@ export class ClassroomView {
 
   // Пересадить всех по текущему state.seat.
   rebuild(state) {
-    const roster = buildRoster(state, this.lesson.n, { denis: this.lesson.subjectId !== 'english' });
+    const roster = buildRoster(state, this.lesson.n, { english: this.lesson.subjectId === 'english' });
     this.roster = roster;
     this.students = roster.seats.map((s) => {
       const f = tileToFeet(seatTile(s.c, s.d, s.side));

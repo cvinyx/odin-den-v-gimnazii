@@ -31,7 +31,7 @@ export function createState(seedCode) {
     pos: { x: 0, y: 0, dir: 'down' },
     day: 1,         // день недели: 1 — понедельник … 5 — пятница (Р-1)
     grades: [],     // оценки сегодняшнего дня по номерам уроков (null — ещё нет или «без оценки»)
-    week: { grades: [[], [], [], [], []], matches: {}, dayEnds: {}, busSeen: [], morningSeen: [], directorCalls: 0, achievements: [] },
+    week: { grades: [[], [], [], [], []], matches: {}, dayEnds: {}, busSeen: [], morningSeen: [], directorCalls: 0, achievements: [], talkSeen: {}, reactSeen: [], groupSeen: [] },
     directorCalls: 0, // вызовы к директору сегодня (3-й заканчивает день, Р-4)
     breakdowns: 0,
     puffsToday: 0,

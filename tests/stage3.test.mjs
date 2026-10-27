@@ -1,7 +1,8 @@
 // Тесты этапа 3: вся школа, перемены по таблице, учителя, уроки, буфет, схема.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { NPC_SCHEDULE } from '../data/npc_schedule.js';
+import { placesFor } from '../data/npc_schedule.js';
+const NPC_SCHEDULE = placesFor('KQ7M2P', 1, 1);
 import { CHARACTERS } from '../data/characters.js';
 import { TEACHERS, CAMEO_TEACHERS } from '../data/teachers.js';
 import { daySchedule } from '../data/schedule.js';
@@ -21,33 +22,11 @@ import { parseDialog } from '../src/ui/dialog_script.js';
 import { readDialog } from './helpers.mjs';
 import { planRoute } from '../tools/bot_lib.mjs';
 
-// Таблица раздела 11 (как в спецификации) — с названиями мест, переведёнными в id карт.
-const TABLE = {
-  'denis,igor': ['c3_f4', 'c3_f4_wc', 'canteen', 'c1_f1', 'locker_room', 'c3_f3'],
-  'chernyak,shurpo': ['c2_f4_wc', 'c2_f4_wc', 'canteen', 'c1_wc', 'locker_room', 'library'],
-  'levonchuk': ['c2_f4', 'c1_f2', 'canteen', 'c2_f4', 'c1_f1', 'c1_f1'],
-  'bochko': ['c2_f4', 'c1_f2', 'canteen', 'c2_f4', 'locker_room', 'c1_f1'],
-  'matych,buy,guza': ['c1_f1', 'c3_f4', 'canteen', 'c3_f4_wc', 'locker_room', 'c1_f1'],
-  'smile,vadim,vitalik,zakha,anosov': ['c2_f4', 'c2_f4_wc', 'canteen', 'c1_f1', 'locker_room', 'c2_f4'],
-  'vanya,svyat': ['c3_f2', 'c1_f2', 'canteen', 'c3_f2', 'c1_f1', 'c3_f2'],
-  'olga': [null, 'c1_f1', 'canteen', 'c3_f4', null, 'c2_f4'],
-};
-
-test('на каждой перемене каждый именной NPC стоит там, где сказано в таблице раздела 11', () => {
-  for (const [ids, places] of Object.entries(TABLE)) {
-    for (const id of ids.split(',')) {
-      for (let b = 1; b <= 6; b++) {
-        const where = places[b - 1];
-        assert.equal(NPC_SCHEDULE[id][b], where, `${id}, перемена ${b}`);
-        for (const mapId of Object.keys(MAPS)) {
-          assert.equal(namedAt(b, mapId).includes(id), mapId === where, `${id} на ${mapId}, перемена ${b}`);
-        }
-        if (where) assert.ok(MAPS[where], 'нет карты ' + where);
-      }
-    }
-  }
-  // все именные ученики есть в таблице
-  for (const id of Object.keys(CHARACTERS)) if (id !== 'roma') assert.ok(NPC_SCHEDULE[id], 'нет в таблице: ' + id);
+// V2-5 (Л-22, Л-23): места на переменах теперь по дню недели и коду (data/npc_schedule.js); старая таблица
+// раздела 11 заменена тестами в tests/v2_5.test.mjs. Здесь — только что все именные есть в таблице.
+test('все именные ученики есть в таблице мест', () => {
+  const p = placesFor('KQ7M2P', 1, 1);
+  for (const id of Object.keys(CHARACTERS)) if (id !== 'roma') assert.ok(id in p, 'нет в таблице: ' + id);
 });
 
 test('на каждую перемену у каждого именного — свой диалог (и повторный)', () => {
@@ -87,7 +66,7 @@ test('завуч видит конусом по направлению взгл�
 });
 
 test('уроки: у каждого есть файл диалогов со всеми метками и кабинет на карте', () => {
-  const GAMES = ['cheat', 'phone_blocks', 'bait', 'phone_brawl', 'football', 'phone_feed', 'cheat_quiz', 'swim_stub', 'classhour_stub'];
+  const GAMES = ['test', 'phone_blocks', 'bait', 'phone_brawl', 'football', 'phone_feed', 'test_quiz', 'swim', 'classhour']; // V2-4
   for (const l of WEEK_DAYS.flat()) {
     const c = LESSON_FILES[l.file];
     assert.ok(c, 'нет файла урока ' + l.file);
@@ -95,7 +74,6 @@ test('уроки: у каждого есть файл диалогов со вс
     assert.deepEqual(d.errors, [], l.file);
     for (const lab of ['intro', 'before_game', 'after_good', 'after_bad', ...c.events, ...(c.seat ? [c.seat] : [])]) assert.ok(d.labels[lab], `${l.file}: нет ${lab}`);
     assert.ok(GAMES.includes(l.minigame), 'мини-игра урока ' + l.subject);
-    if (l.minigame.endsWith('_stub')) assert.ok(d.labels[l.minigame], `${l.file}: нет ${l.minigame}`);
     if (l.building) {
       assert.ok(MAPS[ROOM_MAPS[l.room]], 'нет карты кабинета ' + l.room);
       const corridor = MAPS[`c${l.building}_f${l.floor}`];

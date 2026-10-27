@@ -1,7 +1,7 @@
 // Реестр всех персонажей: именные ученики, учителя и безымянные (генерация по сиду).
 import { CHARACTERS, UNNAMED_POOL, VOICES } from '../../data/characters.js';
 import { TEACHERS, STAFF } from '../../data/teachers.js';
-import { getSheet } from './sprites.js';
+import { getSheet, palette } from './sprites.js';
 import { getPortrait } from './portraits.js';
 
 const unnamed = new Map();
@@ -26,6 +26,23 @@ export function sheetOf(id) {
   const p = getPerson(id);
   if (!p || p.voiceOnly || p.narrator) return null;
   return getSheet(visualKey(id, p), p);
+}
+
+// Спрайт в плавках, шапочке, очках и сланцах (бассейн, У-3): голый торс и ноги цвета кожи.
+const TRUNKS = ['#1f3a8a', '#b02828', '#1d1b20', '#2a7a3a', '#5a2a8a'];
+const CAPS = ['#f2f2f2', '#2a4aa8', '#d8c020', '#c83a3a'];
+export function swimSheetOf(id) {
+  const p = getPerson(id);
+  if (!p) return null;
+  const skin = palette(p).skin;
+  const h = [...id].reduce((a, c) => a + c.charCodeAt(0), 0);
+  const sp = {
+    ...p, top: 'tank', topColor: skin, shirtColor: skin, tie: null, tieLogo: false, belt: false, ring: false,
+    pants: 'slim', pantsColor: skin, trunks: TRUNKS[h % TRUNKS.length],
+    hairStyle: 'buzz', hairColor: CAPS[h % CAPS.length], hairStreak: null, glasses: 'sun', mustache: p.mustache,
+    shoeColor: '#3a8ac8', shoeStripe: null,
+  };
+  return getSheet('swim:' + id, sp);
 }
 
 export function portraitOf(id, emo) {

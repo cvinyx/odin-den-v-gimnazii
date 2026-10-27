@@ -7,7 +7,7 @@ import { audio } from '../engine/audio.js';
 import { storeGet, storeSet, KEYS, autosave } from '../engine/save.js';
 import { generateSeedCode } from '../engine/rng.js';
 import { createState, applyScriptEffect, scriptStatValue, changeStat, VAPE_FRIENDS } from './state.js';
-import { puff, sitQuiet, addSuspicion, checkBreakdown } from './actions.js';
+import { puff, sitQuiet, addSuspicion, checkBreakdown, trySeatSteal } from './actions.js';
 import { eventRng, setDay } from './day.js';
 import { BALANCE } from '../../data/balance.js';
 import { Hud } from '../ui/hud.js';
@@ -143,7 +143,14 @@ export class Game {
   performAction(name, arg) {
     const st = this.state;
     switch (name) {
+      case 'dia_check':
+        // М-2: в кабинке кто-то мог заметить (флаг дня — друзья подкалывают, автобус тоже)
+        st.flags.diarrheaT = 0;
+        st.flags.diarrheaSeen = eventRng(st, `dianotice:${st.day}:${st.lesson}`).chance(BALANCE.diarrhea.noticedChance);
+        break;
       case 'vape': {
+        // ИС-7: вне урока — только мужской туалет, раздевалка, кабинет класса (флаг ставит сцена мира)
+        if (st.phase !== 'lesson' && this.vapeAllowed === false) { this.toast('Не здесь.'); break; }
         const res = puff(st);
         if (!res.ok) { this.toast(res.reason); break; }
         audio.play('puff');
@@ -166,7 +173,7 @@ export class Game {
         if (!st.flags['washed' + st.lesson]) { changeStat(st, 'stress', -3); st.flags['washed' + st.lesson] = true; }
         break;
       case 'seat_steal': {
-        const ok = eventRng(st, 'seat' + st.lesson).chance(BALANCE.seating.stealChance);
+        const ok = trySeatSteal(st);
         st.seat = ok ? 'steal_ok' : 'steal_fail';
         st.flags.seat_ok = ok;
         if (ok) st.flags.satWithDenis = true;

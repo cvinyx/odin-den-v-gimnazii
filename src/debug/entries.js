@@ -15,7 +15,9 @@ import { ENDINGS, ENDING_TITLES } from '../game/endings.js';
 import { SchoolMapScene } from '../scenes/school_map.js';
 import { BuffetScene } from '../scenes/buffet.js';
 import { DAYS } from '../../data/schedule.js';
-import { NPC_SCHEDULE } from '../../data/npc_schedule.js';
+import { placesFor, basketballOn } from '../../data/npc_schedule.js';
+import { rollPowerbank } from '../game/powerbank.js';
+import { BALANCE as BAL } from '../../data/balance.js';
 import { startBreak, startDay, todaySchedule, lastLesson, lessonGraded, weekAverage } from '../game/day.js';
 import { MorningScene } from '../scenes/day_flow.js';
 import { generateSeedCode } from '../engine/rng.js';
@@ -166,7 +168,7 @@ export function registerDebugEntries() {
       prepareDay(game, b);
       startBreak(game.state, b);
       // начать там, где стоят Денис и Игорь (по таблице раздела 11)
-      const map = NPC_SCHEDULE.denis[b];
+      const map = placesFor(game.state.seed, game.state.day, b).denis;
       game.scenes.reset(new WorldScene(map, null), { fade: true });
     });
   }
@@ -274,6 +276,80 @@ export function registerDebugEntries() {
       });
     });
   }
+
+  // ---------- V2-4: тесты, списывание, плавание, классный час ----------
+  const lessonGame = (id, params, setup) => (game) => {
+    freshDay(game);
+    const st = game.state;
+    Object.assign(st, { phase: 'lesson', lesson: params.lesson || 1 });
+    if (setup) setup(st);
+    game.scenes.push(new MinigameScene(id, { params }));
+  };
+  registerDebug('Уроки V2-4', 'Тест: выбор (сидит с Игорем)', lessonGame('test', { lesson: 1 }, (st) => { st.seat = 'igor'; }));
+  registerDebug('Уроки V2-4', 'Тест: сидит один (только сам / телефон)', lessonGame('test', { lesson: 2 }, (st) => { st.seat = 'front'; st.stats.battery = 60; }));
+  registerDebug('Уроки V2-4', 'Тест: один и телефон сел', lessonGame('test', { lesson: 2 }, (st) => { st.seat = 'front'; st.stats.battery = 0; }));
+  registerDebug('Уроки V2-4', 'Списывание с телефона, учитель идёт по рядам', lessonGame('cheat', { lesson: 2, phone: true, walk: 'now' }, (st) => { st.seat = 'front'; }));
+  registerDebug('Уроки V2-4', 'Урок английского (класс вдвое меньше)', (game) => {
+    prepareDay(game, 0);
+    game.scenes.reset(new LessonScene(1), { fade: true });
+  });
+  registerDebug('Уроки V2-4', 'Плавание (мини-игра)', lessonGame('swim', { lesson: 3, swimmers: ['igor', 'denis', 'guza', 'matych'], bench: ['buy'] }));
+  registerDebug('Уроки V2-4', 'Плавание: Рома забыл форму', lessonGame('swim', { lesson: 3, romaBench: true, swimmers: ['igor', 'denis', 'guza', 'matych', 'buy'] }));
+  registerDebug('Уроки V2-4', 'Душ у бассейна', lessonGame('shower', { lesson: 3, friends: ['igor', 'denis'] }));
+  registerDebug('Уроки V2-4', 'Плавание: четверг, урок целиком', (game) => {
+    game.newDay(generateSeedCode());
+    startDay(game.state, 4);
+    const n = todaySchedule().findIndex((l) => l.subjectId === 'pe_swim') + 1;
+    prepareDay(game, n - 1);
+    Object.assign(game.state, { phase: 'break', lesson: n - 1 });
+    game.scenes.reset(new LessonScene(n), { fade: true });
+  });
+  registerDebug('Уроки V2-4', 'Классный час (мини-игра)', lessonGame('classhour', { lesson: 6 }));
+  registerDebug('Уроки V2-4', 'Классный час: пятница, урок целиком', (game) => {
+    game.newDay(generateSeedCode());
+    startDay(game.state, 5);
+    const n = lastLesson();
+    prepareDay(game, n - 1);
+    Object.assign(game.state, { phase: 'break', lesson: n - 1 });
+    game.scenes.reset(new LessonScene(n), { fade: true });
+  });
+
+  // ---------- V2-5: перемены ----------
+  // Перемена b дня 1 на карте map (новая игра, оценки 5), после загрузки сцены выполняется after(scene).
+  const breakAt = (game, map, b, setup, after) => {
+    prepareDay(game, b);
+    const st = game.state;
+    if (setup) setup(st);
+    startBreak(st, b);
+    game.scenes.reset(new WorldScene(map, null), { fade: true });
+    if (after) setTimeout(() => after(game.scenes.top, st), 1200);
+  };
+  const seedWhere = (pred) => { for (let i = 0; i < 5000; i++) { const s = 'DBG' + i.toString(36).toUpperCase().padStart(3, '0'); if (pred(s)) return s; } return generateSeedCode(); };
+  registerDebug('Перемены V2-5', 'Столовая: большая перемена', (game) => breakAt(game, 'canteen', 3));
+  registerDebug('Перемены V2-5', 'Диарея: таймер и стрелка', (game) => breakAt(game, 'c1_f1', 2, (st) => { st.flags.diarrheaT = BAL.diarrhea.seconds; }));
+  registerDebug('Перемены V2-5', 'Диарея: кабинка с выбором', (game) => breakAt(game, 'c1_wc', 2, (st) => { st.flags.diarrheaT = BAL.diarrhea.seconds; }));
+  registerDebug('Перемены V2-5', 'Пятиклассник в кабинке', (game) => breakAt(game, 'c1_wc', 2, (st) => { st.flags.forceKid5 = true; }));
+  registerDebug('Перемены V2-5', 'Баскетбол в спортзале', (game) => {
+    const seed = seedWhere((s) => basketballOn(s, 1, 2));
+    game.newDay(seed); game.state.phase = 'late';
+    prepareDay(game, 2); startBreak(game.state, 2);
+    game.scenes.reset(new WorldScene('gym', null), { fade: true });
+  });
+  registerDebug('Перемены V2-5', 'Пауэрбанк: просим у Дениса', (game) => {
+    const seed = seedWhere((s) => { const st = { seed: s, day: 1, lesson: 2, flags: {}, stats: {} }; return rollPowerbank(st, 'denis').ok; });
+    game.newDay(seed); game.state.phase = 'late';
+    const st = game.state; prepareDay(game, 2); startBreak(st, 2); st.stats.battery = 0;
+    const map = placesFor(seed, 1, 2).denis;
+    game.scenes.reset(new WorldScene(map, null), { fade: true });
+    setTimeout(() => { const w = game.scenes.top; const n = w.npcs.find((x) => x.id === 'denis'); if (n) w.powerbank(n); }, 1200);
+  });
+  registerDebug('Перемены V2-5', 'Вопросы про уроки (М-7): Черняк', (game) => {
+    prepareDay(game, 2);
+    const st = game.state; startBreak(st, 2);
+    const map = placesFor(st.seed, 1, 2).chernyak;
+    game.scenes.reset(new WorldScene(map, null), { fade: true });
+    setTimeout(() => { const w = game.scenes.top; const n = w.npcs.find((x) => x.id === 'chernyak'); if (n) w.askLessons(n); }, 1200);
+  });
 
   registerDebug('Сценки', 'Сообщение отца', (game) => {
     const l = labelLines('dad', 'msg_3')[0];

@@ -110,6 +110,7 @@ function legsFront(px, p, L, P, f) {
     px.rect(x, b, lw, 1, P.shoe);
     shoeMark(px, p, side ? x + lw - 1 : x, b);
   }
+  if (p.trunks) px.rect(8 - lw, legTop, lw * 2, 2, p.trunks); // плавки (бассейн, У-3)
   if (p.belt) { px.hline(8 - lw, 7 + lw, legTop, '#0b0b0d'); px.set(8, legTop, '#9a9aa4'); }
 }
 
@@ -475,6 +476,7 @@ function legsSide(px, p, L, P, f) {
   }
   if (p.belt && !skirt) px.hline(6, 9 + wide, legTop, '#0b0b0d');
   if (p.pants === 'track') px.vline(7, legTop, legTop + uh - 1, '#e8e8e8');
+  if (p.trunks) px.rect(6, legTop, 4 + wide, 2, p.trunks);
   if (skirt) {
     const sk = Math.ceil(legH * 0.55);
     const c = p.top === 'dress' ? P.top : P.pants;

@@ -83,7 +83,7 @@ export const BALANCE = {
   food: {
     smazhenka: { name: 'Смаженка', price: 120, hunger: -25, stress: 0 },
     topChoco: { name: '«Топ с шоколадом»', price: 180, hunger: -20, stress: -5 },
-    lunch: { name: 'Комплексный обед', price: 350, hunger: -50, stress: 0, lunchOnly: true },
+    lunch: { name: 'Комплексный обед (блюдо дня)', price: 350, hunger: -50, stress: 0, lunchOnly: true },
     tea: { name: 'Чай', price: 40, hunger: -5, stress: -3 },
     // Л-12 (V2-3)
     carbonara: { name: 'Карбонарка', price: 200, hunger: -35, stress: -3 },
@@ -120,7 +120,7 @@ export const BALANCE = {
 
   // Рассадка (раздел 11).
   seating: {
-    stealChance: 0.20,
+    stealChance: 0.5,           // ИС-4
     stealSuccessSuspicion: 0.7,
     stealSuccessCheatSpeed: 1.3,
     stealFailSuspicion: 1.4,
@@ -220,6 +220,7 @@ export const BALANCE = {
       shurpo: { resist: 1.0, attack: [9, 14] },
       bochko: { resist: 0.85, attack: [8, 13] },
       default: { resist: 1.0, attack: [9, 15] },
+      kid5: { resist: 1.5, attack: [4, 8] }, // пятиклассник: слабее обычных соперников
     },
   },
 
@@ -234,6 +235,22 @@ export const BALANCE = {
     quizTimes: [14, 30, 46],    // секунды, когда учитель обществоведения задаёт вопрос
     quizWrong: 6,               // неверный ответ: подозрение растёт
     spotBonus: 3,               // разовый скачок подозрения, когда учитель «заметил» подсматривание
+    calmAfter: 10,              // ИС-3: столько секунд без «попался» — и подозрение начинает падать
+    calmRate: 2,                // на столько в секунду
+    walkChance: 0.1,            // М-8: шанс за урок, что учитель пройдёт по рядам
+    walkSeconds: 9,             // сколько длится проход (туда и обратно)
+  },
+
+  // Тест на уроке (М-4, ИС-1): 10 вопросов, решать самому / у соседа / с телефона
+  test: {
+    questions: 10,
+    questionSeconds: 20,        // на один вопрос, если решаешь сам
+    cheatSeconds: 40,           // сколько длится списывание (потом недосписанное — решать самому)
+    neighborAccuracy: 0.8,      // доля верных ответов, списанных у соседа
+    phoneAccuracy: 0.9,         // с телефона точнее…
+    phoneSuspicionMul: 1.5,     // …но учитель замечает телефон сильнее
+    phoneBatteryPerAnswer: -1,
+    botRight: 0.6,              // бот, решающий сам, отвечает верно с таким шансом
   },
 
   // Оценка за урок, если главная мини-игра сама её не ставит (байт-дуэль на русском).
@@ -274,9 +291,9 @@ export const BALANCE = {
 
   // «Кто больше съест»: ритм-игра, серия попаданий = съеденная смаженка.
   eat: {
-    duration: 40, entry: 360, notesPerSmazhenka: 6, stomachMax: 10, window: 0.13, beat: 0.42,
-    skill: { default: 7, denis: 7.2, shurpo: 7.4, igor: 7.2, guza: 7.3, matych: 7, buy: 6.8, chernyak: 7, levonchuk: 7,
-      bochko: 6.8, smile: 7, vadim: 7.2, vitalik: 6.8, zakha: 7, anosov: 6.8 },
+    duration: 45, entry: 0, notesPerSmazhenka: 5, stomachMax: 10, window: 0.24, beat: 0.8, beatFast: 0.55, // V2-5: проще и медленнее, вход бесплатный (Л-13)
+    skill: { default: 5.4, denis: 5.6, shurpo: 5.8, igor: 5.6, guza: 5.7, matych: 5.5, buy: 5.5, chernyak: 5.4, levonchuk: 5.4,
+      bochko: 5.2, smile: 5.4, vadim: 5.6, vitalik: 5.2, zakha: 5.4, anosov: 5.2 },
   },
 
   // «Кто забайтит Матыча и Буя»: Рома и друг против двоих.
@@ -287,6 +304,29 @@ export const BALANCE = {
     maxTime: 60, comfort: [0.36, 0.64], drift: 0.28, jumpEvery: [2.2, 4], jump: 0.3, adjust: 0.75, discomfort: 0.3,
     pushEvery: [6, 10], pushWindow: 0.9, loseStress: 10,
     friends: { igor: [30, 50], denis: [26, 44], chernyak: [28, 48], shurpo: [22, 38], default: [26, 44] },
+  },
+
+  // V2-5: перемены
+  kid5: { chance: 0.15 },                         // Л-10: пятиклассник в кабинке мужского туалета
+  basketball: { chance: 0.25, throwEvery: 2.6, hitChance: 0.4 },   // М-3: баскетбол в спортзале
+  powerbank: { chance: 0.25, min: 67, max: 98 },  // М-1
+  ask: { chance: 0.4, testChance: 0.55 },         // М-7: вопросы ученикам других классов
+  diarrhea: { chance: 0.33, seconds: 30, noticedChance: 0.35, aura: { sock: -3, notebook: -4, none: -8 }, noticedAura: -6, stress: 5 }, // М-2
+  dishes: ['рис и котлета', 'макароны и рыба', 'гречка с гуляшом', 'пюре и сосиска', 'плов с курицей'], // Л-14: блюдо дня (Пн–Пт)
+
+  // Классный час (У-2): совместный байт учительницы
+  classhour: { rounds: 5, friendBoil: [3, 7], romaBoil: [5, 10, 18], kickChance: 0.25, winAura: 10, loseAura: -2, kickAura: -5 },
+
+  // Плавание (У-3): урок 4–5 минут, заплывы на две дорожки, физрук уходит и возвращается по кругу
+  swim: {
+    duration: 260, commandSeconds: 3, awaySeconds: [14, 20], heatMaxSeconds: 25, distance: 200,
+    strokePower: 4, drag: 1.2, strokeCost: 0.02, staminaRegen: 0.15,
+    hungerStamina: 0.3,        // при голоде выше порога запас выносливости меньше на эту долю
+    forgotChance: 0.1,         // шанс забыть форму (у каждого) — урок на лавке
+    npcSpeed: { igor: [17, 21], denis: [13, 17], guza: [14, 18], matych: [15, 19], buy: [15, 19], default: [14, 18] },
+    winAura: 3, overtakeAura: 1, splashAura: 1, dunkAura: 2, funCap: 8, caughtStress: 10, hunger: 10,
+    earlyReturnChance: 0.2,    // притопил друга — физрук может вернуться раньше и застать
+    benchSeconds: 60,          // урок на лавке (Рома забыл форму)
   },
 
   // Кто может предложить игру сам (инициатива NPC): шанс при разговоре.

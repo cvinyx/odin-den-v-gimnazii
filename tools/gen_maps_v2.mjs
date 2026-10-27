@@ -183,6 +183,7 @@ function cabinet(no, kind) {
   else if (no === '331') { g.str(1, 13, 'KK'); g.set(27, 12, 'P'); g.set(2, 12, 'P'); }
   else if (no === '224') { g.str(1, 13, 'UU'); g.str(26, 13, 'UU'); }
   else if (no === '321') { g.str(1, 13, 'KK'); }
+  else if (no === '232') { g.fill(1, 10, 28, 12, '.'); g.str(1, 13, 'KK'); g.str(24, 11, 'PKK'); } // ИС-9: на английском 3 ряда по 3 парты
   else g.str(1, 13, 'KK');
   const title = CLASSES[no] ? `Каб. ${no} · ${CLASSES[no]}` : `Каб. ${no} · ${SUBJECT_ROOMS[no]}`;
   add({
@@ -356,6 +357,9 @@ function canteen() {
     g.fill(tx, ty, tx + 6, ty, 'U');
     signs.push({ x: tx + 3, y: ty, text: cls[row][i] });
   }));
+  // Л-13: на большой перемене столы почти полностью заняты — места у столов (по 3 с каждой стороны)
+  const seats = [];
+  for (const ty of [6, 8, 13, 15]) for (const tx of [2, 11, 20, 29]) for (const k of [0, 2, 4, 6]) seats.push([tx + k, ty]);
   const named = [];
   for (const ty of [6, 8, 13, 15]) for (const tx of [3, 5, 12, 14, 21, 23, 30, 32]) named.push([tx, ty]);
   add({
@@ -364,7 +368,7 @@ function canteen() {
     exits: [{ x: 37, y: 1, to: 'c1_f1', spawn: 'canteen', label: 'Рекреация' }, { x: 3, y: 1, to: 'buffet', spawn: 'canteen', label: 'Буфет' }],
     objects: [], npcs: [], signs,
     spots: { named: [[5, 6], [7, 6], [5, 8], [7, 8], [9, 6], [3, 8], [14, 6], [16, 8], [23, 6], [25, 8], [32, 13], [30, 15], [12, 13], [14, 15], ...named],
-      crowd: [[26, 4], [18, 10], [8, 17], [34, 10], [20, 17], [10, 4]], patrol: [[18, 4], [18, 17], [36, 10]] },
+      crowd: [...seats, [26, 4], [18, 10], [8, 17], [34, 10], [20, 17], [10, 4]], patrol: [[18, 4], [18, 17], [36, 10]] },
   });
   // буфет (Л-11): маленькое зелёное помещение, вход из столовой
   const b = new Grid(14, 9, '+');
