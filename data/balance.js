@@ -99,7 +99,7 @@ export const BALANCE = {
 
   director: {
     stress: 20,
-    grade: 2,
+    grade: 1,
     endingOnCall: 3,
   },
 

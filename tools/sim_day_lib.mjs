@@ -178,9 +178,11 @@ export class SimDay {
     const roster = buildRoster(st, st.lesson, {});
     const r = roster.roma;
     const neighbor = r && roster.seats.some((x) => x.c === r.c && x.d === r.d && x.side !== r.side);
-    const self = { cautious: 0.65, average: 0.55, chaotic: 0.45 }[this.style];
+    // стиль игрока: осторожный учит и решает сам, обычный списывает у соседа, хаотичный — всегда и как попало
+    const self = { cautious: 0.85, average: 0.6, chaotic: 0.2 }[this.style];
+    const cheat = this.style === 'chaotic' ? neighbor || st.stats.battery > 0 : this.style === 'average' ? neighbor : false;
     let correct = 0, copied = 0;
-    if (neighbor || st.stats.battery > 0) {
+    if (cheat) {
       const res = this.playCheat(rng, { ...params, duration: T.cheatSeconds });
       if (res.result === 'director') return res;
       copied = Math.min(10, res.grade - 1);
@@ -224,7 +226,8 @@ export class SimDay {
       roma: { x: rs.x, y: rs.y - 12 }, teacherPos: tp,
       targets: roster.seats.map((s) => { const f = tileToFeet(seatTile(s.c, s.d, s.side)); return { x: f.x, y: f.y - 12 }; }),
     });
-    const bot = makeBot(this.style === 'chaotic' ? 'greedy' : this.style === 'average' && this.rng.chance(0.5) ? 'greedy' : 'cautious');
+    // хаотичный списывает напролом и замечает взгляд учителя поздно
+    const bot = this.style === 'chaotic' ? makeBot('greedy', 2) : makeBot(this.style === 'average' && this.rng.chance(0.5) ? 'greedy' : 'cautious');
     const quiz = params.quiz ? [...BALANCE.cheat.quizTimes] : [];
     const right = { cautious: 0.7, average: 0.5, chaotic: 0.3 }[this.style];
     while (!L.finished) {
