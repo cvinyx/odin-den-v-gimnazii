@@ -45,6 +45,18 @@ export function swimSheetOf(id) {
   return getSheet('swim:' + id, sp);
 }
 
+// Футбольная форма (Ф-1): майка и шорты цвета команды, голые руки и ноги, гетры-кроссовки.
+export function kitSheetOf(id, color) {
+  const p = getPerson(id);
+  if (!p) return null;
+  const skin = palette(p).skin;
+  const kp = {
+    ...p, top: 'tshirt', topColor: color, shirtColor: color, tie: null, tieLogo: false, belt: false, ring: false, glasses: null,
+    pants: 'slim', pantsColor: skin, trunks: color, trunksH: 4, shoeColor: color === '#f2f2f2' ? '#2a2a30' : '#e8e8e8', shoeStripe: null,
+  };
+  return getSheet('kit:' + color + ':' + id, kp);
+}
+
 export function portraitOf(id, emo) {
   const p = getPerson(id);
   if (!p || p.narrator || p.noPortrait) return null;

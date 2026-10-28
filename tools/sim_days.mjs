@@ -22,7 +22,7 @@ for (const style of ['cautious', 'average', 'chaotic']) {
   }
   const pct = (x) => Math.round(100 * x / N) + '%';
   out[style] = end;
-  console.log(`\n== ${style} (${N} дней) ==`);
+  console.log(`\n== ${style} (${N} недель) ==`);
   console.log('Концовки:', ENDINGS.map((e) => `${ENDING_TITLES[e]} ${pct(end[e])}`).join(', '));
   console.log(`Средняя оценка ${(avg / N).toFixed(2)}, аура ${(aura / N).toFixed(0)}, побед ${(wins / N).toFixed(1)}, вызовов ${(calls / N).toFixed(2)}, срывов ${(bd / N).toFixed(2)}, матч выигран ${pct(matchWin)}`);
   console.log(`Деньги в конце ${(money / N / 100).toFixed(2)} BYN (меньше 1 BYN — ${pct(broke)}), батарея ${(battery / N).toFixed(0)} % (0 % — ${pct(deadPhone)})`);

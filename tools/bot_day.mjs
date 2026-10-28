@@ -75,7 +75,7 @@ export async function runDay({ seed = 'KQ7M2P', shots = null, cheatStyle = 'caut
       const s1 = await bot.handle((t, st) => t === 'minigame' || t === 'world' || st.bottom === 'bus_home' || t === 'results', 120000);
       if (s1.id === 'minigame') {
         await shot(`d${day}-urok-${l.n}-${l.minigame}`);
-        await bot.handle((t, st) => t === 'world' || st.bottom === 'bus_home' || t === 'results', 240000);
+        await bot.handle((t, st) => t === 'world' || st.bottom === 'bus_home' || t === 'results', 900000); // плавание с душем ~7 мин, футбол с золотым голом — до ~7 мин
       }
       timings.lessons.push({ day, n: l.n, sec: Math.round((Date.now() - ls) / 1000) });
       const top = await bot.top();

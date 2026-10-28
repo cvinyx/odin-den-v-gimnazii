@@ -138,7 +138,7 @@ export class SimDay {
   minigame(id, { opp = null, bet = 0, params = {} } = {}) {
     const st = this.st;
     let res;
-    if (st.breakdownPending) { st.breakdownPending = false; res = { result: 'lose', deltas: {}, grade: id === 'football' ? BALANCE.football.gradeBase : 4 }; }
+    if (st.breakdownPending) { st.breakdownPending = false; res = { result: 'lose', deltas: {}, grade: 4 }; }
     else res = this.play(id, opp, params);
     this.games[id] = (this.games[id] || 0) + 1;
     for (const [k, v] of Object.entries(res.deltas || {})) if (k in st.stats && v) changeStat(st, k, v);
@@ -178,9 +178,11 @@ export class SimDay {
     const roster = buildRoster(st, st.lesson, {});
     const r = roster.roma;
     const neighbor = r && roster.seats.some((x) => x.c === r.c && x.d === r.d && x.side !== r.side);
-    const self = { cautious: 0.65, average: 0.55, chaotic: 0.45 }[this.style];
+    // стиль игрока: осторожный учит и решает сам, обычный списывает у соседа, хаотичный — всегда и как попало
+    const self = { cautious: 0.85, average: 0.6, chaotic: 0.2 }[this.style];
+    const cheat = this.style === 'chaotic' ? neighbor || st.stats.battery > 0 : this.style === 'average' ? neighbor : false;
     let correct = 0, copied = 0;
-    if (neighbor || st.stats.battery > 0) {
+    if (cheat) {
       const res = this.playCheat(rng, { ...params, duration: T.cheatSeconds });
       if (res.result === 'director') return res;
       copied = Math.min(10, res.grade - 1);
@@ -224,7 +226,8 @@ export class SimDay {
       roma: { x: rs.x, y: rs.y - 12 }, teacherPos: tp,
       targets: roster.seats.map((s) => { const f = tileToFeet(seatTile(s.c, s.d, s.side)); return { x: f.x, y: f.y - 12 }; }),
     });
-    const bot = makeBot(this.style === 'chaotic' ? 'greedy' : this.style === 'average' && this.rng.chance(0.5) ? 'greedy' : 'cautious');
+    // хаотичный списывает напролом и замечает взгляд учителя поздно
+    const bot = this.style === 'chaotic' ? makeBot('greedy', 2) : makeBot(this.style === 'average' && this.rng.chance(0.5) ? 'greedy' : 'cautious');
     const quiz = params.quiz ? [...BALANCE.cheat.quizTimes] : [];
     const right = { cautious: 0.7, average: 0.5, chaotic: 0.3 }[this.style];
     while (!L.finished) {
@@ -277,7 +280,7 @@ export class SimDay {
     st.flags.romaGoals = goals; st.flags.smileDiarrhea = !!M.smileGone; st.flags.kolyaConceded = M.stats.kolyaConceded;
     const d = { aura: F[res].aura + goals * F.goalAura, hunger: BALANCE.hunger.perFootball };
     if (F[res].stress) d.stress = F[res].stress;
-    return { result: res, deltas: d, grade: Math.min(10, F.gradeBase + goals + (res === 'win' ? F.gradeWinBonus : 0)) };
+    return { result: res, deltas: d }; // физра без отметки (У-6)
   }
 
   // ---------- Вызов к директору ----------

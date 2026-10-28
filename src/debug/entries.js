@@ -247,9 +247,13 @@ export function registerDebugEntries() {
   };
   registerDebug('Эль-Класико', 'Матч сразу', match({}));
   registerDebug('Эль-Класико', 'ИИ против ИИ', match({ aiRoma: true }));
-  registerDebug('Эль-Класико', 'ИИ против ИИ ×4', match({ aiRoma: true, speed: 4 }));
+  registerDebug('Эль-Класико', 'ИИ против ИИ ×4', match({ aiRoma: true, speed: 4, skipHalftime: true }));
   registerDebug('Эль-Класико', 'Диарея Смайла сразу', match({ diarrhea: true, diarrheaSoon: true }));
-  registerDebug('Эль-Класико', 'Ярость Игоря', (game) => { match({})(game); game.state.flags.igorRage = true; });
+  registerDebug('Эль-Класико', 'Ярость Игоря', (game) => { match({ rageSoon: true })(game); game.state.flags.igorRage = true; });
+  registerDebug('Эль-Класико', 'Штрафной сразу', match({ foulSoon: 'free', diarrhea: false }));
+  registerDebug('Эль-Класико', 'Пенальти сразу', match({ foulSoon: 'penalty', diarrhea: false }));
+  registerDebug('Эль-Класико', 'Золотой гол (ничья в конце)', match({ goldenSoon: true, diarrhea: false }));
+  registerDebug('Эль-Класико', 'Золотой гол, ИИ ×4 до итогов', match({ goldenSoon: true, aiRoma: true, speed: 4, diarrhea: true }));
   registerDebug('Эль-Класико', 'Физра вторника целиком (раздевалка → матч → душ)', (game) => {
     game.newDay(generateSeedCode());
     startDay(game.state, 2);

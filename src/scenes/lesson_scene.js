@@ -1,8 +1,8 @@
 // Шаблон урока (раздел 5): вход → выбор места → 2–3 события → главная мини-игра → итог урока → звонок.
 // Все действия урока (телефон, вейп, байт, сидеть тихо) — через выборы в событиях.
-// Подозрение 100 → вызов к директору: остаток урока пропущен, оценка 2.
+// Подозрение 100 → вызов к директору: остаток урока пропущен, оценка 1 (BALANCE.director.grade).
 // Неделя (V2-2): урок берётся из расписания текущего дня, диалоги — из файла предмета,
-// мини-игра — из расписания (SUBJECTS[*].games). *_stub — временные заглушки (диалог вместо игры).
+// мини-игра — из расписания (SUBJECTS[*].games).
 import { LESSON_FILES, LINEUPS } from '../../data/lessons.js';
 import { MapView } from '../world/map_view.js';
 import { BALANCE } from '../../data/balance.js';
@@ -58,6 +58,7 @@ export class LessonScene {
     const steps = [
       { p: 0.02, run: () => this.dialog('intro') },
       ...(c.seat ? [{ p: 0.06, run: () => this.dialog(c.seat, () => this.view.rebuild && this.view.rebuild(this.game.state)) }] : []),
+      ...(c.view === 'pe' ? [{ p: 0.08, run: () => this.dialog(this.prematchLabel()) }] : []),
       ...c.events.map((e, i) => ({ p: 0.12 + i * 0.12, run: () => this.dialog(e) })),
       ...(c.pre && !this.swim?.romaBench ? [{ p: 0.4, run: () => this.extraGame(c.pre) }] : []),
       { p: 0.5, run: () => this.dialog(before) },
@@ -69,6 +70,14 @@ export class LessonScene {
       { p: 1, run: () => this.bell() },
     ];
     return steps;
+  }
+
+  // Разговор в раздевалке перед матчем (Ф-10): вторник — pm*, пятница — pf* («реванш»).
+  prematchLabel() {
+    const st = this.game.state;
+    const pre = st.day === 5 ? 'pf' : 'pm';
+    const all = Object.keys(getDialog(this.file).labels).filter((l) => new RegExp(`^${pre}\\d+$`).test(l));
+    return eventRng(st, `prematch${st.day}`).pick(all);
   }
 
   setProgress(p) { this.game.state.clock = lessonClock(this.n, p); }

@@ -68,12 +68,22 @@ export class CheatGame {
     this.quiz = null;
   }
 
+  // автоигра (бот, «ИИ против ИИ»): отвечает на вопрос учителя через 0,8 с, верно с шансом botRight
+  autoAnswer(dt) {
+    this.autoT = (this.autoT || 0) + dt;
+    if (this.autoT < 0.8) return -1;
+    this.autoT = 0;
+    const opts = this.quiz.q.options;
+    const right = opts.findIndex((o) => o.target === 'right');
+    return right >= 0 && this.ctx.rng.chance(BALANCE.test.botRight) ? right : this.ctx.rng.int(0, opts.length - 1);
+  }
+
   update(dt, input) {
     this.time += dt;
     const L = this.logic;
     if (this.quizResult) { this.quizResult.t -= dt; if (this.quizResult.t <= 0) this.quizResult = null; }
     if (this.quiz) {
-      const i = this.botAnswer ? this.botAnswer(this.quiz) : this.quiz.menu.update(dt, input);
+      const i = this.botAnswer ? this.botAnswer(this.quiz) : this.autoplay ? this.autoAnswer(dt) : this.quiz.menu.update(dt, input);
       if (i >= 0) this.answer(i);
       return; // пока отвечаешь — время контрольной стоит
     }

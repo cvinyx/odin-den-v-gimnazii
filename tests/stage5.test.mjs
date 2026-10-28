@@ -41,11 +41,12 @@ test('2-й тайм: Коля вместо Вадима, Гуза вместо �
   assert.equal(D.lineupErrors.length, 0);
 });
 
-test('перерыв влияет на 2-й тайм: «Галатасарай» — ярость Игоря, «Барса» — Денис сильнее', () => {
+test('перерыв влияет на 2-й тайм: «Галатасарай» — Игорь злее (но не ярость, Ф-7), «Барса» — Денис сильнее', () => {
   const M = new MatchLogic(new Rng('t4'), { aiRoma: true, diarrhea: false });
   play(M, (m) => m.state === 'halftime');
   M.secondHalf('igor');
-  assert.ok(M.players.find((q) => q.id === 'igor').rage > 0);
+  assert.equal(M.players.find((q) => q.id === 'igor').rage, 0);
+  assert.equal(M.players.find((q) => q.id === 'igor').mod.skill, 1);
   const N = new MatchLogic(new Rng('t5'), { aiRoma: true, diarrhea: false });
   play(N, (m) => m.state === 'halftime');
   N.secondHalf('barca');
