@@ -32,6 +32,6 @@ export function runMatch(seed, opts = {}) {
       }
     }
   }
-  return { score: { ...M.score }, result: M.result(), stats: M.stats, diarrhea: M.diarrheaDone, minGap, issues: [...new Set(issues)].slice(0, 5), lineupErrors: M.lineupErrors, sec: frames / 60,
+  return { score: { ...M.score }, result: M.result(), regResult: M.regResult || M.result(), golden: M.half === 3, summary: M.summary(), stats: M.stats, diarrhea: M.diarrheaDone, minGap, issues: [...new Set(issues)].slice(0, 5), lineupErrors: M.lineupErrors, sec: frames / 60,
     goals: Object.fromEntries(M.players.filter((q) => q.goals).map((q) => [q.id, q.goals])) };
 }

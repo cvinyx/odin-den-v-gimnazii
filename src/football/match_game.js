@@ -1,14 +1,16 @@
-// «Эль-Класико» как мини-игра урока 5 (интерфейс start/update/draw/end, реестр мини-игр).
-// Логика — match.js, здесь: управление Ромой, отрисовка зала, табло, судья с облачками,
-// «ГОЛ!», перерыв со сценкой (DialogScene), режим «ИИ против ИИ» и ускорение ×4 (отладка).
+// «Эль-Класико» как мини-игра урока физры (интерфейс start/update/draw/end, реестр мини-игр).
+// Логика — match.js, здесь: управление Ромой, отрисовка зала в форме команд (Ф-1), табло, судья (только
+// нарушения, Ф-16), трибуна со зрителями (Ф-17), экран штрафного/пенальти (Ф-15), ярость (Ф-7), золотой
+// гол (Ф-8), после матча — статистика, xG и MVP (Ф-3…Ф-5), похвала Роме и подколы (Ф-2, Ф-9).
 import { registerMinigame } from '../minigames/registry.js';
 import { Particles, Popups, vrand } from '../minigames/kit.js';
-import { MatchLogic } from './match.js';
-import { FIELD, TEAM_NAMES, TEAM_COLORS } from './field.js';
+import { MatchLogic, fmtXG } from './match.js';
+import { FIELD, TEAM_NAMES, TEAM_COLORS, TEAM_UI } from './field.js';
+import { BANTER, SILENT } from '../../data/football_banter.js';
 import { BALANCE } from '../../data/balance.js';
 import { staminaPenalty } from '../game/actions.js';
 import { labelLines } from '../game/dialogs.js';
-import { getPerson, sheetOf } from '../gen/people.js';
+import { getPerson, sheetOf, kitSheetOf, portraitOf } from '../gen/people.js';
 import { frameRect } from '../gen/sprites.js';
 import { DialogScene } from '../scenes/dialog_scene.js';
 import { GAME_H } from '../engine/renderer.js';
@@ -16,6 +18,9 @@ import { audio } from '../engine/audio.js';
 
 const B = BALANCE.football;
 const HT_FLAGS = { ht_barca: 'barca', ht_real: 'real', ht_igor: 'igor', ht_none: 'none' };
+const FANS = ['levonchuk', 'vanya', 'svyat', 'anosov', 'vasily']; // не играющие именные на трибуне (Ф-17)
+const SP_TEXT = { goal: 'ГОЛ!', save: 'СЕЙВ!', wide: 'МИМО!', over: 'НАД ВОРОТАМИ!', wall: 'В СТЕНКУ!' };
+const nameOf = (id) => (id === 'roma' ? 'Рома' : getPerson(id).short);
 
 function dirName(dx, dy) { return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'); }
 
@@ -41,6 +46,10 @@ export class FootballGame {
       diarrhea: params.diarrhea ?? null,
     });
     if (params.diarrheaSoon && this.L.diarrheaAt != null) this.L.diarrheaAt = 3;
+    if (params.rageSoon && this.L.rageAt) this.L.rageAt[1] = 2;
+    if (params.goldenSoon) { this.L.half = 2; this.L.t = B.halfSeconds - 3; this.L.secondHalf = () => {}; }
+    if (params.foulSoon) this.foulSoon = params.foulSoon; // отладка: сразу штрафной / пенальти
+    this.cheerT = -9; this.cheerTeam = null;
     this.banner = { text: 'ЭЛЬ-КЛАСИКО!', t: 0, color: '#ffe14d' };
   }
 
@@ -50,6 +59,7 @@ export class FootballGame {
   romaInput(input) {
     const ax = input.axis();
     const inp = { ax: ax.x, ay: ax.y, sprint: input.held('run'), pass: input.pressed('confirm'), tackle: input.pressed('back'), shoot: null };
+    if (this.L.state === 'setpiece') { if (inp.pass) input.consume('confirm'); return inp; }
     if (input.held('action2')) this.power = Math.min(1, (this.power ?? 0) + 1 / 60 / 0.9);
     else if (this.power != null) { inp.shoot = this.power; this.power = null; }
     if (inp.tackle) input.consume('back');
@@ -61,6 +71,13 @@ export class FootballGame {
     const L = this.L;
     const auto = this.autoplay || this.params.aiRoma;
     if (auto) L.p.aiRoma = true;
+    if (this.post) return this.updatePost(dt, input, auto);
+    if (this.foulSoon && L.state === 'play' && this.time > 1.5) {
+      const iny = L.team('inyaz').filter((q) => !q.keeper), fiz = L.team('fizmat').find((q) => !q.keeper);
+      const v = L.roma || iny[0];
+      if (this.foulSoon === 'penalty') { v.x = FIELD.right - 30; v.y = FIELD.cy; }
+      L.foul(fiz, v); this.foulSoon = null; this.handleEvents();
+    }
     const steps = this.speed;
     for (let i = 0; i < steps; i++) {
       L.update(dt, auto ? null : this.romaInput(input));
@@ -73,7 +90,57 @@ export class FootballGame {
     if (this.banner) { this.banner.t += dt; if (this.banner.t > 2.2) this.banner = null; }
     if (L.state === 'halftime' && !this.htShown) this.halftime();
     if (L.state === 'end' && !this.endT) { this.endT = this.time; audio.play('whistle'); this.banner = { text: 'ФИНАЛЬНЫЙ СВИСТОК', t: 0, color: '#ffffff' }; }
-    if (this.endT && this.time - this.endT > 2) this.done = true;
+    if (this.endT && this.time - this.endT > 2) this.startPost();
+  }
+
+  // ---------- После матча: статистика + xG + MVP, затем похвала и подколы ----------
+  startPost() {
+    const L = this.L;
+    this.sum = L.summary();
+    this.post = { phase: 'stats', t: 0, i: 0, lines: this.banterLines() };
+    audio.play(L.result() === 'win' ? 'statUp' : 'menuMove');
+  }
+
+  updatePost(dt, input, auto) {
+    const P = this.post;
+    P.t += dt;
+    const next = auto ? P.t > (P.phase === 'stats' ? 4 : 2.2) : input.pressed('confirm') && P.t > 0.3;
+    if (!next) return;
+    if (!auto) input.consume('confirm');
+    P.t = 0;
+    if (P.phase === 'stats') { P.phase = 'banter'; P.i = 0; if (!P.lines.length) this.done = true; return; }
+    P.i++;
+    if (P.i >= P.lines.length) this.done = true;
+    else audio.play('menuMove');
+  }
+
+  // Похвала Роме (если забил) и подколы: победитель — проигравший — победитель — проигравший (Ф-9).
+  banterLines() {
+    const L = this.L, rng = this.rng, day = this.ctx.state.day;
+    const sum = L.summary();
+    const win = L.winner(), lose = win ? (win === 'inyaz' ? 'fizmat' : 'inyaz') : null;
+    const played = (t) => L.players.filter((q) => q.team === t && q.out !== 'gone' && q.id !== 'roma' && !SILENT.includes(q.id)).map((q) => q.id);
+    const speakers = { inyaz: [...new Set(played('inyaz'))], fizmat: [...new Set(played('fizmat'))] };
+    // [Имя игрока] — лучший у победителей: MVP, иначе лучший бомбардир, иначе вратарь с сейвами
+    const rows = win ? sum.rows[win] : [];
+    const best = rows.find((r) => r.id === sum.mvp) || [...rows].sort((a, b) => (b.goals * 100 + b.assists * 10 + b.saves) - (a.goals * 100 + a.assists * 10 + a.saves))[0];
+    const loserKeeper = lose ? (L.keeperOf(lose) || {}).id : null;
+    const fill = (t) => t.replace('[Имя игрока]', best ? nameOf(best.id) : 'Рома').replace('%score%', `${L.score.inyaz}:${L.score.fizmat}`)
+      .replace('%keeper%', loserKeeper ? nameOf(loserKeeper) : 'ваш вратарь').replace('%goals%', String(L.roma.goals));
+    const used = new Set();
+    const take = (pool, team, emo) => {
+      const cand = pool.filter(([t, who, d]) => !used.has(t) && (!d || d === day) && (!who || speakers[team].includes(who)));
+      if (!cand.length || !speakers[team].length) return null;
+      const [t, who] = rng.pick(cand);
+      used.add(t);
+      return { who: who || rng.pick(speakers[team]), text: fill(t), emo };
+    };
+    const out = [];
+    if (L.roma.goals > 0) out.push(take(BANTER.praise, 'inyaz', 'happy'));
+    if (!win) { out.push(take(BANTER.draw, 'inyaz', 'norm'), take(BANTER.draw, 'fizmat', 'norm')); return out.filter(Boolean); }
+    const losePool = [...BANTER.lose, ...BANTER['lose_' + lose]];
+    out.push(take(BANTER.win, win, 'happy'), take(losePool, lose, 'angry'), take(BANTER.win, win, 'happy'), take(losePool, lose, 'angry'));
+    return out.filter(Boolean);
   }
 
   bubble(id, label) {
@@ -92,30 +159,45 @@ export class FootballGame {
         case 'goal': {
           audio.play('goal');
           this.game.r.shake(5, 0.6);
-          this.banner = { text: 'ГОЛ!', t: 0, color: TEAM_COLORS[e.team], big: true };
+          this.cheerT = this.time; this.cheerTeam = e.team;
+          this.banner = { text: e.own ? 'АВТОГОЛ!' : L.half === 3 ? 'ЗОЛОТОЙ ГОЛ!' : 'ГОЛ!', t: 0, color: TEAM_UI[e.team], big: true };
           const b = L.ball;
           this.particles.burst(b.x, b.y, 40, { color: '#ffe14d', speed: 120, life: 1.2 });
           this.particles.burst(b.x, b.y, 30, { color: TEAM_COLORS[e.team], speed: 90, life: 1.2 });
-          if (e.scorer) { this.bubble(e.scorer, 'goal_' + e.scorer); this.popups.add(240, 60, getPerson(e.scorer).short + '!', '#ffffff'); }
+          if (e.own) { this.bubble(e.own, 'own_goal_' + e.own); this.popups.add(240, 60, `${nameOf(e.own)} — в свои!`, '#ff6a6a'); }
+          else if (e.scorer) { this.bubble(e.scorer, 'goal_' + e.scorer); this.popups.add(240, 60, nameOf(e.scorer) + '!' + (e.assist ? ` (пас: ${nameOf(e.assist)})` : ''), '#ffffff'); }
           break;
         }
         case 'save': audio.play('hit'); this.popups.add(L.ball.x, L.ball.y - 12, 'Сейв!', '#9fd3ff'); break;
-        case 'foul': audio.play('whistle'); this.bubble('ivan', 'ref_foul'); this.popups.add(L.ball.x, L.ball.y - 14, 'Фол!', '#ff6a6a'); break;
-        case 'yellow': this.yellowFor = { id: e.id, t: this.time }; this.bubble('ivan', 'ref_yellow'); break;
+        case 'foul': {
+          // судья говорит только о нарушениях (Ф-16)
+          audio.play('whistle');
+          const lab = e.penalty && e.setpiece ? 'ref_penalty' : e.kind === 'hand' ? 'ref_hand' : e.setpiece ? 'ref_foul' : 'ref_play_on';
+          this.bubble('ivan', lab);
+          this.popups.add(L.ball.x, L.ball.y - 14, e.kind === 'hand' ? 'Рука!' : 'Фол!', '#ff6a6a');
+          break;
+        }
+        case 'setpiece': this.banner = { text: e.penalty ? 'ПЕНАЛЬТИ!' : 'ШТРАФНОЙ!', t: 0, color: '#ffe14d' }; break;
+        case 'sp_result':
+          if (e.result === 'save') audio.play('hit');
+          else if (e.result !== 'goal') audio.play('menuDenied');
+          break;
+        case 'super': audio.play('kick'); this.game.r.shake(4, 0.4); this.popups.add(L.ball.x, L.ball.y - 16, 'СУПЕРУДАР!', '#ff4a4a'); break;
+        case 'rage_block': audio.play('hit'); this.popups.add(L.ball.x, L.ball.y - 14, 'Не отобрать!', '#ff4a4a'); break;
+        case 'golden': audio.play('whistle'); this.banner = { text: 'ЗОЛОТОЙ ГОЛ', t: 0, color: '#ffe14d', big: true }; break;
         case 'steal': audio.play('hit'); break;
         case 'diarrhea':
           audio.play('tummy'); this.game.r.shake(3, 0.5);
           this.bubble('smile', 'diarrhea');
           this.banner = { text: 'Смайл убегает с поля!', t: 0, color: '#c8a060' };
           break;
-        case 'keeper_in': this.bubble('ivan', 'keeper_in_' + e.id); audio.play('whistle'); break;
+        case 'keeper_in': this.bubble(e.id, 'keeper_in_' + e.id); this.popups.add(240, 50, `${nameOf(e.id)} — в ворота`, '#ffffff'); audio.play('whistle'); break;
         case 'rage':
           audio.play('igorLaugh'); this.game.r.shake(4, 0.5);
-          this.banner = { text: 'ЯРОСТЬ ИГОРЯ!', t: 0, color: '#ff4a4a' };
+          this.banner = { text: 'ЯРОСТЬ ИГОРЯ!', t: 0, color: '#ff4a4a', shake: true };
           this.bubble('igor', 'rage');
           break;
         case 'sub': this.popups.add(240, 40, `Замена: ${getPerson(e.in).short} вместо ${getPerson(e.out).short}`, '#ffffff'); break;
-        case 'ref': this.bubble('ivan', 'ref_' + e.id); break;
         case 'halftime': audio.play('whistle'); break;
         default:
       }
@@ -161,18 +243,21 @@ export class FootballGame {
     st.flags.smileDiarrhea = !!L.smileGone;
     st.flags.kolyaConceded = L.stats.kolyaConceded;
     st.flags.matchFouls = L.stats.fouls;
-    st.flags.romaYellow = L.roma.yellow;
-    const grade = Math.min(10, B.gradeBase + goals + (res === 'win' ? B.gradeWinBonus : 0));
+    const sum = L.summary();
+    st.flags.matchMVP = sum.mvp;
+    // отметки за физру нет (У-6)
     return {
-      result: res, deltas: d, money: 0, grade,
-      extra: { score: { ...L.score }, goals, stats: L.stats },
-      summary: `${TEAM_NAMES.inyaz} ${L.score.inyaz} : ${L.score.fizmat} ${TEAM_NAMES.fizmat} · голов Ромы: ${goals}`,
+      result: res, deltas: d, money: 0,
+      extra: { score: { ...L.score }, goals, stats: L.stats, mvp: sum.mvp, xg: sum.xg, golden: L.half === 3 },
+      summary: `${TEAM_NAMES.inyaz} ${L.score.inyaz} : ${L.score.fizmat} ${TEAM_NAMES.fizmat} · голов Ромы: ${goals} · MVP: ${nameOf(sum.mvp)}`,
     };
   }
 
   // ---------- Отрисовка ----------
   draw(r) {
     const L = this.L;
+    if (this.post) return this.drawPost(r);
+    if (L.state === 'setpiece' && L.sp) return this.drawSetPiece(r);
     r.rect(0, 0, 480, GAME_H, '#2a2230');
     this.drawHall(r);
     // игроки и судья — по глубине (y)
@@ -184,13 +269,110 @@ export class FootballGame {
     this.drawBubbles(r);
     this.drawBoard(r);
     this.popups.draw(r);
-    if (this.banner) {
-      const b = this.banner;
-      const k = Math.min(1, b.t * 5);
-      const scale = b.big ? 6 : 3;
-      r.alpha(Math.min(1, (2.2 - b.t) * 2), () => r.text(b.text, 240 + (b.big ? Math.round(Math.sin(b.t * 40) * 2) : 0), 96 - (1 - k) * 30, { align: 'center', color: b.color, scale, shadow: '#000' }));
+    this.drawBanner(r);
+    if (L.state === 'kickoff' && L.total < 3) r.text('Z — пас, C — удар (держи), X — отбор, Shift — рывок', 240, 60, { align: 'center', color: '#ffffff', shadow: '#000' });
+    this.game.hud.draw(r, this.ctx.state);
+  }
+
+  drawBanner(r) {
+    if (!this.banner) return;
+    const b = this.banner;
+    const k = Math.min(1, b.t * 5);
+    const scale = b.big ? 6 : 3;
+    const dx = b.big ? Math.round(Math.sin(b.t * 40) * 2) : b.shake ? Math.round((vrand() - 0.5) * 6) : 0;
+    const dy = b.shake ? Math.round((vrand() - 0.5) * 4) : 0;
+    r.alpha(Math.min(1, (2.2 - b.t) * 2), () => r.text(b.text, 240 + dx, 96 - (1 - k) * 30 + dy, { align: 'center', color: b.color, scale, shadow: '#000' }));
+  }
+
+  // ---------- Экран штрафного / пенальти (Ф-15) ----------
+  drawSetPiece(r) {
+    const L = this.L, sp = L.sp, S = B.setPiece;
+    const gx = (a) => 240 + a * 90; // −1…1 — створ ворот
+    r.rect(0, 0, 480, GAME_H, '#5a5468');
+    for (let x = 0; x < 480; x += 24) r.rect(x, 0, 1, 150, '#655f74');
+    r.rect(0, 150, 480, GAME_H - 150, '#c8995a');
+    for (let y = 156; y < GAME_H; y += 12) r.rect(0, y, 480, 1, '#bf9054');
+    // ворота спереди: штанги, перекладина, сетка
+    r.rect(gx(-1) - 3, 56, 3, 96, '#ffffff'); r.rect(gx(1), 56, 3, 96, '#ffffff'); r.rect(gx(-1) - 3, 53, 186, 3, '#ffffff');
+    for (let x = gx(-1); x < gx(1); x += 6) r.rect(x, 56, 1, 94, '#8a8494');
+    for (let y = 60; y < 150; y += 6) r.rect(gx(-1), y, 180, 1, '#8a8494');
+    // вратарь: смещается к точке прыжка
+    const k = sp.keeper;
+    let kx = 240;
+    if (sp.phase === 'kick' || sp.phase === 'result') kx = 240 + (gx(sp.dive) - 240) * Math.min(1, (sp.phase === 'result' ? 1 : sp.t / 0.4));
+    if (k) { const sh = kitSheetOf(k.id, TEAM_COLORS[k.team]); const f = frameRect('down', 0); r.sprite(sh, f.sx, f.sy, f.sw, f.sh, Math.round(kx - f.sw), 150 - f.sh * 2, 2); }
+    // стенка на штрафном: полевые обороняющейся команды
+    if (!sp.penalty && k) {
+      const wall = L.team(k.team).filter((q) => !q.keeper).slice(0, 3);
+      const f = frameRect('down', 0);
+      wall.forEach((q, i) => r.sprite(kitSheetOf(q.id, TEAM_COLORS[q.team]), f.sx, f.sy, f.sw, f.sh, 186 + i * 36, 172 - f.sh * 2, 2));
     }
-    if (L.state === 'kickoff') r.text('Z — пас, C — удар (держи), X — отбор, Shift — рывок', 240, 214, { align: 'center', color: '#ffffff', shadow: '#000' });
+    // мяч и бьющий
+    let bx = 240, by = 214, bs = 6;
+    if (sp.phase === 'kick' || sp.phase === 'result') {
+      const t = sp.phase === 'result' ? 1 : Math.min(1, sp.t / 0.5);
+      const ty = sp.result === 'over' ? 34 : 140 - sp.power * 70;
+      bx = 240 + (gx(sp.aimReal) - 240) * t; by = 214 + (ty - 214) * t; bs = 6 - t * 3;
+    }
+    const shr = kitSheetOf(sp.shooter.id, TEAM_COLORS[sp.team]); const fr = frameRect('up', 0);
+    r.sprite(shr, fr.sx, fr.sy, fr.sw, fr.sh, 250, 234 - fr.sh * 2, 2);
+    r.rect(Math.round(bx - bs / 2), Math.round(by - bs / 2), Math.round(bs), Math.round(bs), '#ffffff'); r.frame(Math.round(bx - bs / 2), Math.round(by - bs / 2), Math.round(bs), Math.round(bs), '#2a2430', 1);
+    // заголовок
+    r.rect(0, 0, 480, 26, '#101018');
+    r.text(`${sp.penalty ? 'ПЕНАЛЬТИ' : 'ШТРАФНОЙ'} · бьёт ${nameOf(sp.shooter.id)} (${TEAM_NAMES[sp.team]})${k ? ' · на воротах ' + nameOf(k.id) : ''}`, 240, 4, { align: 'center', color: '#ffe14d' });
+    r.text(`${TEAM_NAMES.inyaz} ${L.score.inyaz} : ${L.score.fizmat} ${TEAM_NAMES.fizmat} · время стоит`, 240, 15, { align: 'center', color: '#c8c8d8' });
+    // бегунок направления
+    const human = L.spHuman();
+    const aim = sp.aim ?? (sp.phase === 'aim' ? L.spAim(sp.aimT) : 0);
+    r.rect(gx(-S.aimRange), 160, gx(S.aimRange) - gx(-S.aimRange), 6, '#5a2020'); r.rect(gx(-1), 160, 180, 6, '#2a6a2a');
+    if (sp.phase !== 'ready') { r.rect(Math.round(gx(aim)) - 1, 156, 3, 14, '#ffe14d'); }
+    // бегунок силы
+    const pw = sp.power ?? (sp.phase === 'power' ? L.spPower(sp.powT) : 0);
+    r.rect(400, 60, 10, 100, '#2a2a34'); r.rect(400, 60, 10, Math.round(100 * (1 - S.overPower)), '#5a2020');
+    r.rect(400, 160 - Math.round(100 * pw), 10, Math.round(100 * pw), pw > S.overPower ? '#ff4a4a' : '#ffe14d');
+    r.text('Сила', 405, 164, { align: 'center', color: '#ffffff', shadow: '#000' });
+    let hint = '';
+    if (sp.phase === 'ready') hint = 'Свисток…';
+    else if (sp.phase === 'aim') hint = human ? 'Z — выбрать направление (зелёное — створ)' : `${nameOf(sp.shooter.id)} целится…`;
+    else if (sp.phase === 'power') hint = human ? 'Z — выбрать силу (красное — выше ворот)' : `${nameOf(sp.shooter.id)} разбегается…`;
+    if (hint) r.text(hint, 240, 32, { align: 'center', color: '#ffffff', shadow: '#000' });
+    if (sp.phase === 'result') r.text(SP_TEXT[sp.result], 240, 90, { align: 'center', color: sp.result === 'goal' ? '#ffe14d' : '#ffffff', scale: 4, shadow: '#000' });
+    this.drawBanner(r);
+    this.game.hud.draw(r, this.ctx.state);
+  }
+
+  // ---------- После матча ----------
+  drawPost(r) {
+    const L = this.L, P = this.post, sum = this.sum;
+    r.rect(0, 0, 480, GAME_H, '#1c1824');
+    r.text(`${TEAM_NAMES.inyaz} ${L.score.inyaz} : ${L.score.fizmat} ${TEAM_NAMES.fizmat}`, 240, 6, { align: 'center', color: '#ffe14d', scale: 2 });
+    r.text(`xG  ${fmtXG(sum.xg.inyaz)} — ${fmtXG(sum.xg.fizmat)}${L.half === 3 ? '  · золотой гол' : ''}`, 240, 24, { align: 'center', color: '#c8c8d8' });
+    if (P.phase === 'stats') {
+      for (const [t, x0] of [['inyaz', 24], ['fizmat', 252]]) {
+        r.text(TEAM_NAMES[t], x0, 40, { color: TEAM_UI[t] });
+        r.text('Г   П   С', x0 + 150, 40, { color: '#9a9aa8' });
+        sum.rows[t].forEach((row, i) => {
+          const y = 54 + i * 13;
+          const mvp = row.id === sum.mvp;
+          r.text((mvp ? '★ ' : '') + nameOf(row.id) + (row.keeper ? ' (вр.)' : ''), x0, y, { color: mvp ? '#ffe14d' : row.id === 'roma' ? '#ffffff' : '#d8d8e0' });
+          r.text(row.keeper ? `—   —   ${row.saves}` : `${row.goals}   ${row.assists}   —`, x0 + 150, y, { color: '#ffffff' });
+        });
+      }
+      r.text('Г — голы, П — передачи (ассисты), С — сейвы', 240, 160, { align: 'center', color: '#9a9aa8' });
+      r.text(`MVP матча: ${nameOf(sum.mvp)}`, 240, 176, { align: 'center', color: '#ffe14d', scale: 2 });
+      r.text('Z — дальше', 240, 214, { align: 'center', color: '#9a9aa8' });
+    } else {
+      const l = P.lines[P.i];
+      if (l) {
+        const team = L.players.find((q) => q.id === l.who)?.team;
+        const pt = portraitOf(l.who, l.emo);
+        r.box(20, 60, 440, 100, team ? TEAM_UI[team] : '#ffffff', '#101018');
+        if (pt) r.image(pt, 30, 72, 72, 72);
+        r.text(nameOf(l.who) + (team ? ' · ' + TEAM_NAMES[team] : ''), 112, 72, { color: team ? TEAM_UI[team] : '#ffffff' });
+        r.wrap(l.text.replace(/\{\/?\w+\}/g, ''), 330).slice(0, 6).forEach((s, i) => r.text(s, 112, 88 + i * 12, { color: '#ffffff' }));
+      }
+      r.text(`${P.i + 1}/${P.lines.length} · Z — дальше`, 240, 214, { align: 'center', color: '#9a9aa8' });
+    }
     this.game.hud.draw(r, this.ctx.state);
   }
 
@@ -228,18 +410,16 @@ export class FootballGame {
   }
 
   drawPlayer(r, q) {
-    const sh = sheetOf(q.id);
+    const sh = kitSheetOf(q.id, TEAM_COLORS[q.team]);
     const dir = dirName(q.dir[0], q.dir[1]);
     const f = frameRect(dir, q.moving ? 1 + (Math.floor(q.anim * 6) % 2) : 0);
     const x = Math.round(q.x), y = Math.round(q.y);
-    // «манишка» под ногами — цвет команды
-    r.alpha(0.8, () => { r.rect(x - 6, y - 1, 12, 3, TEAM_COLORS[q.team]); r.rect(x - 4, y - 2, 8, 5, TEAM_COLORS[q.team]); });
-    if (q.rage > 0) r.alpha(0.35 + 0.25 * Math.sin(this.time * 20), () => r.rect(x - 8, y - 24, 16, 24, '#ff3030'));
+    r.alpha(0.3, () => r.rect(x - 5, y - 1, 10, 3, '#000'));
+    // ярость (Ф-7): красная аура
+    if (q.rage > 0) r.alpha(0.35 + 0.25 * Math.sin(this.time * 20), () => { r.rect(x - 9, y - 26, 18, 27, '#ff3030'); r.rect(x - 11, y - 20, 22, 14, '#ff3030'); });
     r.sprite(sh, f.sx, f.sy, f.sw, f.sh, x - f.sw / 2, y - f.sh + 1);
-    // цвет команды над головой (у вратаря — зелёный ободок)
-    r.rect(x - 2, y - f.sh - 3, 4, 3, TEAM_COLORS[q.team]);
+    // у вратаря — зелёный ободок над головой
     if (q.keeper) r.frame(x - 3, y - f.sh - 4, 6, 5, '#6be36b', 1);
-    if (q.yellow) r.rect(x + 5, y - 22, 3, 4, '#ffe14d');
     if (q === this.L.roma) {
       const bob = Math.round(Math.sin(this.time * 6));
       const my = y - f.sh - 11 + bob; r.rect(x - 3, my, 7, 2, '#ffe14d'); r.rect(x - 2, my + 2, 5, 1, '#ffe14d'); r.rect(x - 1, my + 3, 3, 1, '#ffe14d'); r.rect(x, my + 4, 1, 1, '#ffe14d');
@@ -281,34 +461,43 @@ export class FootballGame {
     // табло
     r.rect(150, 0, 180, 24, '#101018'); r.frame(150, 0, 180, 24, '#4a4668', 1);
     r.text(`${TEAM_NAMES.inyaz} ${L.score.inyaz} : ${L.score.fizmat} ${TEAM_NAMES.fizmat}`, 240, 3, { align: 'center', color: '#ffe14d' });
-    const left = Math.max(0, B.halfSeconds - L.t);
+    const left = Math.max(0, (L.half === 3 ? B.goldenSeconds : B.halfSeconds) - L.t);
     const s = Math.ceil(left);
-    r.text(`${L.half}-й тайм  ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`, 200, 13, { align: 'center', color: '#c8c8d8' });
+    r.text(`${L.half === 3 ? 'Золотой гол' : L.half + '-й тайм'}  ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`, 200, 13, { align: 'center', color: L.half === 3 ? '#ffe14d' : '#c8c8d8' });
     // выносливость Ромы (Shift)
     r.rect(262, 15, 60, 5, '#2a2a34');
     r.rect(262, 15, Math.round(60 * L.staminaMax), 5, '#4a4a58');
     r.rect(262, 15, Math.round(60 * L.stamina), 5, L.stamina < 0.2 ? '#ff6a6a' : '#6be36b');
-    // скамейки: «Физмат» слева, «ИнЯз» справа (только запасные из раздела 15)
-    this.drawBench(r, 4, 'fizmat');
-    this.drawBench(r, 340, 'inyaz');
+    r.text(TEAM_NAMES.inyaz + ' (чёрные)', 6, 4, { color: TEAM_UI.inyaz });
+    r.text(TEAM_NAMES.fizmat + ' (белые)', 474, 4, { align: 'right', color: TEAM_UI.fizmat });
     if (this.speed > 1) r.text('×' + this.speed, 474, 14, { align: 'right', color: '#6be36b' });
+    this.drawStands(r);
   }
 
-  drawBench(r, x0, team) {
-    r.rect(x0, 18, 136, 4, '#7a5a3a');
-    r.text(TEAM_NAMES[team], x0 + 2, 1, { color: TEAM_COLORS[team] });
-    this.L.bench[team].forEach((id, i) => {
-      const sh = sheetOf(id); const f = frameRect('down', 0);
-      // сидят: видна верхняя половина
-      r.sprite(sh, f.sx, f.sy, f.sw, 14, x0 + 70 + i * 18, 6);
-    });
+  // Трибуна внизу (Ф-17): запасные, вышедшие, не играющие именные и дед Василий. На гол — прыгают.
+  drawStands(r) {
+    const L = this.L;
+    const y0 = FIELD.bottom + 4;
+    r.rect(0, y0 + 14, 480, GAME_H - y0 - 14, '#4a3a2a'); r.rect(0, y0 + 14, 480, 2, '#7a5a3a');
+    const subs = (t) => [...L.bench[t], ...L.players.filter((q) => q.team === t && q.out === 'gone').map((q) => q.id)];
+    const groups = [['fizmat', subs('fizmat'), 30], [null, FANS, 170], ['inyaz', subs('inyaz'), 380]];
+    const cheer = this.time - this.cheerT < 2.4;
+    for (const [team, ids, x0] of groups) {
+      [...new Set(ids)].forEach((id, i) => {
+        const sh = team ? kitSheetOf(id, TEAM_COLORS[team]) : sheetOf(id); if (!sh) return;
+        const f = frameRect('down', 0);
+        const happy = cheer && (!team || team === this.cheerTeam);
+        const jump = happy ? Math.round(Math.abs(Math.sin((this.time + i) * 9)) * 4) : 0;
+        r.sprite(sh, f.sx, f.sy, f.sw, 18, x0 + i * 22, y0 - 2 - jump);
+      });
+    }
   }
 }
 
 registerMinigame('football', {
   title: 'Эль-Класико',
   music: 'gym',
-  keys: ['Стрелки — бег, Shift — рывок (выносливость)', 'Z — пас, C — удар (держи — сильнее)', 'X без мяча — отбор (сзади — фол!)', `2 тайма по ${B.halfSeconds} с, 5 на 5`],
+  keys: ['Стрелки — бег, Shift — рывок (выносливость)', 'Z — пас, C — удар (держи), X — отбор (сзади — фол)', 'Штрафной и пенальти: Z — направление, Z — сила', `2 тайма по ${B.halfSeconds} с, ничья — золотой гол`],
   describe: () => '«ИнЯз» против «Физмата». Рома — под жёлтой стрелкой.',
   create: (ctx) => new FootballGame(ctx),
 });

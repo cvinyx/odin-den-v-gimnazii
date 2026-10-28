@@ -1,5 +1,6 @@
 // Логика «Эль-Класико» без отрисовки (работает и в node-тестах): мяч, 5 на 5, ИИ полевых и вратарей,
-// судья, фолы, карточки, диарея Смайла, ярость Игоря, перерыв и замены (раздел 15).
+// судья, фолы → штрафные и пенальти (Ф-14, Ф-15), диарея Смайла, ярость Игоря (Ф-7), перерыв и замены,
+// золотой гол (Ф-8), статистика, xG и MVP (Ф-3…Ф-5).
 // Рома управляется вводом (romaInput) или ИИ (aiRoma — режим «ИИ против ИИ»).
 import { BALANCE } from '../../data/balance.js';
 import { CHARACTERS } from '../../data/characters.js';
@@ -27,7 +28,7 @@ export class Player {
     this.dir = [SIDE[team], 0];
     this.tx = 0; this.ty = 0;          // куда бежит
     this.think = 0; this.cd = 0; this.stun = 0; this.noPick = 0;
-    this.yellow = 0; this.goals = 0;
+    this.goals = 0; this.assists = 0; this.saves = 0;
     this.sprint = false; this.rage = 0;
     this.mod = { speed: 0, skill: 0 }; // перерыв
     this.anim = 0; this.moving = false;
@@ -37,6 +38,7 @@ export class Player {
   get stats() { return B.players[this.id] || { speed: 5, skill: 4 }; }
   get skill() { return Math.max(1, Math.min(10, this.stats.skill + this.mod.skill)); }
   get reaction() { return B.keepers[this.id] ?? 3; }
+  get trait() { return B.traits[this.id] || { pass: 1, shoot: 1 }; }
 }
 
 export class MatchLogic {
@@ -49,13 +51,14 @@ export class MatchLogic {
     this.total = 0;             // секунды матча
     this.score = { inyaz: 0, fizmat: 0 };
     this.events = [];
-    this.stats = { fouls: 0, yellows: 0, saves: 0, shots: { inyaz: 0, fizmat: 0 }, kolyaConceded: 0 };
+    this.stats = { fouls: 0, saves: 0, shots: { inyaz: 0, fizmat: 0 }, kolyaConceded: 0, setPieces: [0, 0, 0, 0],
+      penalties: 0, freeKicks: 0, spGoals: 0, hands: 0, rages: 0, superShots: 0, ownGoals: 0 };
     this.bench = { fizmat: [...LINEUPS.fizmat.bench], inyaz: [...LINEUPS.inyaz.bench] };
     this.players = [];
     const add = (team, id, keeper, slot) => this.players.push(new Player(id, team, keeper, slot));
-    // роли: двое сильнейших (скорость + навык) — в нападении (места 2–3), остальные — в защите
+    // роли: нападающие из B.attackers — места 2–3, остальные — в защите (места 0–1)
     const roles = (ids) => [...ids].sort((a, b) => sum(a) - sum(b));
-    const sum = (id) => (B.players[id].speed + B.players[id].skill) * 100 + ids0.indexOf(id);
+    const sum = (id) => (B.attackers.includes(id) ? 100 : 0) + ids0.indexOf(id);
     let ids0 = LINEUPS.fizmat.field;
     add('fizmat', LINEUPS.fizmat.keeper, true, -1);
     roles(ids0).forEach((id, i) => add('fizmat', id, false, i));
@@ -69,13 +72,15 @@ export class MatchLogic {
     this.accMul = p.hungry ? BALANCE.hunger.slowFactor : 1;
     this.diarrheaAt = (p.diarrhea ?? rng.chance(B.diarrheaChance)) ? rng.float(B.diarrheaAt[0], B.diarrheaAt[1]) : null;
     this.diarrheaDone = false;
-    this.refT = rng.float(B.refLineEvery[0], B.refLineEvery[1]);
+    // ярость (Ф-7): только если Игоря разозлили до матча — по разу в каждом тайме
+    this.rageAt = p.rageStart ? { 1: rng.float(B.rage.at[0], B.rage.at[1]), 2: rng.float(B.rage.at[0], B.rage.at[1]) } : null;
+    this.rageDone = {};
+    this.sp = null;             // штрафной / пенальти (Ф-15)
     this.ref = { x: FIELD.cx, y: FIELD.bottom - 1, dir: 'up', moving: false }; // бегает вдоль нижней бровки
     this.state = 'kickoff';
     this.stateT = 1.2;
     this.lineupErrors = [];
     this.kickoff('inyaz');
-    if (p.rageStart) this.startRage();
   }
 
   get onField() { return this.players.filter((q) => !q.out); }
@@ -104,11 +109,12 @@ export class MatchLogic {
   // input — для Ромы: { ax, ay, sprint, pass (нажато), shoot (отпущено, power 0–1), tackle (нажато) }
   update(dt, input = null) {
     if (this.state === 'halftime' || this.state === 'end') return;
+    if (this.state === 'setpiece') return this.updateSetPiece(dt, input); // время матча стоит (Ф-15)
     this.total += dt; this.t += dt;
     if (this.state === 'kickoff' || this.state === 'goal' || this.state === 'freekick' || this.state === 'diarrhea') {
       this.stateT -= dt;
       this.updateRunners(dt);
-      if (this.state === 'goal' && this.stateT <= 0) this.kickoff(this.goalAgainst);
+      if (this.state === 'goal' && this.stateT <= 0) { if (this.half === 3) return this.finish(); this.kickoff(this.goalAgainst); }
       else if (this.state === 'diarrhea' && this.stateT <= 0) this.finishDiarrhea();
       else if (this.stateT <= 0) { this.state = 'play'; this.emit({ type: 'whistle' }); }
       this.checkTime();
@@ -119,7 +125,9 @@ export class MatchLogic {
     for (const q of this.onField) {
       q.cd -= dt; q.stun = Math.max(0, q.stun - dt); q.noPick = Math.max(0, q.noPick - dt);
       if (q.rage > 0) { q.rage -= dt; if (q.rage <= 0) this.emit({ type: 'rage_end' }); }
+      q.handCd = Math.max(0, (q.handCd || 0) - dt);
     }
+    this.checkRage(dt);
     // решения и движение
     for (const q of this.onField) {
       if (q === this.roma && !this.p.aiRoma && input) this.controlRoma(q, dt, input);
@@ -129,18 +137,29 @@ export class MatchLogic {
     this.movePlayers(dt);
     this.updateBall(dt);
     this.updateRef(dt);
-    this.refTalk(dt);
     this.checkLineups();
     this.checkTime();
   }
 
   checkTime() {
-    if (this.t < B.halfSeconds) return;
+    if (this.t < (this.half === 3 ? B.goldenSeconds : B.halfSeconds)) return;
     if (this.state === 'goal' && this.stateT > 0) return; // дать порадоваться голу
     if (this.state === 'diarrhea') return;                // сначала замена вратаря (иначе у «Физмата» 4 игрока)
-    if (this.half === 1) { this.state = 'halftime'; this.emit({ type: 'halftime' }); }
-    else { this.state = 'end'; this.emit({ type: 'end' }); }
+    if (this.half === 1) { this.state = 'halftime'; this.emit({ type: 'halftime' }); return; }
+    if (this.half === 2) {
+      this.regResult = this.result();
+      // ничья — золотой гол (Ф-8): играем до первого гола, но не дольше goldenSeconds
+      if (this.regResult === 'draw') {
+        this.half = 3; this.t = 0;
+        this.emit({ type: 'golden' });
+        this.kickoff(this.rng.pick(['inyaz', 'fizmat'])); this.stateT = 2.5;
+        return;
+      }
+    }
+    this.finish();
   }
+
+  finish() { this.state = 'end'; this.emit({ type: 'end' }); }
 
   // Второй тайм: эффект выбора в перерыве и замены (Коля вместо Вадима, Гуза вместо Матыча).
   secondHalf(choice) {
@@ -148,7 +167,7 @@ export class MatchLogic {
     const P = (id) => this.players.find((q) => q.id === id && !q.out);
     if (choice === 'barca' && P('denis')) P('denis').mod.skill += H.barcaDenisSkill;
     if (choice === 'real') { if (P('shurpo')) P('shurpo').mod.speed += H.realShurpoSpeed; if (P('denis')) P('denis').mod.skill += H.realDenisSkill; }
-    if (choice === 'igor') this.startRage();
+    if (choice === 'igor' && P('igor')) P('igor').mod.skill += H.igorSkill; // разозлился, но это ещё не ярость (Ф-7)
     this.substitute('fizmat', 'vadim', this.bench.fizmat.includes('bochko') ? 'bochko' : 'zakha');
     this.substitute('inyaz', 'matych', 'guza');
     this.half = 2; this.t = 0;
@@ -168,11 +187,33 @@ export class MatchLogic {
     this.emit({ type: 'sub', team, out: outId, in: inId });
   }
 
-  startRage() {
+  // Ярость (Ф-7): ждём, пока у Игоря мяч (или через 20 с — всё равно), 3–5 с: мяч не отобрать, суперудар.
+  checkRage() {
+    if (!this.rageAt || this.half > 2 || this.rageDone[this.half] || this.t < this.rageAt[this.half]) return;
     const ig = this.players.find((q) => q.id === 'igor' && !q.out);
-    if (!ig) return;
-    ig.rage = B.rage.seconds;
+    if (!ig) { this.rageDone[this.half] = true; return; }
+    if (this.ball.owner !== ig && this.t < this.rageAt[this.half] + 20) return;
+    this.rageDone[this.half] = true;
+    ig.rage = this.rng.float(B.rage.seconds[0], B.rage.seconds[1]);
+    ig.superT = B.rage.superDelay; ig.superDone = false;
+    this.stats.rages++;
     this.emit({ type: 'rage' });
+  }
+
+  // Суперудар: сквозь всех и точно в створ; в 15 % — в свои ворота (автогол).
+  superShot(q) {
+    const own = this.rng.chance(B.rage.ownGoal);
+    const gx = own ? ownGoalX(q.team) : oppGoalX(q.team);
+    const ty = FIELD.cy + this.rng.float(-12, 12);
+    const [ux, uy] = norm(gx - q.x, ty - q.y);
+    this.kick(q, ux * B.rage.superSpeed, uy * B.rage.superSpeed);
+    const b = this.ball;
+    b.super = true; b.shotBy = q; b.beatKeeper = true; b.superOwn = own;
+    q.superDone = true;
+    this.stats.superShots++;
+    if (own) this.stats.ownGoals++;
+    else this.stats.shots[q.team]++;
+    this.emit({ type: 'super', id: q.id, own });
   }
 
   // ---------- Диарея Смайла ----------
@@ -194,7 +235,7 @@ export class MatchLogic {
     n.x = FIELD.right - 8; n.y = FIELD.cy;
     this.bench.fizmat = this.bench.fizmat.filter((x) => x !== inId);
     this.players.push(n);
-    if (sm) { this.players.splice(this.players.indexOf(sm), 1); }
+    if (sm) sm.out = 'gone'; // в статистике остаётся (сейвы до диареи)
     this.runner = null;
     this.smileGone = true;
     this.emit({ type: 'keeper_in', id: inId });
@@ -244,6 +285,15 @@ export class MatchLogic {
     q.think -= dt;
     q.direct = null;
     if (q.stun > 0) { q.tx = q.x; q.ty = q.y; return; }
+    if (b.owner === q && q.rage > 0) {
+      // ярость: прёт к воротам, через мгновение — суперудар
+      q.superT = (q.superT ?? 0) - dt;
+      if (!q.superDone && q.superT <= 0) return this.superShot(q);
+      const [dx, dy] = norm(oppGoalX(q.team) - q.x, FIELD.cy - q.y);
+      q.tx = q.x + dx * 40; q.ty = q.y + dy * 40;
+      return;
+    }
+    if (q.rage > 0 && b.owner !== q && !b.super) { q.tx = b.x; q.ty = b.y; if (b.owner && b.owner.team !== q.team && hyp(b.owner.x - q.x, b.owner.y - q.y) < B.ai.tackleDist && q.cd <= 0) this.tackle(q); return; }
     if (b.owner === q) {
       // с мячом: «атака»
       if (q.think <= 0) {
@@ -257,10 +307,12 @@ export class MatchLogic {
           this.emit({ type: 'fumble', id: q.id });
           return;
         }
-        const shootP = d < B.ai.shootAlways ? 1 : d < B.ai.shootRange ? B.ai.shootChance[0] + q.skill * B.ai.shootChance[1] + (q.rage > 0 ? 0.1 : 0) : 0;
+        // характер (Ф-6): кто охотнее бьёт, кто чаще пасует
+        const T = q.trait;
+        const shootP = d < B.ai.shootAlways ? 1 : d < B.ai.shootRange ? (B.ai.shootChance[0] + q.skill * B.ai.shootChance[1]) * T.shoot : 0;
         if (shootP && this.rng.chance(shootP)) return this.shoot(q, this.rng.float(0.55, 1), [s, 0], true);
-        if (pressed && this.rng.chance(0.45 + q.skill * 0.045)) { if (this.passBest(q, [s, 0], true)) return; }
-        if (!pressed && this.rng.chance(0.07 + q.skill * 0.01)) { if (this.passBest(q, [s, 0], true, true)) return; }
+        if (pressed && this.rng.chance(Math.min(0.95, (0.45 + q.skill * 0.045) * T.pass))) { if (this.passBest(q, [s, 0], true)) return; }
+        if (!pressed && this.rng.chance((0.07 + q.skill * 0.01) * T.pass)) { if (this.passBest(q, [s, 0], true, true)) return; }
       }
       // ведение к воротам, огибая ближайшего соперника
       const gx = oppGoalX(q.team);
@@ -285,11 +337,11 @@ export class MatchLogic {
         const dist = hyp(o.x - q.x, o.y - q.y);
         if (dist < B.ai.tackleDist && q.cd <= 0 && q.think <= 0) {
           q.think = this.rng.float(0.2, 0.45);
-          // сзади разумный ИИ не лезет (это фол) — кроме Игоря в ярости и слабых «на авось»
+          // сзади разумный ИИ не лезет (это фол) — кроме слабых «на авось»
           const [ux, uy] = norm(q.x - o.x, q.y - o.y);
           const behind = ux * o.dir[0] + uy * o.dir[1] < -0.45;
-          const careless = q.rage > 0 || this.rng.chance(B.ai.carelessTackle * (10 - q.skill) / 10);
-          if ((!behind || careless) && this.rng.chance(0.35 + q.skill * 0.04 + (q.rage > 0 ? 0.4 : 0))) this.tackle(q);
+          const careless = this.rng.chance(B.ai.carelessTackle * (10 - q.skill) / 10);
+          if ((!behind || careless) && this.rng.chance(0.35 + q.skill * 0.04)) this.tackle(q);
         }
       } else { q.tx = b.x + b.vx * 0.15; q.ty = b.y + b.vy * 0.15; }
       return;
@@ -377,18 +429,18 @@ export class MatchLogic {
     const reach = K.reach + q.reaction * K.perReach;
     const d = hyp(b.x - q.x, b.y - q.y);
     const toGoal = b.vx * -s > 0;
-    if (!b.owner && d < reach && !b.beatKeeper && q.noPick <= 0) {
+    if (!b.owner && !b.super && d < reach && !b.beatKeeper && q.noPick <= 0) {
       const sp = hyp(b.vx, b.vy);
       if (!toGoal || sp < 70) return this.grab(q);
       const p = K.save + q.reaction * K.perSave - Math.max(0, sp - 150) * K.fastPenalty;
-      if (this.rng.chance(p)) { this.stats.saves++; this.emit({ type: 'save', id: q.id }); this.grab(q); }
+      if (this.rng.chance(p)) { this.stats.saves++; q.saves++; this.emit({ type: 'save', id: q.id }); this.grab(q); }
       else b.beatKeeper = true;
     }
   }
 
   grab(q) {
     const b = this.ball;
-    b.owner = q; b.vx = b.vy = 0; b.last = q.team; b.beatKeeper = false; b.shotBy = null;
+    b.owner = q; b.vx = b.vy = 0; b.last = q.team; b.beatKeeper = false; b.shotBy = null; b.assist = null; b.passer = null;
     q.hold = B.keeper.hold;
   }
 
@@ -422,6 +474,7 @@ export class MatchLogic {
     const a = Math.atan2(ty - q.y, tx - q.x) + err;
     const sp = Math.max(PH.passSpeed[0], Math.min(PH.passSpeed[1], 70 + d * 1.6));
     this.kick(q, Math.cos(a) * sp, Math.sin(a) * sp);
+    if (!q.keeper) b.passer = q; // для ассистов (Ф-3)
     this.emit({ type: 'pass', id: q.id, to: best.id });
     return true;
   }
@@ -447,7 +500,6 @@ export class MatchLogic {
     const err = (10.5 - q.skill) * B.ai.shotError / this.acc(q) * this.rng.float(-1, 1);
     a += err;
     let sp = PH.shotSpeed[0] + (PH.shotSpeed[1] - PH.shotSpeed[0]) * Math.max(0, Math.min(1, power));
-    if (q.rage > 0) sp *= 1.15;
     this.kick(q, Math.cos(a) * sp, Math.sin(a) * sp);
     const b = this.ball;
     b.shotBy = q.keeper ? null : q; b.beatKeeper = false;
@@ -457,7 +509,7 @@ export class MatchLogic {
 
   kick(q, vx, vy) {
     const b = this.ball;
-    b.owner = null; b.vx = vx; b.vy = vy; b.last = q.team; b.shotBy = null;
+    b.owner = null; b.vx = vx; b.vy = vy; b.last = q.team; b.shotBy = null; b.super = false; b.passer = null;
     q.noPick = 0.3; q.hold = null;
     this.emit({ type: 'kick' });
   }
@@ -470,32 +522,118 @@ export class MatchLogic {
     const dist = hyp(o.x - q.x, o.y - q.y);
     if (dist > B.ai.tackleDist + 2) return;
     const T = B.tackle;
+    // в ярости у Игоря мяч не отобрать (Ф-7), а сам он отбирает чисто
+    if (o.rage > 0) { q.stun = T.stun; this.emit({ type: 'rage_block', id: q.id }); return; }
+    if (q.rage > 0) { b.owner = q; b.last = q.team; b.assist = null; o.stun = T.stun; o.noPick = 0.5; this.emit({ type: 'steal', id: q.id, from: o.id }); return; }
     // сзади: подкат со стороны спины владельца
     const [ux, uy] = norm(q.x - o.x, q.y - o.y);
     const behind = ux * o.dir[0] + uy * o.dir[1] < -0.45;
-    const foulP = behind ? T.behindFoul : q.rage > 0 ? T.rageFoul : 0.04;
+    const foulP = behind ? T.behindFoul : 0.04;
     if (this.rng.chance(foulP)) return this.foul(q, o);
     if (this.rng.chance(T.base + (q.skill - o.skill) * T.perSkill)) {
-      b.owner = q; b.last = q.team; o.stun = T.stun * 0.6; o.noPick = 0.5;
+      b.owner = q; b.last = q.team; b.assist = null; o.stun = T.stun * 0.6; o.noPick = 0.5;
       this.emit({ type: 'steal', id: q.id, from: o.id });
     } else { q.stun = T.stun; this.emit({ type: 'miss_tackle', id: q.id }); }
   }
 
-  foul(q, victim) {
+  // Фол (Ф-14): жёлтых нет. В своей штрафной — пенальти, иначе штрафной. Стандартов не больше 3 за тайм (Ф-15):
+  // лишние фолы — свисток и продолжение (мяч у пострадавшего).
+  foul(q, victim, kind = 'tackle') {
     this.stats.fouls++;
-    this.emit({ type: 'foul', id: q.id, victim: victim.id });
-    if (this.rng.chance(B.yellowChance + (q.rage > 0 ? 0.2 : 0))) { q.yellow++; this.stats.yellows++; this.emit({ type: 'yellow', id: q.id }); }
-    // штрафной: мяч у пострадавшего, соперники отходят
+    if (kind === 'hand') this.stats.hands++;
+    const gx = ownGoalX(q.team);
+    const penalty = hyp(victim.x - gx, victim.y - FIELD.cy) < B.setPiece.penaltyR;
+    const setpiece = this.stats.setPieces[this.half] < B.setPiece.perHalf;
+    this.emit({ type: 'foul', id: q.id, victim: victim.id, kind, penalty, setpiece });
     const b = this.ball;
-    victim.stun = 0;
-    Object.assign(b, { owner: victim, vx: 0, vy: 0, last: victim.team, shotBy: null });
+    victim.stun = 0; q.stun = 0.8;
+    if (setpiece) return this.startSetPiece(victim.team, victim, penalty);
+    Object.assign(b, { owner: victim, vx: 0, vy: 0, last: victim.team, shotBy: null, super: false, assist: null, passer: null });
     for (const o of this.team(q.team)) {
       if (o.keeper) continue;
       const d = hyp(o.x - victim.x, o.y - victim.y);
       if (d < 30) { const [ux, uy] = norm(o.x - victim.x || 1, o.y - victim.y); [o.x, o.y] = clampField(victim.x + ux * 30, victim.y + uy * 30, 8); }
     }
-    q.stun = 0.8;
     this.state = 'freekick'; this.stateT = 1.1;
+  }
+
+  // ---------- Штрафной / пенальти (Ф-15): отдельный экран, время стоит ----------
+  startSetPiece(team, victim, penalty) {
+    this.stats.setPieces[this.half]++;
+    if (penalty) this.stats.penalties++; else this.stats.freeKicks++;
+    const roma = this.roma && !this.roma.out ? this.roma : null;
+    const shooter = team === 'inyaz' && roma && (victim === roma || this.rng.chance(0.5)) ? roma : victim;
+    this.sp = { team, shooter, keeper: this.keeperOf(other(team)), penalty, phase: 'ready', t: 0, aimT: 0, powT: 0, aim: null, power: null, result: null };
+    this.ball.owner = null; this.ball.vx = this.ball.vy = 0;
+    this.state = 'setpiece';
+    this.emit({ type: 'setpiece', penalty, shooter: shooter.id });
+  }
+
+  spAim(t) { const S = B.setPiece; return S.aimRange * Math.sin(t * S.aimSpeed); }
+  spPower(t) { const x = (t / B.setPiece.powerPeriod) % 1; return 1 - Math.abs(1 - 2 * x); }
+  spHuman() { return this.sp && this.sp.shooter === this.roma && !this.p.aiRoma; }
+
+  updateSetPiece(dt, input) {
+    const sp = this.sp, S = B.setPiece;
+    sp.t += dt;
+    const human = this.spHuman();
+    const press = human && input && input.pass;
+    if (sp.phase === 'ready') { if (sp.t > 0.9) { sp.phase = 'aim'; sp.t = 0; sp.aiT = this.rng.float(0.5, 1.1); } return; }
+    if (sp.phase === 'aim') {
+      sp.aimT += dt;
+      if (human ? press : sp.t >= sp.aiT) {
+        sp.aim = human ? this.spAim(sp.aimT) : this.rng.chance(0.08) ? this.rng.float(-1.15, 1.15) : this.rng.float(-0.95, 0.95);
+        sp.phase = 'power'; sp.t = 0; sp.aiT = this.rng.float(0.4, 0.9);
+      }
+      return;
+    }
+    if (sp.phase === 'power') {
+      sp.powT += dt;
+      if (human ? press : sp.t >= sp.aiT) {
+        sp.power = human ? this.spPower(sp.powT) : this.rng.chance(0.06) ? this.rng.float(0.95, 1) : this.rng.float(0.45, 0.92);
+        this.resolveSetPiece();
+        sp.phase = 'kick'; sp.t = 0;
+        this.emit({ type: 'kick' });
+      }
+      return;
+    }
+    if (sp.phase === 'kick') { if (sp.t > 0.7) { sp.phase = 'result'; sp.t = 0; this.emit({ type: 'sp_result', result: sp.result, id: sp.shooter.id, keeper: sp.keeper && sp.keeper.id }); } return; }
+    if (sp.phase === 'result' && sp.t > 1.3) this.endSetPiece();
+  }
+
+  // Исход удара: мимо (за створ или над воротами), сейв (вратарь «прочитал» удар или угадал) или гол.
+  resolveSetPiece() {
+    const sp = this.sp, S = B.setPiece, k = sp.keeper;
+    let aim = sp.aim;
+    if (!sp.penalty) aim += this.rng.float(-0.15, 0.15) * (11 - sp.shooter.skill) / 5; // со штрафного — дальше и через стенку
+    sp.aimReal = aim;
+    const reaction = k ? k.reaction : 3;
+    const read = this.rng.chance(S.read[0] + reaction * S.read[1]);
+    sp.dive = read ? aim + this.rng.float(-0.25, 0.25) : this.rng.float(-0.9, 0.9);
+    const reach = ((sp.penalty ? S.reach.penalty : S.reach.free) + reaction * S.perReach) * (1 - sp.power * S.powerBeat);
+    if (Math.abs(aim) > 1) sp.result = 'wide';
+    else if (sp.power > S.overPower) sp.result = 'over';
+    else if (!sp.penalty && Math.abs(aim) > S.freeWide && this.rng.chance(0.3)) sp.result = 'wall';
+    else if (k && Math.abs(aim - sp.dive) < reach) sp.result = 'save';
+    else sp.result = 'goal';
+  }
+
+  endSetPiece() {
+    const sp = this.sp, b = this.ball;
+    this.sp = null;
+    const gx = oppGoalX(sp.team);
+    if (sp.result === 'goal') {
+      this.stats.spGoals++;
+      Object.assign(b, { x: gx + SIDE[sp.team] * 6, y: FIELD.cy + sp.aimReal * 18, vx: 0, vy: 0, owner: null, shotBy: sp.shooter, assist: null, super: false });
+      this.stats.shots[sp.team]++;
+      return this.scoreGoal();
+    }
+    if (sp.result === 'save' && sp.keeper) { sp.keeper.saves++; this.stats.saves++; this.stats.shots[sp.team]++; }
+    // от ворот: мяч у вратаря обороняющейся команды
+    const k = sp.keeper || this.keeperOf(other(sp.team));
+    Object.assign(b, { x: k.x + SIDE[k.team] * 8, y: k.y, vx: 0, vy: 0 });
+    this.grab(k);
+    this.state = 'freekick'; this.stateT = 0.8;
   }
 
   // ---------- Движение и столкновения ----------
@@ -553,6 +691,7 @@ export class MatchLogic {
       return;
     }
     b.x += b.vx * dt; b.y += b.vy * dt;
+    if (b.super) { if (this.inGoal()) return this.scoreGoal(); if (b.x > FIELD.left && b.x < FIELD.right) return; b.super = false; }
     const f = Math.max(0, 1 - PH.friction * dt);
     b.vx *= f; b.vy *= f;
     const inMouth = b.y > FIELD.goalTop + r && b.y < FIELD.goalBottom - r;
@@ -570,9 +709,18 @@ export class MatchLogic {
       const d = hyp(q.x - b.x, q.y - b.y);
       if (d < bd) { bd = d; best = q; }
     }
+    // «Рука!»: быстрый мяч попал в руку сопернику того, кто ударил
+    if (best && sp > 150 && best.team !== b.last && !best.handCd && this.state === 'play') {
+      best.handCd = 1;
+      if (this.rng.chance(B.handChance)) {
+        const victim = this.team(b.last).filter((q) => !q.keeper).sort((x, y) => hyp(x.x - b.x, x.y - b.y) - hyp(y.x - b.x, y.y - b.y))[0];
+        if (victim) return this.foul(best, victim, 'hand');
+      }
+    }
     if (best && (sp < PH.trapSpeed || this.rng.chance(0.25))) {
-      b.owner = best; b.last = best.team; b.shotBy = null; b.beatKeeper = false;
-      if (best.rage > 0 && best.id === 'igor') this.emit({ type: 'igor_ball' });
+      // ассист (Ф-3): последний пас партнёра перед ударом
+      b.assist = b.passer && b.passer.team === best.team && b.passer !== best ? b.passer : best.team === b.last ? b.assist : null;
+      b.owner = best; b.last = best.team; b.shotBy = null; b.beatKeeper = false; b.passer = null;
     }
   }
 
@@ -586,11 +734,17 @@ export class MatchLogic {
     const team = b.x < FIELD.cx ? 'fizmat' : 'inyaz'; // забила команда, атакующая эти ворота
     this.score[team]++;
     let scorer = b.shotBy || b.owner;
+    const ownBy = scorer && scorer.team !== team ? scorer : null;
     if (!scorer || scorer.team !== team) scorer = null; // автогол — без автора
-    if (scorer) scorer.goals++;
+    let assist = null;
+    if (scorer) {
+      scorer.goals++;
+      if (b.assist && b.assist.team === team && b.assist !== scorer) { assist = b.assist; assist.assists++; }
+    }
+    b.assist = null; b.passer = null; b.super = false;
     const k = this.keeperOf(other(team));
     if (k && k.id === 'bochko') this.stats.kolyaConceded++;
-    this.emit({ type: 'goal', team, scorer: scorer && scorer.id });
+    this.emit({ type: 'goal', team, scorer: scorer && scorer.id, assist: assist && assist.id, own: ownBy && ownBy.id });
     b.owner = null; b.vx *= 0.2; b.vy *= 0.2;
     b.x = Math.max(FIELD.left - FIELD.goalDepth + 3, Math.min(FIELD.right + FIELD.goalDepth - 3, b.x));
     this.goalAgainst = other(team);
@@ -604,16 +758,6 @@ export class MatchLogic {
     this.ref.moving = Math.abs(d) > 4;
     if (this.ref.moving) { this.ref.x += Math.sign(d) * Math.min(Math.abs(d), 60 * dt); this.ref.dir = d > 0 ? 'right' : 'left'; } else this.ref.dir = 'up';
     this.ref.anim = (this.ref.anim || 0) + (this.ref.moving ? dt : 0);
-  }
-
-  // Нейтральные реплики: кому — решает игра (медленный, потерял мяч); текст — в football.txt.
-  refTalk(dt) {
-    this.refT -= dt;
-    if (this.refT > 0) return;
-    this.refT = this.rng.float(B.refLineEvery[0], B.refLineEvery[1]);
-    const slow = this.onField.filter((q) => !q.keeper && ['shurpo', 'bochko', 'matych', 'zakha', 'guza', 'vadim', 'vitalik', 'denis', 'igor', 'chernyak'].includes(q.id));
-    const q = this.rng.pick(slow.length ? slow : this.onField);
-    this.emit({ type: 'ref', id: q.id });
   }
 
   // ---------- Автотест состава (раздел 15): 5 на 5, без безымянных ----------
@@ -633,5 +777,35 @@ export class MatchLogic {
     const a = this.score.inyaz, f = this.score.fizmat;
     return a > f ? 'win' : a < f ? 'lose' : 'draw';
   }
+
+  winner() { const r = this.result(); return r === 'win' ? 'inyaz' : r === 'lose' ? 'fizmat' : null; }
+
+  // Итоги (Ф-3…Ф-5): строки статистики, xG (по коду матча, ±3 от счёта, одна цифра после запятой) и MVP.
+  summary() {
+    if (this.sum) return this.sum;
+    const played = this.players.filter((q) => q.out !== 'run');
+    const rows = (t) => played.filter((q) => q.team === t).map((q) => ({ id: q.id, keeper: q.keeper, goals: q.goals, assists: q.assists, saves: q.saves }));
+    const xg = {};
+    for (const t of ['inyaz', 'fizmat']) xg[t] = xgFor(this.score[t], this.rng);
+    this.sum = { rows: { inyaz: rows('inyaz'), fizmat: rows('fizmat') }, xg, mvp: pickMVP(played, this.winner(), this.rng) };
+    return this.sum;
+  }
+}
+
+export function xgFor(goals, rng) {
+  const v = goals + rng.float(-1.4, 2.2);
+  return Math.round(10 * Math.max(0.1, Math.max(goals - 3, Math.min(goals + 3, v)))) / 10;
+}
+export function fmtXG(v) { return v.toFixed(1).replace('.', ','); }
+
+// MVP (Ф-5): больше голов → больше ассистов → случайно (из победителей, если есть).
+export function pickMVP(players, winTeam, rng) {
+  const field = players.filter((q) => !q.keeper);
+  const key = (q) => q.goals * 100 + q.assists;
+  const best = Math.max(...field.map(key));
+  let tied = field.filter((q) => key(q) === best);
+  if (tied.length > 1 && winTeam && tied.some((q) => q.team === winTeam)) tied = tied.filter((q) => q.team === winTeam);
+  if (best === 0 && winTeam) tied = field.filter((q) => q.team === winTeam);
+  return rng.pick(tied).id;
 }
 

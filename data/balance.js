@@ -139,47 +139,58 @@ export const BALANCE = {
     durationMin: 30, durationMax: 90,
   },
 
-  // Эль-Класико (раздел 15). Скорость / навык 1–10, вратари — реакция.
+  // Эль-Класико (раздел 15, V2-7: Ф-6, Ф-7, Ф-8, Ф-14, Ф-15). Скорость / навык 1–10 почти равны (Ф-6):
+  // разница — в характере (traits: pass — как часто пасует, shoot — как охотно бьёт). Вратари — реакция.
   football: {
-    halfSeconds: 90,
+    halfSeconds: 100,
     halves: 2,
-    diarrheaChance: 0.35,
-    rage: { speed: 1.4, seconds: 20 },
+    goldenSeconds: 120,                        // золотой гол (Ф-8): овертайм до первого гола, но не дольше
+    diarrheaChance: 0.5,                       // Ф-14
+    // Ярость Игоря (Ф-7): только если его разозлили до матча; раз в тайме на 3–5 с.
+    rage: { speed: 1.25, seconds: [3, 5], at: [15, 70], superDelay: 0.6, superSpeed: 260, ownGoal: 0.15 },
     win: { aura: 20, stress: -10 },
     draw: { aura: 0, stress: 0 },
     lose: { aura: -10, stress: 0 },
     goalAura: 5,
-    gradeBase: 6,
-    gradeWinBonus: 2,
     players: {
-      chernyak: { speed: 8, skill: 9 },
-      vadim: { speed: 6, skill: 5 },
+      chernyak: { speed: 6, skill: 6 },
+      vadim: { speed: 5, skill: 6 },
       vitalik: { speed: 6, skill: 5 },
-      shurpo: { speed: 2, skill: 4 },
-      bochko: { speed: 4, skill: 1 },
-      zakha: { speed: 5, skill: 4 },
-      igor: { speed: 7, skill: 6 },
-      roma: { speed: 7, skill: 5 },
-      denis: { speed: 6, skill: 6 },
-      matych: { speed: 4, skill: 2 },
-      guza: { speed: 5, skill: 4 },
+      shurpo: { speed: 5, skill: 6 },
+      bochko: { speed: 5, skill: 5 },
+      zakha: { speed: 5, skill: 5 },
+      igor: { speed: 6, skill: 6 },
+      roma: { speed: 6, skill: 5 },
+      denis: { speed: 5, skill: 6 },
+      matych: { speed: 6, skill: 6 },
+      guza: { speed: 5, skill: 6 },
     },
-    keepers: { smile: 7, buy: 5, bochko: 2, zakha: 4 },
-    // Физика (пиксели и секунды). Мяч отскакивает от стен, аутов нет.
-    physics: { friction: 1.1, wallBounce: 0.7, ballR: 2.5, playerR: 5, control: 8, trapSpeed: 230,
-      passSpeed: [110, 250], shotSpeed: [150, 300], dribbleLag: 14 },
+    traits: {
+      chernyak: { pass: 0.7, shoot: 1.5 }, shurpo: { pass: 1.4, shoot: 0.8 }, vadim: { pass: 1.2, shoot: 0.8 },
+      vitalik: { pass: 1, shoot: 1.1 }, bochko: { pass: 0.8, shoot: 1.3 }, zakha: { pass: 1.2, shoot: 0.9 },
+      igor: { pass: 0.6, shoot: 1.6 }, roma: { pass: 1, shoot: 1 }, denis: { pass: 1.5, shoot: 0.8 },
+      matych: { pass: 1.3, shoot: 0.7 }, guza: { pass: 0.8, shoot: 1.3 },
+    },
+    keepers: { smile: 6, buy: 6, bochko: 6, zakha: 5 },
+    attackers: ['roma', 'igor', 'chernyak', 'vitalik'], // роли: остальные полевые — в защите
+    // Физика (пиксели и секунды). Мяч отскакивает от стен, аутов нет. Скорости снижены (Ф-14).
+    physics: { friction: 1.2, wallBounce: 0.7, ballR: 2.5, playerR: 5, control: 8, trapSpeed: 190,
+      passSpeed: [90, 190], shotSpeed: [130, 235], dribbleLag: 12 },
     // Скорость игрока = base + speed × perSpeed (px/с). Shift — ускорение Ромы.
-    move: { base: 32, perSpeed: 6, sprint: 1.45, accel: 8, dribble: 0.8 },
+    move: { base: 26, perSpeed: 4.5, sprint: 1.45, accel: 7, dribble: 0.8 },
     stamina: { drain: 0.3, regen: 0.12 },     // доли шкалы в секунду
-    ai: { decide: [0.14, 0.28], shootRange: 140, shootAlways: 38, shootChance: [0.02, 0.006], pressDist: 18, fumblePerSec: 0.06,
-      shotError: 0.13, passError: 0.025, tackleDist: 11, tackleCd: 1.2, coverDist: 40, carelessTackle: 0.3 },
-    tackle: { base: 0.45, perSkill: 0.05, behindFoul: 0.85, stun: 0.6, rageFoul: 0.3 },
-    yellowChance: 0.4,
-    keeper: { baseSpeed: 34, perReaction: 7, dive: 2, delay: 0.035, reach: 10, perReach: 1, save: 0.52, perSave: 0.07, fastPenalty: 0.0011, hold: 0.9 },
+    ai: { decide: [0.16, 0.32], shootRange: 130, shootAlways: 36, shootChance: [0.02, 0.006], pressDist: 18, fumblePerSec: 0.06,
+      shotError: 0.13, passError: 0.025, tackleDist: 11, tackleCd: 1.3, coverDist: 40, carelessTackle: 0.3 },
+    tackle: { base: 0.45, perSkill: 0.05, behindFoul: 0.85, stun: 0.6 },
+    handChance: 0.03,                          // «Рука!»: быстрый мяч попал в руку сопернику
+    keeper: { baseSpeed: 30, perReaction: 6, dive: 2, delay: 0.035, reach: 10, perReach: 1, save: 0.34, perSave: 0.07, fastPenalty: 0.0011, hold: 0.9 },
     diarrheaAt: [25, 150],                       // секунда матча, когда у Смайла начинается диарея
-    refLineEvery: [9, 16],                       // как часто Иван Владимирович что-то кричит
+    // Штрафные и пенальти (Ф-15): не больше 3 за тайм, время стоит. Бегунок направления (−1…1 — створ,
+    // за ±1 — мимо), затем бегунок силы (выше max — над воротами). Вратарь «читает» удар по реакции.
+    setPiece: { perHalf: 3, penaltyR: 46, aimSpeed: 2.4, aimRange: 1.2, powerPeriod: 1.3, overPower: 0.94,
+      read: [0.2, 0.05], reach: { penalty: 0.32, free: 0.55 }, perReach: 0.03, powerBeat: 0.35, freeWide: 0.85 },
     // Перерыв: выбор Ромы в споре Дениса и Шурпо (метки в football.txt) — влияет на 2-й тайм.
-    halftime: { barcaDenisSkill: 1, realShurpoSpeed: 2, realDenisSkill: -1, noneStress: -5 },
+    halftime: { barcaDenisSkill: 1, realShurpoSpeed: 1, realDenisSkill: -1, igorSkill: 1, noneStress: -5 },
   },
 
   // Концовки недели по среднему баллу (ИС-5, Р-5): > 8,0 — «Гордость семьи»; 6,0–8,0 — «Поступаю в БНТУ»;

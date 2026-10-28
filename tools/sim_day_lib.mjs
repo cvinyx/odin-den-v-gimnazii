@@ -138,7 +138,7 @@ export class SimDay {
   minigame(id, { opp = null, bet = 0, params = {} } = {}) {
     const st = this.st;
     let res;
-    if (st.breakdownPending) { st.breakdownPending = false; res = { result: 'lose', deltas: {}, grade: id === 'football' ? BALANCE.football.gradeBase : 4 }; }
+    if (st.breakdownPending) { st.breakdownPending = false; res = { result: 'lose', deltas: {}, grade: 4 }; }
     else res = this.play(id, opp, params);
     this.games[id] = (this.games[id] || 0) + 1;
     for (const [k, v] of Object.entries(res.deltas || {})) if (k in st.stats && v) changeStat(st, k, v);
@@ -277,7 +277,7 @@ export class SimDay {
     st.flags.romaGoals = goals; st.flags.smileDiarrhea = !!M.smileGone; st.flags.kolyaConceded = M.stats.kolyaConceded;
     const d = { aura: F[res].aura + goals * F.goalAura, hunger: BALANCE.hunger.perFootball };
     if (F[res].stress) d.stress = F[res].stress;
-    return { result: res, deltas: d, grade: Math.min(10, F.gradeBase + goals + (res === 'win' ? F.gradeWinBonus : 0)) };
+    return { result: res, deltas: d }; // физра без отметки (У-6)
   }
 
   // ---------- Вызов к директору ----------
